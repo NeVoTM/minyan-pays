@@ -2,6 +2,8 @@
 
 **Last updated:** 2026-03-27  
 **GitHub account email (for commits / remote):** elichalfinny@gmail.com  
+**GitHub username:** [NeVoTM](https://github.com/NeVoTM)  
+**Profile / display name (as on GitHub):** Eli Chalfinny (or as you set it in GitHub settings)
 
 Use this file so a new session picks up context without re-reading the whole thread.
 
@@ -50,14 +52,18 @@ Software for a **rabbi/gabbai** to incentivize **minyan** attendance:
 ## GitHub
 
 - Account email: **elichalfinny@gmail.com**
-- **Next step (you or next session):** Create a repo on GitHub (e.g. `synagogue-attendance-software`), then:
-  ```bash
+- Username: **NeVoTM** → https://github.com/NeVoTM
+- **After you create the repo** `synagogue-attendance-software` on GitHub (empty, no README), run:
+  ```powershell
   cd C:\Users\17274\synagogue-attendance-software
-  git remote add origin https://github.com/<YOUR_USERNAME>/synagogue-attendance-software.git
+  git remote add origin https://github.com/NeVoTM/synagogue-attendance-software.git
   git branch -M main
   git push -u origin main
   ```
-- Local Git in this folder should use **user.email** = `elichalfinny@gmail.com` (already set if you asked the assistant to configure it).
+  If `origin` already exists, use: `git remote set-url origin https://github.com/NeVoTM/synagogue-attendance-software.git`
+- Local Git in this repo uses **user.email** = `elichalfinny@gmail.com` and **user.name** = `Eli Chalfinny`.
+
+**Note:** The AI cannot see your browser or GitHub screen; paste links or errors here if something fails.
 
 ---
 

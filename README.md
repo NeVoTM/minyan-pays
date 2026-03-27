@@ -12,4 +12,4 @@ Planning and documentation for minyan attendance tracking, first-9 incentives, r
 
 This folder is version-controlled with Git. Commit messages document planning updates.
 
-**GitHub:** Connect this repo to your account (email: elichalfinny@gmail.com); see handoff file for `git remote` / `push` steps.
+**GitHub:** [NeVoTM](https://github.com/NeVoTM) · email: elichalfinny@gmail.com · push URL: `https://github.com/NeVoTM/synagogue-attendance-software.git` — see [docs/NEXT-CHAT-HANDOFF.md](./docs/NEXT-CHAT-HANDOFF.md) for `git remote` / `push` steps after you create the repo.
