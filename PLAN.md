@@ -1,10 +1,13 @@
 # Synagogue Minyan Attendance & Incentive Software — Planning Doc
 
+**Synagogue:** Dovrey Evrit · **GitHub repo:** [minyan-pays](https://github.com/NeVoTM/minyan-pays) (private)  
 *Saved for continued work; last updated: 2026-03-27*
+
+**Copilot alignment:** [docs/COPILOT-GITHUB-SYNC.md](./docs/COPILOT-GITHUB-SYNC.md)
 
 ## Purpose
 
-Software for a rabbi/gabbai to run a **minyan attendance incentive program**: track who arrived on time, pay the **first 9** attendees (quorum: rabbi + 9 = 10), optional **weekly bonus** (e.g. full Sun–Fri week, paid to designated recipient such as spouse), with **treasury gating** so the rabbi is never committed without funds.
+Software for a rabbi/gabbai to run a **minyan attendance incentive program** (for **Dovrey Evrit**): track who arrived on time, pay the **first 9** attendees (quorum: rabbi + 9 = 10), optional **weekly bonus** (e.g. full Sun–Fri week, paid to designated recipient such as spouse), with **treasury gating** so the rabbi is never committed without funds.
 
 ---
 

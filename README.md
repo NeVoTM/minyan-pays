@@ -1,15 +1,22 @@
-# Synagogue attendance software
+# minyan-pays — Dovrey Evrit
 
-Planning and documentation for minyan attendance tracking, first-9 incentives, rabbi confirmation workflow, treasury-safe payouts, and future payment integrations.
+Planning and documentation for **minyan attendance**, **first-9 incentives**, **rabbi confirmation**, **treasury-safe payouts**, and payment integrations (PayPal / Zelle / optional USDC per [Copilot sync](./docs/COPILOT-GITHUB-SYNC.md)).
+
+**Synagogue:** **Dovrey Evrit**
 
 **Start here:** [PLAN.md](./PLAN.md)
 
-**Next Cursor chat:** [docs/NEXT-CHAT-HANDOFF.md](./docs/NEXT-CHAT-HANDOFF.md) (context + decisions)
+**GitHub Copilot summary + your repo answers:** [docs/COPILOT-GITHUB-SYNC.md](./docs/COPILOT-GITHUB-SYNC.md)
+
+**Next Cursor chat:** [docs/NEXT-CHAT-HANDOFF.md](./docs/NEXT-CHAT-HANDOFF.md)
 
 **Chat archive:** [docs/CHAT-SUMMARY-2026-03-27.md](./docs/CHAT-SUMMARY-2026-03-27.md)
 
 ## Repository
 
-This folder is version-controlled with Git. Commit messages document planning updates.
+- **GitHub (private):** `https://github.com/NeVoTM/minyan-pays`  
+- **Account:** [NeVoTM](https://github.com/NeVoTM) · elichalfinny@gmail.com  
 
-**GitHub:** [NeVoTM](https://github.com/NeVoTM) · email: elichalfinny@gmail.com · push URL: `https://github.com/NeVoTM/synagogue-attendance-software.git` — see [docs/NEXT-CHAT-HANDOFF.md](./docs/NEXT-CHAT-HANDOFF.md) for `git remote` / `push` steps after you create the repo.
+Local folder on disk may still be named `synagogue-attendance-software`; the **remote** repo name is **`minyan-pays`**.
+
+Commit messages document planning updates.
