@@ -17,6 +17,8 @@ Planning and documentation for **minyan attendance**, **first-9 incentives**, **
 - **GitHub (private):** `https://github.com/NeVoTM/minyan-pays`  
 - **Account:** [NeVoTM](https://github.com/NeVoTM) · elichalfinny@gmail.com  
 
-Local folder on disk may still be named `synagogue-attendance-software`; the **remote** repo name is **`minyan-pays`**.
+Local folder on disk may still be named `synagogue-attendance-software`; the **canonical GitHub remote** is **`minyan-pays`** (private).
+
+**Note:** An older public repo `synagogue-attendance-software` may still exist on GitHub from an earlier push; **use `minyan-pays` only** going forward. You can archive or delete the old repo in GitHub settings if you want a single remote.
 
 Commit messages document planning updates.
