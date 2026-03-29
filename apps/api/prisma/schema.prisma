@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum PunchStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum BonusRecipient {
+  SELF
+  WIFE
+}
+
+model User {
+  id               String           @id @default(cuid())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  name             String
+  phone            String           @unique
+  pinHash          String
+  attendanceCode   String           @unique
+  role             Role             @default(MEMBER)
+  isMarried        Boolean          @default(false)
+  zellePhone       String?
+  wifeZellePhone   String?
+  bonusRecipient   BonusRecipient   @default(WIFE)
+  attendances      Attendance[]
+  weeklyPayouts    WeeklyPayout[]
+}
+
+model AppSettings {
+  id               String @id @default("singleton")
+  synagogueName    String @default("Dovrey Evrit")
+  firstNineCents   Int    @default(1500)
+  weeklyBonusCents Int    @default(3000)
+  firstNineSlots   Int    @default(9)
+  minReserveCents  Int    @default(0)
+  timezone         String @default("America/New_York")
+}
+
+model Treasury {
+  id             String  @id @default("singleton")
+  balanceCents   Int     @default(0)
+  systemLocked   Boolean @default(false)
+}
+
+model MinyanSession {
+  id           String       @id @default(cuid())
+  createdAt    DateTime     @default(now())
+  dateKey      String       @unique
+  status       String       @default("OPEN")
+  attendances  Attendance[]
+}
+
+model Attendance {
+  id                  String      @id @default(cuid())
+  createdAt           DateTime    @default(now())
+  sessionId           String
+  session             MinyanSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  punchInAt           DateTime
+  punchInStatus       PunchStatus @default(PENDING)
+  punchInConfirmedAt  DateTime?
+  punchOutAt          DateTime?
+
+  @@unique([userId, sessionId])
+}
+
+model WeeklyPayout {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekKey     String
+  amountCents Int
+  paidAt      DateTime?
+  notes       String?
+
+  @@unique([userId, weekKey])
+}

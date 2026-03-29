@@ -12,6 +12,15 @@ Planning and documentation for **minyan attendance**, **first-9 incentives**, **
 
 **Chat archive:** [docs/CHAT-SUMMARY-2026-03-27.md](./docs/CHAT-SUMMARY-2026-03-27.md)
 
+## Application (MVP)
+
+Monorepo:
+
+- **`apps/api`** — Express + Prisma + PostgreSQL (`/api/*`)
+- **`apps/web`** — React + Vite + Tailwind (proxies `/api` in dev)
+
+**Run locally:** see [SETUP.md](./SETUP.md) (`docker compose` or hosted Postgres, `npx prisma db push`, `npm run dev`).
+
 ## Repository
 
 - **GitHub (private):** `https://github.com/NeVoTM/minyan-pays`  

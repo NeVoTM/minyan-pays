@@ -2,5 +2,9 @@
 Thumbs.db
 *.log
 node_modules/
+dist/
+apps/*/dist/
 .env
-.env.*
+apps/**/.env
+!.env.example
+!**/.env.example
