@@ -3,16 +3,18 @@
 ## Prerequisites
 
 - **Node.js** 20+ and npm  
-- **PostgreSQL** — either:
-  - **Docker:** `docker compose up -d postgres` from this folder (see `docker-compose.yml`), or  
-  - **Neon / Supabase / Railway** — paste `DATABASE_URL` into `apps/api/.env`
+
+## Database (local)
+
+- **Default (easiest):** **SQLite** — no Docker. `DATABASE_URL="file:./dev.db"` in `apps/api/.env` (see `.env.example`).
+- **Optional:** **PostgreSQL** — `docker compose up -d postgres` or Neon/Supabase; set `DATABASE_URL` and change `provider` in `apps/api/prisma/schema.prisma` to `postgresql`.
 
 ## One-time setup
 
 ```powershell
 cd C:\Users\17274\synagogue-attendance-software
 copy apps\api\.env.example apps\api\.env
-# Edit apps\api\.env — set ADMIN_PASSWORD, JWT_SECRET, DATABASE_URL
+# Edit apps\api\.env — ADMIN_PASSWORD, JWT_SECRET (SQLite URL is preset)
 npm install
 cd apps\api
 npx prisma db push
