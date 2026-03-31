@@ -1,6 +1,35 @@
-import type { Attendance, MinyanSession, User } from "@prisma/client";
+import type { Attendance, BonusRecipient, User } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import { weekMinyanDateKeys, weekSundayKeyFromDateKey } from "./dates.js";
+import { fullName } from "./memberDisplay.js";
+
+export type WeekPayoutRow = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  phone: string;
+  isMarried: boolean;
+  bonusRecipient: BonusRecipient;
+  zellePhone: string | null;
+  wifeZellePhone: string | null;
+  suggestedPayoutZelle: string | null;
+  breakdown: EarningsBreakdown;
+};
+
+function suggestedZelleForPayout(
+  isMarried: boolean,
+  bonusRecipient: BonusRecipient,
+  zellePhone: string | null,
+  wifeZellePhone: string | null
+): string | null {
+  if (isMarried && bonusRecipient === "WIFE") {
+    const w = wifeZellePhone?.trim();
+    if (w) return w;
+  }
+  const s = zellePhone?.trim();
+  return s || null;
+}
 
 export type EarningsBreakdown = {
   dailyLines: { dateKey: string; amountCents: number; firstNine: boolean }[];
@@ -26,7 +55,6 @@ async function getTreasury() {
   return t;
 }
 
-/** Confirmed attendances for a session, ordered by punch-in time; first `slots` get daily pay. */
 export function rankFirstNine(
   attendances: (Attendance & { user: User })[],
   slots: number
@@ -114,6 +142,42 @@ export async function getMemberBalanceDetail(userId: string) {
   }
 
   return { settings, attendanceLog: rows, earningsByWeek: byWeek };
+}
+
+export async function computeAllMembersWeekSummary(weekKey: string): Promise<{
+  weekSundayKey: string;
+  rows: WeekPayoutRow[];
+}> {
+  const weekSundayKey = weekSundayKeyFromDateKey(weekKey);
+  const members = await prisma.user.findMany({
+    where: { role: "MEMBER", isApproved: true },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+  });
+
+  const rows: WeekPayoutRow[] = [];
+  for (const u of members) {
+    const breakdown = await computeUserWeekEarnings(u.id, weekSundayKey);
+    rows.push({
+      userId: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      displayName: fullName(u.firstName, u.lastName),
+      phone: u.phone,
+      isMarried: u.isMarried,
+      bonusRecipient: u.bonusRecipient,
+      zellePhone: u.zellePhone,
+      wifeZellePhone: u.wifeZellePhone,
+      suggestedPayoutZelle: suggestedZelleForPayout(
+        u.isMarried,
+        u.bonusRecipient,
+        u.zellePhone,
+        u.wifeZellePhone
+      ),
+      breakdown,
+    });
+  }
+
+  return { weekSundayKey, rows };
 }
 
 export { getSettings, getTreasury };

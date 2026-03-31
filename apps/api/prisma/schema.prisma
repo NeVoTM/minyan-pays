@@ -3,7 +3,6 @@ generator client {
 }
 
 datasource db {
-  // Local dev: SQLite (no Docker). For production, switch to postgresql + DATABASE_URL.
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
@@ -28,7 +27,8 @@ model User {
   id               String           @id @default(cuid())
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
-  name             String
+  firstName        String
+  lastName         String
   phone            String           @unique
   pinHash          String
   attendanceCode   String           @unique
@@ -37,6 +37,12 @@ model User {
   zellePhone       String?
   wifeZellePhone   String?
   bonusRecipient   BonusRecipient   @default(WIFE)
+  addressLine1     String?
+  addressLine2     String?
+  city             String?
+  stateRegion      String?
+  postalCode       String?
+  isApproved       Boolean          @default(true)
   attendances      Attendance[]
   weeklyPayouts    WeeklyPayout[]
 }

@@ -1,10 +1,11 @@
-import "dotenv/config";
+import "./env.js";
 import express from "express";
 import cors from "cors";
 import { authRouter } from "./routes/auth.js";
 import { punchRouter } from "./routes/punch.js";
 import { adminRouter } from "./routes/admin.js";
 import { memberRouter } from "./routes/member.js";
+import { registerRouter } from "./routes/register.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -23,6 +24,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/register", registerRouter);
 app.use("/api/punch", punchRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/me", memberRouter);
@@ -39,6 +41,6 @@ app.use(
   }
 );
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`minyan-pays API http://localhost:${PORT}`);
 });

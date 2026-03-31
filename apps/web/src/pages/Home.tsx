@@ -19,7 +19,13 @@ export function Home() {
           className="rounded-lg border border-slate-600 bg-slate-800/80 px-4 py-3 text-center hover:bg-slate-800"
           to="/member"
         >
-          Member — balance &amp; history
+          Member — sign in
+        </Link>
+        <Link
+          className="rounded-lg border border-emerald-900/40 bg-emerald-950/30 px-4 py-3 text-center text-emerald-100 hover:bg-emerald-950/50"
+          to="/member/signup"
+        >
+          Register as a member
         </Link>
         <Link
           className="rounded-lg border border-slate-700 px-4 py-3 text-center text-slate-400 hover:bg-slate-800/50"

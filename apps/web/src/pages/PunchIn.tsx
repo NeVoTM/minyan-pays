@@ -14,7 +14,7 @@ export function PunchIn() {
     try {
       const r = await api<{
         attendanceId: string
-        name: string
+        displayName: string
         punchInAt: string
         punchInStatus: string
       }>('/api/punch/in', {
@@ -22,7 +22,7 @@ export function PunchIn() {
         body: JSON.stringify({ attendanceCode: code.trim() }),
       })
       setMsg(
-        `Recorded for ${r.name}. Status: ${r.punchInStatus}. Wait for rabbi confirmation.`
+        `Recorded for ${r.displayName}. Status: ${r.punchInStatus}. Wait for rabbi confirmation.`
       )
       setCode('')
     } catch (err: unknown) {

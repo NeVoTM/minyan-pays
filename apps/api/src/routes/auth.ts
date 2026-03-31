@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { normalizePhone } from "../lib/phone.js";
 import { signAdminToken, signMemberToken } from "../middleware/auth.js";
 
 export const authRouter = Router();
@@ -21,12 +22,12 @@ authRouter.post("/admin", (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const expected = process.env.ADMIN_PASSWORD;
+  const expected = process.env.ADMIN_PASSWORD?.trim();
   if (!expected) {
     res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
     return;
   }
-  if (parsed.data.password !== expected) {
+  if (parsed.data.password.trim() !== expected) {
     res.status(401).json({ error: "Invalid password" });
     return;
   }
@@ -50,12 +51,12 @@ authRouter.post("/member", async (req, res) => {
     res.status(401).json({ error: "Unknown phone or PIN" });
     return;
   }
+  if (!user.isApproved) {
+    res.status(403).json({
+      error:
+        "Account pending rabbi approval. You will receive access after the rabbi approves your registration.",
+    });
+    return;
+  }
   res.json({ token: signMemberToken(user.id) });
 });
-
-function normalizePhone(p: string): string {
-  const digits = p.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.startsWith("1") && digits.length === 11) return `+${digits}`;
-  return `+${digits}`;
-}

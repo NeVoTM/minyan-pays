@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { prisma } from "../lib/prisma.js";
 
 export type JwtPayload = {
   sub: string;
@@ -52,6 +53,30 @@ export function requireMember(req: Request, res: Response, next: NextFunction) {
   const a = (req as Request & { auth?: JwtPayload }).auth;
   if (!a || a.role !== "MEMBER") {
     res.status(403).json({ error: "Member only" });
+    return;
+  }
+  next();
+}
+
+export async function requireApprovedMember(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const a = (req as Request & { auth?: JwtPayload }).auth;
+  if (!a || a.role !== "MEMBER") {
+    res.status(403).json({ error: "Member only" });
+    return;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: a.sub },
+    select: { isApproved: true },
+  });
+  if (!user?.isApproved) {
+    res.status(403).json({
+      error:
+        "Account pending rabbi approval. You will be able to sign in after approval.",
+    });
     return;
   }
   next();

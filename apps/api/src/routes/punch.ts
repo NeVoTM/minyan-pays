@@ -3,9 +3,10 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { todayDateKey } from "../lib/dates.js";
 import { getSettings, getTreasury } from "../lib/earnings.js";
+import { fullName } from "../lib/memberDisplay.js";
 import {
   authMiddleware,
-  requireMember,
+  requireApprovedMember,
   type JwtPayload,
 } from "../middleware/auth.js";
 
@@ -15,7 +16,6 @@ const punchInBody = z.object({
   attendanceCode: z.string().min(4).max(32),
 });
 
-/** Public: attendee enters their code (pending until rabbi confirms). */
 punchRouter.post("/in", async (req, res) => {
   const parsed = punchInBody.safeParse(req.body);
   if (!parsed.success) {
@@ -43,6 +43,13 @@ punchRouter.post("/in", async (req, res) => {
   });
   if (!user) {
     res.status(404).json({ error: "Invalid code" });
+    return;
+  }
+  if (!user.isApproved) {
+    res.status(403).json({
+      error:
+        "This account is pending rabbi approval. You cannot punch in until approved.",
+    });
     return;
   }
 
@@ -81,7 +88,7 @@ punchRouter.post("/in", async (req, res) => {
 
   res.status(201).json({
     attendanceId: attendance.id,
-    name: user.name,
+    displayName: fullName(user.firstName, user.lastName),
     punchInAt: attendance.punchInAt.toISOString(),
     punchInStatus: attendance.punchInStatus,
   });
@@ -89,7 +96,7 @@ punchRouter.post("/in", async (req, res) => {
 
 punchRouter.use(authMiddleware);
 
-punchRouter.post("/out", requireMember, async (req, res) => {
+punchRouter.post("/out", requireApprovedMember, async (req, res) => {
   const auth = (req as Request & { auth: JwtPayload }).auth;
   const userId = auth.sub;
   const dateKey = todayDateKey();

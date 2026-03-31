@@ -5,6 +5,7 @@ import { AdminLogin } from './pages/AdminLogin'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { MemberLogin } from './pages/MemberLogin'
 import { MemberDashboard } from './pages/MemberDashboard'
+import { MemberSignup } from './pages/MemberSignup'
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/app" element={<AdminDashboard />} />
             <Route path="/member" element={<MemberLogin />} />
+            <Route path="/member/signup" element={<MemberSignup />} />
             <Route path="/member/app" element={<MemberDashboard />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

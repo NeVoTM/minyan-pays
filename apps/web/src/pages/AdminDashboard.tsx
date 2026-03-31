@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { api } from '../api'
+import { api, fetchBlob } from '../api'
+import { PhoneInput } from '../components/PhoneInput'
 
 const KEY = 'minyan_admin_token'
 
@@ -13,14 +14,64 @@ type SessionResp = {
     punchInStatus: string
     punchOutAt: string | null
     wouldBeFirstNine: boolean
-    user: { id: string; name: string; phone: string; attendanceCode: string }
+    user: {
+      id: string
+      firstName: string
+      lastName: string
+      displayName: string
+      phone: string
+      attendanceCode: string
+    }
   }[]
+}
+
+type MemberRow = {
+  id: string
+  firstName: string
+  lastName: string
+  displayName: string
+  phone: string
+  attendanceCode: string
+  isMarried: boolean
+  zellePhone: string | null
+  wifeZellePhone: string | null
+  bonusRecipient: string
+  addressLine1: string | null
+  addressLine2: string | null
+  city: string | null
+  stateRegion: string | null
+  postalCode: string | null
+  isApproved: boolean
+  createdAt: string
+}
+
+function emptyMemberForm() {
+  return {
+    firstName: '',
+    lastName: '',
+    phoneDigits: '',
+    pin: '',
+    attendanceCode: '',
+    isMarried: false,
+    zellePhone: '',
+    wifeZellePhone: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    stateRegion: '',
+    postalCode: '',
+  }
+}
+
+function phoneDigitsFromE164(phone: string): string {
+  return phone.replace(/\D/g, '').replace(/^1/, '').slice(0, 10)
 }
 
 export function AdminDashboard() {
   const nav = useNavigate()
   const token = localStorage.getItem(KEY)
   const [session, setSession] = useState<SessionResp | null>(null)
+  const [members, setMembers] = useState<MemberRow[]>([])
   const [treasury, setTreasury] = useState<{
     balanceCents: number
     systemLocked: boolean
@@ -32,16 +83,18 @@ export function AdminDashboard() {
   } | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [fund, setFund] = useState('')
-  const [newMember, setNewMember] = useState({
-    name: '',
-    phone: '',
-    pin: '',
-    attendanceCode: '',
-    isMarried: false,
-    zellePhone: '',
-    wifeZellePhone: '',
-  })
+  const [newMember, setNewMember] = useState(() => emptyMemberForm())
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
+  const [memberConfirm, setMemberConfirm] = useState<string | null>(null)
+  const [weekExportDate, setWeekExportDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  )
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
+  const [viewMember, setViewMember] = useState<MemberRow | null>(null)
+  const [editMember, setEditMember] = useState<MemberRow | null>(null)
+  const [editForm, setEditForm] = useState(() => emptyMemberForm())
+  const [editPin, setEditPin] = useState('')
+  const [editSaveMsg, setEditSaveMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!token) {
@@ -49,7 +102,7 @@ export function AdminDashboard() {
       return
     }
     try {
-      const [s, t, st] = await Promise.all([
+      const [s, t, st, m] = await Promise.all([
         api<SessionResp>('/api/admin/session/today', { token }),
         api<{ balanceCents: number; systemLocked: boolean }>(
           '/api/admin/treasury',
@@ -60,10 +113,12 @@ export function AdminDashboard() {
           weeklyBonusCents: number
           firstNineSlots: number
         }>('/api/admin/settings', { token }),
+        api<MemberRow[]>('/api/admin/members', { token }),
       ])
       setSession(s)
       setTreasury(t)
       setSettings(st)
+      setMembers(m)
       setErr(null)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : 'Load failed')
@@ -73,6 +128,82 @@ export function AdminDashboard() {
   useEffect(() => {
     void load()
   }, [load])
+
+  function openEdit(m: MemberRow) {
+    setEditMember(m)
+    setEditSaveMsg(null)
+    setEditPin('')
+    setEditForm({
+      firstName: m.firstName,
+      lastName: m.lastName,
+      phoneDigits: phoneDigitsFromE164(m.phone),
+      pin: '',
+      attendanceCode: m.attendanceCode,
+      isMarried: m.isMarried,
+      zellePhone: m.zellePhone ?? '',
+      wifeZellePhone: m.wifeZellePhone ?? '',
+      addressLine1: m.addressLine1 ?? '',
+      addressLine2: m.addressLine2 ?? '',
+      city: m.city ?? '',
+      stateRegion: m.stateRegion ?? '',
+      postalCode: m.postalCode ?? '',
+    })
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!token || !editMember) return
+    setEditSaveMsg(null)
+    if (editForm.phoneDigits.length !== 10) {
+      setEditSaveMsg('Phone must be 10 digits.')
+      return
+    }
+    try {
+      const body: Record<string, unknown> = {
+        firstName: editForm.firstName.trim(),
+        lastName: editForm.lastName.trim(),
+        phone: editForm.phoneDigits,
+        attendanceCode: editForm.attendanceCode.trim(),
+        isMarried: editForm.isMarried,
+        isApproved: editMember.isApproved,
+        zellePhone: editForm.zellePhone.trim() || null,
+        wifeZellePhone: editForm.wifeZellePhone.trim() || null,
+        addressLine1: editForm.addressLine1.trim() || null,
+        addressLine2: editForm.addressLine2.trim() || null,
+        city: editForm.city.trim() || null,
+        stateRegion: editForm.stateRegion.trim() || null,
+        postalCode: editForm.postalCode.trim() || null,
+      }
+      if (editPin.trim().length >= 4) body.pin = editPin.trim()
+      await api(`/api/admin/members/${editMember.id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify(body),
+      })
+      setEditMember(null)
+      setEditSaveMsg(null)
+      setMemberMsg('Member updated.')
+      await load()
+    } catch (e: unknown) {
+      setEditSaveMsg(e instanceof Error ? e.message : 'Update failed')
+    }
+  }
+
+  async function approveMember(id: string) {
+    if (!token) return
+    setMemberMsg(null)
+    try {
+      await api(`/api/admin/members/${id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ isApproved: true }),
+      })
+      setMemberMsg('Member approved.')
+      await load()
+    } catch (e: unknown) {
+      setMemberMsg(e instanceof Error ? e.message : 'Approve failed')
+    }
+  }
 
   async function confirm(id: string) {
     if (!token) return
@@ -112,30 +243,39 @@ export function AdminDashboard() {
     e.preventDefault()
     if (!token) return
     setMemberMsg(null)
+    setMemberConfirm(null)
+    if (newMember.phoneDigits.length !== 10) {
+      setMemberMsg('Phone must be 10 digits (US).')
+      return
+    }
     try {
-      await api('/api/admin/members', {
+      const r = await api<{
+        displayName: string
+        attendanceCode: string
+        phone: string
+      }>('/api/admin/members', {
         method: 'POST',
         token,
         body: JSON.stringify({
-          name: newMember.name,
-          phone: newMember.phone,
+          firstName: newMember.firstName.trim(),
+          lastName: newMember.lastName.trim(),
+          phone: newMember.phoneDigits,
           pin: newMember.pin,
-          attendanceCode: newMember.attendanceCode,
+          attendanceCode: newMember.attendanceCode.trim(),
           isMarried: newMember.isMarried,
-          zellePhone: newMember.zellePhone || undefined,
-          wifeZellePhone: newMember.wifeZellePhone || undefined,
+          zellePhone: newMember.zellePhone.trim() || undefined,
+          wifeZellePhone: newMember.wifeZellePhone.trim() || undefined,
+          addressLine1: newMember.addressLine1.trim() || undefined,
+          addressLine2: newMember.addressLine2.trim() || undefined,
+          city: newMember.city.trim() || undefined,
+          stateRegion: newMember.stateRegion.trim() || undefined,
+          postalCode: newMember.postalCode.trim() || undefined,
         }),
       })
-      setMemberMsg('Member created.')
-      setNewMember({
-        name: '',
-        phone: '',
-        pin: '',
-        attendanceCode: '',
-        isMarried: false,
-        zellePhone: '',
-        wifeZellePhone: '',
-      })
+      setMemberConfirm(
+        `Saved: ${r.displayName} · Phone ${r.phone} · Code ${r.attendanceCode}`
+      )
+      setNewMember(emptyMemberForm())
       await load()
     } catch (e: unknown) {
       setMemberMsg(e instanceof Error ? e.message : 'Failed')
@@ -150,6 +290,27 @@ export function AdminDashboard() {
       body: JSON.stringify({ systemLocked: !treasury.systemLocked }),
     })
     await load()
+  }
+
+  async function downloadWeekPayoutCsv() {
+    if (!token) return
+    setExportMsg(null)
+    try {
+      const blob = await fetchBlob(
+        `/api/admin/export/week/${weekExportDate}.csv`,
+        { token }
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `minyan-payouts-${weekExportDate}.csv`
+      a.rel = 'noopener'
+      a.click()
+      URL.revokeObjectURL(url)
+      setExportMsg('Download started.')
+    } catch (e: unknown) {
+      setExportMsg(e instanceof Error ? e.message : 'Export failed')
+    }
   }
 
   if (!token) return null
@@ -216,26 +377,131 @@ export function AdminDashboard() {
       )}
 
       <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+        <h2 className="mb-2 text-sm font-medium text-slate-300">
+          Weekly payout export
+        </h2>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs text-slate-400">
+            Week (any day)
+            <input
+              type="date"
+              className="rounded border border-slate-600 bg-slate-950 px-2 py-1 text-slate-200"
+              value={weekExportDate}
+              onChange={(e) => setWeekExportDate(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded bg-amber-900/50 px-3 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/70"
+            onClick={() => void downloadWeekPayoutCsv()}
+          >
+            Download CSV
+          </button>
+        </div>
+        {exportMsg && (
+          <p className="mt-2 text-xs text-slate-400">{exportMsg}</p>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+        <h2 className="mb-3 text-sm font-medium text-slate-300">Members</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-left text-xs text-slate-300">
+            <thead>
+              <tr className="border-b border-slate-700 text-slate-500">
+                <th className="py-2 pr-2">Name</th>
+                <th className="py-2 pr-2">Phone</th>
+                <th className="py-2 pr-2">Code</th>
+                <th className="py-2 pr-2">Status</th>
+                <th className="py-2 pr-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.id} className="border-b border-slate-800/80">
+                  <td className="py-2 pr-2 font-medium text-slate-200">
+                    {m.displayName}
+                  </td>
+                  <td className="py-2 pr-2">{m.phone}</td>
+                  <td className="py-2 pr-2 font-mono">{m.attendanceCode}</td>
+                  <td className="py-2 pr-2">
+                    {m.isApproved ? (
+                      <span className="text-emerald-400">Active</span>
+                    ) : (
+                      <span className="text-amber-400">Pending</span>
+                    )}
+                  </td>
+                  <td className="py-2 pr-2">
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        className="text-amber-400/90 hover:underline"
+                        onClick={() => setViewMember(m)}
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:underline"
+                        onClick={() => openEdit(m)}
+                      >
+                        Edit
+                      </button>
+                      {!m.isApproved && (
+                        <button
+                          type="button"
+                          className="text-emerald-400 hover:underline"
+                          onClick={() => void approveMember(m.id)}
+                        >
+                          Approve
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {members.length === 0 && (
+          <p className="text-xs text-slate-500">No members yet.</p>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4">
         <h2 className="mb-3 text-sm font-medium text-slate-300">Add member</h2>
         <form onSubmit={createMember} className="grid gap-2 text-sm">
-          <input
-            className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
-            placeholder="Name"
-            value={newMember.name}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, name: e.target.value }))
-            }
-            required
-          />
-          <input
-            className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
-            placeholder="Phone"
-            value={newMember.phone}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, phone: e.target.value }))
-            }
-            required
-          />
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+              placeholder="First name"
+              value={newMember.firstName}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, firstName: e.target.value }))
+              }
+              required
+            />
+            <input
+              className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+              placeholder="Last name"
+              value={newMember.lastName}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, lastName: e.target.value }))
+              }
+              required
+            />
+          </div>
+          <label className="text-xs text-slate-400">
+            Phone
+            <PhoneInput
+              className="mt-1 w-full rounded border border-slate-600 bg-slate-950 px-2 py-1"
+              value={newMember.phoneDigits}
+              onChange={(d) =>
+                setNewMember((m) => ({ ...m, phoneDigits: d }))
+              }
+              required
+            />
+          </label>
           <input
             className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
             placeholder="PIN (4+ digits)"
@@ -254,6 +520,49 @@ export function AdminDashboard() {
             }
             required
           />
+          <p className="text-xs text-slate-500">Address</p>
+          <input
+            className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+            placeholder="Street line 1"
+            value={newMember.addressLine1}
+            onChange={(e) =>
+              setNewMember((m) => ({ ...m, addressLine1: e.target.value }))
+            }
+          />
+          <input
+            className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+            placeholder="Street line 2"
+            value={newMember.addressLine2}
+            onChange={(e) =>
+              setNewMember((m) => ({ ...m, addressLine2: e.target.value }))
+            }
+          />
+          <div className="grid gap-2 sm:grid-cols-3">
+            <input
+              className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+              placeholder="City"
+              value={newMember.city}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, city: e.target.value }))
+              }
+            />
+            <input
+              className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+              placeholder="State"
+              value={newMember.stateRegion}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, stateRegion: e.target.value }))
+              }
+            />
+            <input
+              className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+              placeholder="ZIP"
+              value={newMember.postalCode}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, postalCode: e.target.value }))
+              }
+            />
+          </div>
           <label className="flex items-center gap-2 text-slate-400">
             <input
               type="checkbox"
@@ -262,7 +571,7 @@ export function AdminDashboard() {
                 setNewMember((m) => ({ ...m, isMarried: e.target.checked }))
               }
             />
-            Married (bonus recipient fields)
+            Married
           </label>
           <input
             className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
@@ -274,7 +583,7 @@ export function AdminDashboard() {
           />
           <input
             className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
-            placeholder="Wife Zelle (optional)"
+            placeholder="Spouse Zelle (optional)"
             value={newMember.wifeZellePhone}
             onChange={(e) =>
               setNewMember((m) => ({ ...m, wifeZellePhone: e.target.value }))
@@ -287,7 +596,12 @@ export function AdminDashboard() {
             Save member
           </button>
         </form>
-        {memberMsg && (
+        {memberConfirm && (
+          <p className="mt-3 rounded border border-emerald-800/50 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-100">
+            {memberConfirm}
+          </p>
+        )}
+        {memberMsg && memberMsg !== memberConfirm && (
           <p className="mt-2 text-xs text-slate-400">{memberMsg}</p>
         )}
       </div>
@@ -301,7 +615,7 @@ export function AdminDashboard() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium">{a.user.name}</p>
+                  <p className="font-medium">{a.user.displayName}</p>
                   <p className="text-xs text-slate-500">
                     {new Date(a.punchInAt).toLocaleString()} ·{' '}
                     {a.punchInStatus}
@@ -341,6 +655,213 @@ export function AdminDashboard() {
             <li className="text-slate-500">No punch-ins yet today.</li>
           )}
         </ul>
+      )}
+
+      {viewMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-600 bg-slate-900 p-6 text-sm shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-100">
+                {viewMember.displayName}
+              </h3>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-200"
+                onClick={() => setViewMember(null)}
+              >
+                Close
+              </button>
+            </div>
+            <dl className="grid gap-2 text-slate-300">
+              <dt className="text-slate-500">Phone</dt>
+              <dd>{viewMember.phone}</dd>
+              <dt className="text-slate-500">Attendance code</dt>
+              <dd className="font-mono">{viewMember.attendanceCode}</dd>
+              <dt className="text-slate-500">Status</dt>
+              <dd>{viewMember.isApproved ? 'Active' : 'Pending approval'}</dd>
+              <dt className="text-slate-500">Address</dt>
+              <dd>{viewMember.addressLine1 || '—'}</dd>
+              <dd>{viewMember.addressLine2 || ''}</dd>
+              <dd>
+                {[viewMember.city, viewMember.stateRegion, viewMember.postalCode]
+                  .filter(Boolean)
+                  .join(', ') || '—'}
+              </dd>
+              <dt className="text-slate-500">Zelle</dt>
+              <dd>{viewMember.zellePhone || '—'}</dd>
+              <dt className="text-slate-500">Spouse Zelle</dt>
+              <dd>{viewMember.wifeZellePhone || '—'}</dd>
+            </dl>
+            <button
+              type="button"
+              className="mt-4 w-full rounded bg-slate-700 py-2 hover:bg-slate-600"
+              onClick={() => setViewMember(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-slate-600 bg-slate-900 p-6 text-sm shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-100">
+                Edit member
+              </h3>
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-200"
+                onClick={() => setEditMember(null)}
+              >
+                Cancel
+              </button>
+            </div>
+            <form onSubmit={saveEdit} className="grid gap-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                  placeholder="First name"
+                  value={editForm.firstName}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, firstName: e.target.value }))
+                  }
+                  required
+                />
+                <input
+                  className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                  placeholder="Last name"
+                  value={editForm.lastName}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, lastName: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <label className="text-xs text-slate-400">
+                Phone
+                <PhoneInput
+                  className="mt-1 w-full rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                  value={editForm.phoneDigits}
+                  onChange={(d) =>
+                    setEditForm((f) => ({ ...f, phoneDigits: d }))
+                  }
+                  required
+                />
+              </label>
+              <input
+                type="password"
+                className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                placeholder="New PIN (leave blank to keep)"
+                value={editPin}
+                onChange={(e) => setEditPin(e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                placeholder="Attendance code"
+                value={editForm.attendanceCode}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    attendanceCode: e.target.value,
+                  }))
+                }
+                required
+              />
+              <p className="text-xs text-slate-500">Address</p>
+              <input
+                className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                placeholder="Street line 1"
+                value={editForm.addressLine1}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, addressLine1: e.target.value }))
+                }
+              />
+              <input
+                className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                placeholder="Street line 2"
+                value={editForm.addressLine2}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, addressLine2: e.target.value }))
+                }
+              />
+              <div className="grid gap-2 sm:grid-cols-3">
+                <input
+                  className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                  placeholder="City"
+                  value={editForm.city}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, city: e.target.value }))
+                  }
+                />
+                <input
+                  className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                  placeholder="State"
+                  value={editForm.stateRegion}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, stateRegion: e.target.value }))
+                  }
+                />
+                <input
+                  className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                  placeholder="ZIP"
+                  value={editForm.postalCode}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, postalCode: e.target.value }))
+                  }
+                />
+              </div>
+              <label className="flex items-center gap-2 text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={editForm.isMarried}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, isMarried: e.target.checked }))
+                  }
+                />
+                Married
+              </label>
+              <input
+                className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                placeholder="Zelle"
+                value={editForm.zellePhone}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, zellePhone: e.target.value }))
+                }
+              />
+              <input
+                className="rounded border border-slate-600 bg-slate-950 px-2 py-1"
+                placeholder="Spouse Zelle"
+                value={editForm.wifeZellePhone}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, wifeZellePhone: e.target.value }))
+                }
+              />
+              <label className="flex items-center gap-2 text-slate-400">
+                <input
+                  type="checkbox"
+                  checked={editMember.isApproved}
+                  onChange={(e) =>
+                    setEditMember((m) =>
+                      m ? { ...m, isApproved: e.target.checked } : m
+                    )
+                  }
+                />
+                Approved (active)
+              </label>
+              <button
+                type="submit"
+                className="rounded bg-amber-800/80 py-2 font-medium text-amber-50 hover:bg-amber-700"
+              >
+                Save changes
+              </button>
+            </form>
+            {editSaveMsg && (
+              <p className="mt-2 text-xs text-red-400">{editSaveMsg}</p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
