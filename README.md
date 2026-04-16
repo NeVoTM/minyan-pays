@@ -6,6 +6,12 @@ Planning and documentation for **minyan attendance**, **first-9 incentives**, **
 
 **Start here:** [PLAN.md](./PLAN.md)
 
+**Mobile:** Web layout is tuned for iPhone-width screens with a bottom navigation bar.
+
+**Database:** Local SQLite by default; free cloud Postgres via [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md).
+
+**Share a free public link (demo):** [docs/PUBLIC_URL_FREE.md](./docs/PUBLIC_URL_FREE.md) — tunnel port 5173 while `npm run dev` runs (`npm run tunnel` or Cloudflare `cloudflared`).
+
 **GitHub Copilot summary + your repo answers:** [docs/COPILOT-GITHUB-SYNC.md](./docs/COPILOT-GITHUB-SYNC.md)
 
 **Next Cursor chat:** [docs/NEXT-CHAT-HANDOFF.md](./docs/NEXT-CHAT-HANDOFF.md)

@@ -59,6 +59,7 @@ registerRouter.post("/", async (req, res) => {
         city: trimOrNull(d.city ?? undefined),
         stateRegion: trimOrNull(d.stateRegion ?? undefined),
         postalCode: trimOrNull(d.postalCode ?? undefined),
+        email: d.email ?? null,
         isApproved: false,
       },
     });

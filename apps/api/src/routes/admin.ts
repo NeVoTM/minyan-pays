@@ -11,7 +11,7 @@ import {
   getTreasury,
   rankFirstNine,
 } from "../lib/earnings.js";
-import { normalizePhone } from "../lib/phone.js";
+import { normalizeOptionalUsPhone, normalizePhone } from "../lib/phone.js";
 import { fullName } from "../lib/memberDisplay.js";
 import {
   assertNoMemberDuplicates,
@@ -118,6 +118,12 @@ adminRouter.post("/members", async (req, res) => {
         city: trimOrNull(d.city ?? undefined),
         stateRegion: trimOrNull(d.stateRegion ?? undefined),
         postalCode: trimOrNull(d.postalCode ?? undefined),
+        email: d.email ?? null,
+        spousePhone: normalizeOptionalUsPhone(d.spousePhone ?? null),
+        spouseEmail: d.spouseEmail ?? null,
+        paypalAccount: trimOrNull(d.paypalAccount ?? undefined),
+        achRoutingNumber: trimOrNull(d.achRoutingNumber ?? undefined),
+        achAccountNumber: trimOrNull(d.achAccountNumber ?? undefined),
         isApproved: true,
       },
     });
@@ -155,6 +161,12 @@ adminRouter.get("/members", async (_req, res) => {
       city: true,
       stateRegion: true,
       postalCode: true,
+      email: true,
+      spousePhone: true,
+      spouseEmail: true,
+      paypalAccount: true,
+      achRoutingNumber: true,
+      achAccountNumber: true,
       isApproved: true,
       createdAt: true,
     },
@@ -186,6 +198,12 @@ adminRouter.get("/members/:id", async (req, res) => {
       city: true,
       stateRegion: true,
       postalCode: true,
+      email: true,
+      spousePhone: true,
+      spouseEmail: true,
+      paypalAccount: true,
+      achRoutingNumber: true,
+      achAccountNumber: true,
       isApproved: true,
       createdAt: true,
     },
@@ -268,6 +286,25 @@ adminRouter.patch("/members/:id", async (req, res) => {
       p.postalCode !== undefined
         ? trimOrNull(p.postalCode)
         : existing.postalCode,
+    email: p.email !== undefined ? p.email : existing.email,
+    spousePhone:
+      p.spousePhone !== undefined
+        ? normalizeOptionalUsPhone(p.spousePhone)
+        : existing.spousePhone,
+    spouseEmail:
+      p.spouseEmail !== undefined ? p.spouseEmail : existing.spouseEmail,
+    paypalAccount:
+      p.paypalAccount !== undefined
+        ? trimOrNull(p.paypalAccount)
+        : existing.paypalAccount,
+    achRoutingNumber:
+      p.achRoutingNumber !== undefined
+        ? trimOrNull(p.achRoutingNumber)
+        : existing.achRoutingNumber,
+    achAccountNumber:
+      p.achAccountNumber !== undefined
+        ? trimOrNull(p.achAccountNumber)
+        : existing.achAccountNumber,
     isApproved: p.isApproved ?? existing.isApproved,
   };
 
@@ -296,6 +333,18 @@ adminRouter.patch("/members/:id", async (req, res) => {
     const msg = e instanceof Error ? e.message : "Update failed";
     res.status(409).json({ error: msg });
   }
+});
+
+adminRouter.delete("/members/:id", async (req, res) => {
+  const existing = await prisma.user.findFirst({
+    where: { id: req.params.id, role: "MEMBER" },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  await prisma.user.delete({ where: { id: existing.id } });
+  res.status(204).send();
 });
 
 adminRouter.post("/attendance/:id/confirm", async (req, res) => {
@@ -353,6 +402,7 @@ adminRouter.post("/attendance/:id/reject", async (req, res) => {
 adminRouter.patch("/settings", async (req, res) => {
   const schema = z.object({
     synagogueName: z.string().optional(),
+    rabbiBanner: z.union([z.string().max(2000), z.null()]).optional(),
     firstNineCents: z.number().int().min(0).optional(),
     weeklyBonusCents: z.number().int().min(0).optional(),
     firstNineSlots: z.number().int().min(1).max(50).optional(),

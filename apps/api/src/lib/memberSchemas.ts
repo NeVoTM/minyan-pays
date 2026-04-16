@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+const optionalText = z.preprocess((v) => {
+  if (v == null || v === "") return null;
+  const t = String(v).trim();
+  return t || null;
+}, z.union([z.null(), z.string().max(500)]));
+
+const optionalEmail = z.preprocess((v) => {
+  if (v == null || v === "") return null;
+  const t = String(v).trim();
+  return t || null;
+}, z.union([z.null(), z.string().max(200).email()]));
+
+const optionalAddressLine = z.preprocess((v) => {
+  if (v == null || v === "") return null;
+  const t = String(v).trim();
+  return t || null;
+}, z.union([z.null(), z.string().max(100)]));
+
 export const memberFieldsSchema = z.object({
   firstName: z.string().min(1).max(80),
   lastName: z.string().min(1).max(80),
@@ -10,11 +28,17 @@ export const memberFieldsSchema = z.object({
   zellePhone: z.string().optional().nullable(),
   wifeZellePhone: z.string().optional().nullable(),
   bonusRecipient: z.enum(["SELF", "WIFE"]).optional(),
-  addressLine1: z.string().optional().nullable(),
-  addressLine2: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  stateRegion: z.string().optional().nullable(),
-  postalCode: z.string().optional().nullable(),
+  addressLine1: optionalAddressLine.optional(),
+  addressLine2: optionalAddressLine.optional(),
+  city: z.string().max(80).optional().nullable(),
+  stateRegion: z.string().max(32).optional().nullable(),
+  postalCode: z.string().max(10).optional().nullable(),
+  email: optionalEmail.optional(),
+  spousePhone: optionalText.optional(),
+  spouseEmail: optionalEmail.optional(),
+  paypalAccount: optionalText.optional(),
+  achRoutingNumber: optionalText.optional(),
+  achAccountNumber: optionalText.optional(),
 });
 
 export const memberUpdateSchema = z.object({
@@ -27,10 +51,23 @@ export const memberUpdateSchema = z.object({
   zellePhone: z.string().optional().nullable(),
   wifeZellePhone: z.string().optional().nullable(),
   bonusRecipient: z.enum(["SELF", "WIFE"]).optional(),
-  addressLine1: z.string().optional().nullable(),
-  addressLine2: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  stateRegion: z.string().optional().nullable(),
-  postalCode: z.string().optional().nullable(),
+  addressLine1: optionalAddressLine.optional(),
+  addressLine2: optionalAddressLine.optional(),
+  city: z.string().max(80).optional().nullable(),
+  stateRegion: z.string().max(32).optional().nullable(),
+  postalCode: z.string().max(10).optional().nullable(),
+  email: optionalEmail.optional(),
+  spousePhone: optionalText.optional(),
+  spouseEmail: optionalEmail.optional(),
+  paypalAccount: optionalText.optional(),
+  achRoutingNumber: optionalText.optional(),
+  achAccountNumber: optionalText.optional(),
   isApproved: z.boolean().optional(),
+});
+
+/** Member self-service: no PIN, attendance code, or approval flag. */
+export const memberSelfUpdateSchema = memberUpdateSchema.omit({
+  pin: true,
+  attendanceCode: true,
+  isApproved: true,
 });

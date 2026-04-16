@@ -30,6 +30,8 @@ memberRouter.get("/profile", async (req: Request, res) => {
       city: true,
       stateRegion: true,
       postalCode: true,
+      email: true,
+      paypalAccount: true,
       isApproved: true,
     },
   });

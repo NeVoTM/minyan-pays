@@ -2,6 +2,8 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// SQLite by default for zero-setup local dev.
+// For free cloud Postgres (Neon): set provider to "postgresql" and DATABASE_URL — see docs/FREE_DATABASE_NEON.md
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
@@ -42,6 +44,12 @@ model User {
   city             String?
   stateRegion      String?
   postalCode       String?
+  email            String?
+  spousePhone      String?
+  spouseEmail      String?
+  paypalAccount    String?
+  achRoutingNumber String?
+  achAccountNumber String?
   isApproved       Boolean          @default(true)
   attendances      Attendance[]
   weeklyPayouts    WeeklyPayout[]
@@ -50,11 +58,20 @@ model User {
 model AppSettings {
   id               String @id @default("singleton")
   synagogueName    String @default("Dovrey Evrit")
+  rabbiBanner      String?
   firstNineCents   Int    @default(1500)
   weeklyBonusCents Int    @default(3000)
   firstNineSlots   Int    @default(9)
   minReserveCents  Int    @default(0)
   timezone         String @default("America/New_York")
+}
+
+/** Cached US ZIP lookups (filled from public API on first request). */
+model ZipCache {
+  zip   String   @id
+  city  String
+  state String
+  fetchedAt DateTime @default(now())
 }
 
 model Treasury {

@@ -1,6 +1,14 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api } from '../api'
+import { BackLink } from '../components/BackLink'
+import {
+  cardShell,
+  fieldLabel,
+  pageSubtitle,
+  pageTitle,
+  pillInput,
+  primaryBtn,
+} from '../lib/uiClasses'
 
 export function PunchIn() {
   const [code, setCode] = useState('')
@@ -34,34 +42,40 @@ export function PunchIn() {
 
   return (
     <div className="space-y-6">
-      <Link to="/" className="text-sm text-slate-500 hover:text-slate-300">
-        ← Home
-      </Link>
-      <h1 className="text-xl font-semibold">Punch in</h1>
-      <form onSubmit={submit} className="space-y-4">
-        <label className="block text-sm text-slate-400">
-          Your attendance code
-          <input
-            className="mt-1 w-full rounded border border-slate-600 bg-slate-900 px-3 py-2 text-lg tracking-wide"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            autoComplete="off"
-            placeholder="••••••"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={loading || !code.trim()}
-          className="w-full rounded-lg bg-amber-600 py-3 font-medium text-slate-950 hover:bg-amber-500 disabled:opacity-50"
-        >
-          {loading ? 'Sending…' : 'Mark arrived'}
-        </button>
-      </form>
-      {msg && (
-        <p className="rounded border border-slate-600 bg-slate-900/80 px-3 py-2 text-sm">
-          {msg}
-        </p>
-      )}
+      <div className="flex items-start gap-3">
+        <BackLink to="/" />
+        <div>
+          <h1 className={pageTitle}>Punch in</h1>
+          <p className={pageSubtitle}>Enter your attendance code when you arrive.</p>
+        </div>
+      </div>
+
+      <div className={cardShell}>
+        <form onSubmit={submit} className="space-y-4">
+          <label className="block">
+            <span className={fieldLabel}>Attendance code</span>
+            <input
+              className={`${pillInput} font-mono tracking-widest`}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              autoComplete="off"
+              placeholder="••••••"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={loading || !code.trim()}
+            className={primaryBtn}
+          >
+            {loading ? 'Sending…' : 'Mark arrived'}
+          </button>
+        </form>
+        {msg && (
+          <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-100">
+            {msg}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

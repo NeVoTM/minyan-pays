@@ -1,3 +1,4 @@
+import type { FocusEvent } from 'react'
 import { formatPhoneDigits } from '../lib/phoneDisplay'
 
 type Props = {
@@ -8,6 +9,8 @@ type Props = {
   disabled?: boolean
   className?: string
   placeholder?: string
+  onBlur?: () => void
+  onFocus?: (e: FocusEvent<HTMLInputElement>) => void
 }
 
 export function PhoneInput({
@@ -18,6 +21,8 @@ export function PhoneInput({
   disabled,
   className = 'w-full rounded border border-slate-600 bg-slate-950 px-2 py-1',
   placeholder = '555-123-4567',
+  onBlur,
+  onFocus,
 }: Props) {
   return (
     <input
@@ -30,6 +35,8 @@ export function PhoneInput({
       value={formatPhoneDigits(value)}
       required={required}
       disabled={disabled}
+      onBlur={onBlur}
+      onFocus={onFocus}
       onChange={(e) => {
         onChange(e.target.value.replace(/\D/g, '').slice(0, 10))
       }}

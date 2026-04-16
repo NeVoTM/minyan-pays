@@ -4,15 +4,15 @@
 
 - **Node.js** 20+ and npm  
 
-## Database (local)
+## Database
 
-- **Default (easiest):** **SQLite** — no Docker. `DATABASE_URL="file:./dev.db"` in `apps/api/.env` (see `.env.example`).
-- **Optional:** **PostgreSQL** — `docker compose up -d postgres` or Neon/Supabase; set `DATABASE_URL` and change `provider` in `apps/api/prisma/schema.prisma` to `postgresql`.
+- **Local (fastest):** **SQLite** — `DATABASE_URL="file:./dev.db"` in `apps/api/.env` (see `apps/api/.env.example`). Prisma schema uses `provider = "sqlite"`.
+- **Free cloud (recommended for real data):** **Neon PostgreSQL** — step-by-step: [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md). After switching the Prisma `provider` to `postgresql` and setting `DATABASE_URL`, run `npx prisma db push` in `apps/api`.
 
 ## One-time setup
 
 ```powershell
-cd C:\Users\17274\synagogue-attendance-software
+cd C:\Users\17274\minyan-pays
 copy apps\api\.env.example apps\api\.env
 # Edit apps\api\.env — ADMIN_PASSWORD, JWT_SECRET (SQLite URL is preset)
 npm install
@@ -49,6 +49,8 @@ npm run dev
 Or from repo root: `npm run dev` (runs API + web with `concurrently`).
 
 - Web: http://localhost:5173  
+- **Test from a phone on the same Wi‑Fi:** `http://YOUR_PC_IP:5173` — see [docs/OPEN_FOR_TESTING.md](./docs/OPEN_FOR_TESTING.md)  
+- **Public HTTPS link for anyone:** [docs/PUBLIC_URL_FREE.md](./docs/PUBLIC_URL_FREE.md) (tunnel to port 5173; PC must stay on)  
 - API health: http://localhost:3001/api/health  
 
 **Admin login:** `ADMIN_PASSWORD` from `apps/api/.env` (default in `.env.example` is `change-me` after you copy).

@@ -1,81 +1,109 @@
 # Handoff for next chat — minyan-pays (Dovrey Evrit)
 
-**Last updated:** 2026-03-27  
+**Last updated:** 2026-04-17  
 **Synagogue:** **Dovrey Evrit**  
 **GitHub account email:** elichalfinny@gmail.com  
 **GitHub username:** [NeVoTM](https://github.com/NeVoTM)  
-**Repository:** **`minyan-pays`** (private) → https://github.com/NeVoTM/minyan-pays  
+**Repository:** **`minyan-pays`** (private) → https://github.com/NeVoTM/minyan-pays
 
-**GitHub Copilot summary + stack/hosting:** [COPILOT-GITHUB-SYNC.md](./COPILOT-GITHUB-SYNC.md)
-
-Use this file so a new session picks up context without re-reading the whole thread.
+Use this file so a new session can continue immediately.
 
 ---
 
-## What this project is
+## Current codebase location
 
-Software for a **rabbi/gabbai** to incentivize **minyan** attendance at **Dovrey Evrit**:
-
-- **Quorum logic:** Pay the **first 9** attendees; **rabbi + 9 = 10** for minyan.
-- **Schedule (v1):** **6 services per week** (Sun–Fri morning); expand later.
-- **Incentives (defaults from planning):** **$15/day** for first 9; **$30 weekly bonus** if **all 6 days**—amounts **configurable**.
-- **Anti-cheating:** Attendee **punch-in** with code → **rabbi confirms**; **punch-out** required.
-- **Treasury:** Funded before payouts; **lock** if insufficient funds.
-- **Payments:** Copilot suggested **USDC/Polygon** primary + **PayPal/Zelle** backup; Cursor planning also notes Zelle API limits—reconcile at build time.
-- **Member view:** Own balance + timestamps only.
+- Primary local repo: `C:\Users\17274\minyan-pays`
+- Legacy clone also exists: `C:\Users\17274\synagogue-attendance-software` (older path name)
 
 ---
 
-## Decisions already aligned
+## What is implemented now
 
-| Topic | Direction |
-|--------|-----------|
-| Platform | Web first (mobile-friendly), PWA optional |
-| Admin | Rabbi dashboard core; Refine/React Admin/PocketBase-style shells |
-| Payout | One payment per person per week (batch), paid/unpaid flags |
-| Hosting | Free/very low cost — **Railway / Render** (Copilot); PostgreSQL free tier |
-| Stack (Copilot MVP) | **React**, **Node.js**, **PostgreSQL** |
-| MVP timeline | ~**4–6 weeks** (Copilot estimate) |
-| Repo | **`minyan-pays`**, **private** |
+### Product flow
+- Public/member flow supports:
+  - Punch in (`/punch`)
+  - Punch out (`/punch/out`)
+  - Member login (`/member`) and dashboard (`/member/app`)
+  - Member signup (`/member/signup`)
+- Admin flow supports:
+  - Admin login (`/admin`)
+  - Admin dashboard (`/admin/app`) with member CRUD, approvals, treasury tools, export
+
+### Data model updates (Prisma)
+- `User` includes contact + payout fields (email, spouse info, PayPal, ACH).
+- `AppSettings` now includes `rabbiBanner`.
+- New `ZipCache` model for ZIP → city/state cache.
+
+### Public endpoints added
+- `GET /api/public/config` → synagogue name + rabbi banner
+- `GET /api/public/zip/:zip` → ZIP lookup (cached + API fallback)
+
+### UX and reliability updates
+- Better API error hints for 502/503 and connection failures in `apps/web/src/api.ts`.
+- Desktop dev launcher created:
+  - `C:\Users\17274\Desktop\Start minyan-pays dev.bat`
+- Signup enhancements:
+  - Terms checkbox
+  - Email field
+  - 3-3-4 phone formatting for phone + Zelle inputs
+  - Address limits and better scrolling behavior
+  - ZIP lookup autofill for city/state
+- Global clock in header and Rabbi message banner across pages.
 
 ---
 
-## Repo / disk layout
+## Modern UI refresh (latest)
 
-| Path | Purpose |
-|------|--------|
-| `C:\Users\17274\synagogue-attendance-software\` | Local clone (folder name legacy; remote is **minyan-pays**) |
-| `PLAN.md` | Detailed plan |
-| `docs/COPILOT-GITHUB-SYNC.md` | Copilot chat summary + your repo/synagogue answers |
-| `docs/NEXT-CHAT-HANDOFF.md` | This file |
+A major style pass was completed to mimic modern Dribbble-style mobile account screens:
+- Light neutral background (`#f3f4f6`)
+- White rounded cards with soft shadows
+- Blue gradient primary CTAs
+- Pill-style inputs and cleaner spacing
+- Updated mobile nav and app shell
+- New Billing screen: `/member/billing`
+
+### New/important web files
+- `apps/web/src/lib/uiClasses.ts`
+- `apps/web/src/components/BackLink.tsx`
+- `apps/web/src/components/MobileNav.tsx`
+- `apps/web/src/components/RabbiBanner.tsx`
+- `apps/web/src/components/ClockBar.tsx`
+- `apps/web/src/pages/MemberBilling.tsx`
 
 ---
 
-## Git remote
+## Environment and run
+
+From `C:\Users\17274\minyan-pays`:
 
 ```powershell
-cd C:\Users\17274\synagogue-attendance-software
-git remote -v
-# origin should be https://github.com/NeVoTM/minyan-pays.git
+npm run dev
 ```
 
-If you still have the old URL:
+Expected:
+- Web: `http://localhost:5173`
+- API: `http://localhost:3001`
 
-```powershell
-git remote set-url origin https://github.com/NeVoTM/minyan-pays.git
-```
+If browser shows connection refused or HTTP 502, ensure both services are running from root (`npm run dev`) or use the desktop `.bat` launcher.
 
 ---
 
-## Open questions
+## Git remotes
 
-- Exact **on time** / cutoff rules.
-- **Duplicates** and **voids** same day.
-- **Bonus recipient** fields (married vs single).
-- **Public** stats vs **admin-only** privacy.
+- `origin`: `https://github.com/NeVoTM/minyan-pays.git`
+- `cur`: `https://github.com/NeVoTM/minyan-pays-cur.git`
+
+---
+
+## Next priorities
+
+1. Continue modern styling pass on remaining admin screens for full visual consistency.
+2. Expand Billing with editable payment methods and future payout options.
+3. Add account/settings editing screens similar to reference mockups.
+4. Add tests for ZIP lookup + public config + key auth flows.
 
 ---
 
 ## Next session prompt
 
-*“Continue minyan-pays for Dovrey Evrit from `synagogue-attendance-software/docs/NEXT-CHAT-HANDOFF.md`”*
+**“Continue minyan-pays from `C:\Users\17274\minyan-pays\docs\NEXT-CHAT-HANDOFF.md` and keep building the modern mobile UI + billing/settings flow.”**
