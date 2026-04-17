@@ -107,6 +107,15 @@ async function resolveApprovedMemberByPhoneOrName(
   };
 }
 
+function fullNameHasTwoTokens(name: string): boolean {
+  const parts = name
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter(Boolean);
+  return parts.length >= 2;
+}
+
 const punchOutPublicBody = z
   .object({
     phone: z.string().optional(),
@@ -116,9 +125,9 @@ const punchOutPublicBody = z
     (d) => {
       const digits = (d.phone ?? "").replace(/\D/g, "");
       const name = (d.fullName ?? "").trim();
-      return digits.length >= 10 || name.length >= 3;
+      return digits.length >= 10 || fullNameHasTwoTokens(name);
     },
-    { message: "Enter your 10-digit phone or your first and last name." }
+    { message: "Enter your 10-digit phone or first and last name (two words)." }
   );
 
 const punchInBody = z.object({

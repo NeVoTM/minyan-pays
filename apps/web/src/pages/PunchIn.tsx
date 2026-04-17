@@ -46,14 +46,16 @@ export function PunchIn() {
         <BackLink to="/" />
         <div>
           <h1 className={pageTitle}>Punch in</h1>
-          <p className={pageSubtitle}>Enter your attendance code when you arrive.</p>
+          <p className={pageSubtitle}>
+            Enter your punch-in code when you arrive (from the rabbi / admin).
+          </p>
         </div>
       </div>
 
       <div className={cardShell}>
         <form onSubmit={submit} className="space-y-4">
           <label className="block">
-            <span className={fieldLabel}>Attendance code</span>
+            <span className={fieldLabel}>Punch-in code</span>
             <input
               className={`${pillInput} font-mono tracking-widest`}
               value={code}

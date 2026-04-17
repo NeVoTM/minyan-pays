@@ -17,8 +17,13 @@ export function PunchOut() {
   const [msg, setMsg] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const canSubmit =
-    phoneDigits.length === 10 || fullName.trim().includes(' ')
+  const nameTokens = fullName
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+  const nameOk = nameTokens.length >= 2
+  const canSubmit = phoneDigits.length === 10 || nameOk
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -28,7 +33,7 @@ export function PunchOut() {
     try {
       const body: { phone?: string; fullName?: string } = {}
       if (phoneDigits.length === 10) body.phone = phoneDigits
-      if (fullName.trim().includes(' ')) body.fullName = fullName.trim()
+      if (nameOk) body.fullName = fullName.trim().replace(/\s+/g, ' ')
 
       const r = await api<{
         displayName: string
@@ -80,7 +85,7 @@ export function PunchOut() {
           </label>
           {!canSubmit && (
             <p className="text-xs text-slate-500">
-              Enter 10-digit phone or both first and last name.
+              Enter a 10-digit phone, or type first and last name as two words.
             </p>
           )}
           <button

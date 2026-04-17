@@ -41,6 +41,16 @@ export const memberFieldsSchema = z.object({
   achAccountNumber: optionalText.optional(),
 });
 
+/** Public registration: attendance code optional — server assigns if omitted. */
+export const registerMemberSchema = memberFieldsSchema
+  .omit({ attendanceCode: true })
+  .extend({
+    attendanceCode: z.preprocess(
+      (v) => (v == null || v === "" ? undefined : String(v).trim()),
+      z.union([z.undefined(), z.string().min(4).max(32)])
+    ),
+  });
+
 export const memberUpdateSchema = z.object({
   firstName: z.string().min(1).max(80).optional(),
   lastName: z.string().min(1).max(80).optional(),

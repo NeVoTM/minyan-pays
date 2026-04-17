@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api, fetchBlob } from '../api'
 import { PhoneInput } from '../components/PhoneInput'
@@ -51,6 +51,21 @@ type MemberRow = {
   createdAt: string
 }
 
+type AttendanceTxn = {
+  id: string
+  sessionId: string
+  sessionDateKey: string
+  userId: string
+  userDisplayName: string
+  userPhone: string
+  userPunchInCode: string
+  punchInAt: string
+  punchInStatus: 'PENDING' | 'CONFIRMED' | 'REJECTED'
+  punchInConfirmedAt: string | null
+  punchOutAt: string | null
+  createdAt: string
+}
+
 function emptyMemberForm() {
   return {
     firstName: '',
@@ -86,6 +101,24 @@ function maskBankTail(s: string | null): string {
   return `••••${t.slice(-4)}`
 }
 
+/** Punch-in code must be unique per member (used at Punch in kiosk). */
+function isPunchInCodeTaken(
+  members: MemberRow[],
+  code: string,
+  excludeId?: string
+): boolean {
+  const c = code.trim().toLowerCase()
+  if (c.length < 4) return false
+  return members.some(
+    (m) => m.id !== excludeId && m.attendanceCode.toLowerCase() === c
+  )
+}
+
+const MODAL_BACKDROP =
+  'fixed inset-0 z-50 flex items-center justify-center bg-slate-800/30 p-4 backdrop-blur-sm'
+const MODAL_TEXT_BTN =
+  'font-medium text-slate-700 underline decoration-slate-400 hover:text-slate-900'
+
 export function AdminDashboard() {
   const nav = useNavigate()
   const token = localStorage.getItem(KEY)
@@ -102,6 +135,18 @@ export function AdminDashboard() {
     weeklyBonusCents: number
     firstNineSlots: number
   } | null>(null)
+  const [attendanceTxns, setAttendanceTxns] = useState<AttendanceTxn[]>([])
+  const [editTxn, setEditTxn] = useState<AttendanceTxn | null>(null)
+  const [editTxnMsg, setEditTxnMsg] = useState<string | null>(null)
+  const [editTxnForm, setEditTxnForm] = useState<{
+    punchInAtLocal: string
+    punchOutAtLocal: string
+    punchInStatus: 'PENDING' | 'CONFIRMED' | 'REJECTED'
+  }>({
+    punchInAtLocal: '',
+    punchOutAtLocal: '',
+    punchInStatus: 'PENDING',
+  })
   const [rabbiDraft, setRabbiDraft] = useState('')
   const [rabbiBannerMsg, setRabbiBannerMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -118,6 +163,20 @@ export function AdminDashboard() {
   const [editForm, setEditForm] = useState(() => emptyMemberForm())
   const [editPin, setEditPin] = useState('')
   const [editSaveMsg, setEditSaveMsg] = useState<string | null>(null)
+  /** overview | members | today | add | checkio */
+  const [adminTab, setAdminTab] = useState<
+    'overview' | 'members' | 'today' | 'add' | 'checkio'
+  >('overview')
+  const prevAdminTab = useRef(adminTab)
+
+  useEffect(() => {
+    const prev = prevAdminTab.current
+    prevAdminTab.current = adminTab
+    if (adminTab !== prev) {
+      setMemberMsg(null)
+      setMemberConfirm(null)
+    }
+  }, [adminTab])
 
   const load = useCallback(async () => {
     if (!token) {
@@ -125,7 +184,7 @@ export function AdminDashboard() {
       return
     }
     try {
-      const [s, t, st, m] = await Promise.all([
+      const [s, t, st, m, tx] = await Promise.all([
         api<SessionResp>('/api/admin/session/today', { token }),
         api<{ balanceCents: number; systemLocked: boolean }>(
           '/api/admin/treasury',
@@ -139,12 +198,14 @@ export function AdminDashboard() {
           firstNineSlots: number
         }>('/api/admin/settings', { token }),
         api<MemberRow[]>('/api/admin/members', { token }),
+        api<AttendanceTxn[]>('/api/admin/attendance', { token }),
       ])
       setSession(s)
       setTreasury(t)
       setSettings(st)
       setRabbiDraft(st.rabbiBanner ?? '')
       setMembers(m)
+      setAttendanceTxns(tx)
       setErr(null)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : 'Load failed')
@@ -197,6 +258,18 @@ export function AdminDashboard() {
       editForm.spousePhoneDigits.length !== 10
     ) {
       setEditSaveMsg('Spouse phone must be 10 digits or empty.')
+      return
+    }
+    if (
+      isPunchInCodeTaken(members, editForm.attendanceCode, editMember.id)
+    ) {
+      setEditSaveMsg(
+        'That punch-in code is already in use. Choose a different code.'
+      )
+      return
+    }
+    if (editPin.trim().length > 0 && editPin.trim().length < 4) {
+      setEditSaveMsg('New PIN must be at least 4 digits, or leave blank to keep.')
       return
     }
     try {
@@ -268,6 +341,7 @@ export function AdminDashboard() {
     try {
       await api(`/api/admin/members/${id}`, { method: 'DELETE', token })
       setEditMember(null)
+      setViewMember((v) => (v?.id === id ? null : v))
       setMemberMsg('Member deleted.')
       await load()
     } catch (e: unknown) {
@@ -293,6 +367,77 @@ export function AdminDashboard() {
       body: '{}',
     })
     await load()
+  }
+
+  function memberRowForUserId(userId: string): MemberRow | undefined {
+    return members.find((m) => m.id === userId)
+  }
+
+  function toLocalInputValue(iso: string | null): string {
+    if (!iso) return ''
+    const d = new Date(iso)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  function openEditTxn(tx: AttendanceTxn) {
+    setEditTxn(tx)
+    setEditTxnMsg(null)
+    setEditTxnForm({
+      punchInAtLocal: toLocalInputValue(tx.punchInAt),
+      punchOutAtLocal: toLocalInputValue(tx.punchOutAt),
+      punchInStatus: tx.punchInStatus,
+    })
+  }
+
+  async function saveEditTxn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!token || !editTxn) return
+    setEditTxnMsg(null)
+    if (!editTxnForm.punchInAtLocal) {
+      setEditTxnMsg('Punch-in datetime is required.')
+      return
+    }
+    try {
+      await api(`/api/admin/attendance/${editTxn.id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({
+          punchInAt: new Date(editTxnForm.punchInAtLocal).toISOString(),
+          punchOutAt: editTxnForm.punchOutAtLocal
+            ? new Date(editTxnForm.punchOutAtLocal).toISOString()
+            : null,
+          punchInStatus: editTxnForm.punchInStatus,
+        }),
+      })
+      setEditTxn(null)
+      setMemberMsg('Check-in/out transaction updated.')
+      await load()
+    } catch (e: unknown) {
+      setEditTxnMsg(e instanceof Error ? e.message : 'Update failed')
+    }
+  }
+
+  async function deleteTxn(id: string) {
+    if (!token) return
+    if (
+      !window.confirm(
+        'Delete this check-in/out transaction permanently? This cannot be undone.'
+      )
+    ) {
+      return
+    }
+    setEditTxnMsg(null)
+    try {
+      await api(`/api/admin/attendance/${id}`, { method: 'DELETE', token })
+      setEditTxn((v) => (v?.id === id ? null : v))
+      setMemberMsg('Transaction deleted.')
+      await load()
+    } catch (e: unknown) {
+      setEditTxnMsg(e instanceof Error ? e.message : 'Delete failed')
+    }
   }
 
   async function addFunds(e: React.FormEvent) {
@@ -323,6 +468,12 @@ export function AdminDashboard() {
       newMember.spousePhoneDigits.length !== 10
     ) {
       setMemberMsg('Spouse phone must be 10 digits or empty.')
+      return
+    }
+    if (isPunchInCodeTaken(members, newMember.attendanceCode)) {
+      setMemberMsg(
+        'That punch-in code is already in use. Choose a different code.'
+      )
       return
     }
     try {
@@ -359,7 +510,7 @@ export function AdminDashboard() {
         }),
       })
       setMemberConfirm(
-        `Saved: ${r.displayName} · Phone ${r.phone} · Code ${r.attendanceCode}`
+        `Saved: ${r.displayName} · Phone ${r.phone} · Punch-in ${r.attendanceCode}`
       )
       setNewMember(emptyMemberForm())
       await load()
@@ -419,6 +570,38 @@ export function AdminDashboard() {
 
   if (!token) return null
 
+  const tabBtn = (id: typeof adminTab, label: string) => {
+    const on = adminTab === id
+    return (
+      <button
+        key={id}
+        type="button"
+        className={`rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium leading-tight sm:text-xs ${
+          on
+            ? 'border-blue-500 bg-blue-50 text-blue-900 shadow-sm'
+            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+        }`}
+        onClick={() => setAdminTab(id)}
+      >
+        {label}
+      </button>
+    )
+  }
+
+  const checkedInCount = session?.attendances.length ?? 0
+  const pendingApprovalCount = members.filter((m) => !m.isApproved).length
+  const punchInTakenAdd = useMemo(
+    () => isPunchInCodeTaken(members, newMember.attendanceCode),
+    [members, newMember.attendanceCode]
+  )
+  const punchInTakenEdit = useMemo(
+    () =>
+      editMember
+        ? isPunchInCodeTaken(members, editForm.attendanceCode, editMember.id)
+        : false,
+    [members, editForm.attendanceCode, editMember]
+  )
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -439,43 +622,89 @@ export function AdminDashboard() {
           Log out
         </button>
       </div>
-      <h1 className="text-lg font-semibold leading-tight sm:text-xl">
-        Today&apos;s minyan
-      </h1>
+      <div>
+        <h1 className="text-lg font-semibold leading-tight sm:text-xl">
+          Admin
+        </h1>
+        <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
+          {adminTab === 'overview' && 'Treasury, banner, export'}
+          {adminTab === 'members' && `All members in database (${members.length})`}
+          {adminTab === 'today' &&
+            (session
+              ? `Checked in · ${session.dateKey} (${checkedInCount})`
+              : 'Loading…')}
+          {adminTab === 'add' && 'Create a new member'}
+          {adminTab === 'checkio' &&
+            `Check-in/out transactions (${attendanceTxns.length})`}
+        </p>
+      </div>
       {err && <p className="text-xs text-red-600">{err}</p>}
 
-      {treasury && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 ring-1 ring-slate-100 p-3 text-xs sm:text-sm">
-          <p>
-            Treasury:{' '}
-            <strong>${(treasury.balanceCents / 100).toFixed(2)}</strong>
-          </p>
-          <p className="text-slate-400">
-            Locked: {treasury.systemLocked ? 'yes' : 'no'}
-          </p>
+      <nav className="grid grid-cols-2 gap-2" aria-label="Admin sections">
+        {tabBtn('overview', 'Overview')}
+        {tabBtn(
+          'members',
+          pendingApprovalCount
+            ? `All members (${pendingApprovalCount} pending)`
+            : 'All members'
+        )}
+        {tabBtn('today', "Today's check-ins")}
+        {tabBtn('add', 'Add member')}
+        {tabBtn('checkio', 'Check-in/out')}
+      </nav>
+
+      {pendingApprovalCount > 0 && (
+        <div
+          className="animate-pulse rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950 ring-1 ring-amber-200/80 sm:text-xs"
+          role="status"
+        >
+          {pendingApprovalCount} member
+          {pendingApprovalCount === 1 ? '' : 's'} waiting for approval — open{' '}
           <button
             type="button"
-            className="mt-2 text-blue-600/90 hover:underline"
-            onClick={() => void toggleLock()}
+            className="text-amber-900 underline decoration-amber-700/60"
+            onClick={() => setAdminTab('members')}
           >
-            Toggle lock
-          </button>
-          <form onSubmit={addFunds} className="mt-3 flex gap-2">
-            <input
-              className="flex-1 rounded border border-slate-200 bg-white px-2 py-1"
-              placeholder="Add USD"
-              value={fund}
-              onChange={(e) => setFund(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="rounded bg-slate-700 px-3 py-1 text-sm"
-            >
-              Fund
-            </button>
-          </form>
+            All members
+          </button>{' '}
+          to review.
         </div>
       )}
+
+      {adminTab === 'overview' && (
+        <>
+          {treasury && (
+            <div className="rounded-md border border-slate-200 bg-slate-50 ring-1 ring-slate-100 p-3 text-xs sm:text-sm">
+              <p>
+                Treasury:{' '}
+                <strong>${(treasury.balanceCents / 100).toFixed(2)}</strong>
+              </p>
+              <p className="text-slate-400">
+                Locked: {treasury.systemLocked ? 'yes' : 'no'}
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-blue-600/90 hover:underline"
+                onClick={() => void toggleLock()}
+              >
+                Toggle lock
+              </button>
+              <form onSubmit={addFunds} className="mt-3 flex gap-2">
+                <input
+                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1"
+                  placeholder="Add USD"
+                  value={fund}
+                  onChange={(e) => setFund(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-slate-700 px-3 py-1 text-sm"
+                >
+                  Fund
+                </button>
+              </form>
+            </div>
+          )}
 
       {settings && (
         <p className="text-xs text-slate-500">
@@ -538,11 +767,29 @@ export function AdminDashboard() {
         )}
       </div>
 
+          <div className="rounded-md border border-slate-200 bg-white p-2.5 text-[11px] text-slate-600 sm:text-xs">
+            <span className="font-medium text-slate-800">Today&apos;s check-ins: </span>
+            {checkedInCount} —{' '}
+            <button
+              type="button"
+              className="text-blue-600 underline decoration-blue-600/30"
+              onClick={() => setAdminTab('today')}
+            >
+              open dashboard
+            </button>
+          </div>
+        </>
+      )}
+
+      {adminTab === 'members' && (
       <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
         <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-          Members ({members.length})
+          All members ({members.length})
         </h2>
-        <ul className="space-y-2">
+        <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">
+          View full record, edit and save changes, or delete a member.
+        </p>
+        <ul className="grid gap-2 sm:grid-cols-2">
           {members.map((m) => (
             <li
               key={m.id}
@@ -554,7 +801,7 @@ export function AdminDashboard() {
                     {m.displayName}
                   </p>
                   <p className="truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">
-                    {m.phone} · {m.attendanceCode}
+                    {m.phone} · punch-in {m.attendanceCode}
                   </p>
                   <p className="mt-0.5">
                     {m.isApproved ? (
@@ -574,10 +821,17 @@ export function AdminDashboard() {
                   </button>
                   <button
                     type="button"
-                    className="text-slate-400 active:underline"
+                    className="text-slate-700 active:underline"
                     onClick={() => openEdit(m)}
                   >
-                    Edit
+                    Edit / save
+                  </button>
+                  <button
+                    type="button"
+                    className="text-red-700/90 active:underline"
+                    onClick={() => void deleteMember(m.id)}
+                  >
+                    Delete
                   </button>
                   {!m.isApproved && (
                     <button
@@ -597,7 +851,9 @@ export function AdminDashboard() {
           <p className="text-xs text-slate-500">No members yet.</p>
         )}
       </div>
+      )}
 
+      {adminTab === 'add' && (
       <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
         <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
           Add member
@@ -634,24 +890,47 @@ export function AdminDashboard() {
               required
             />
           </label>
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder="PIN (4+ digits)"
-            value={newMember.pin}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, pin: e.target.value }))
-            }
-            required
-          />
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder="Attendance code (unique)"
-            value={newMember.attendanceCode}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, attendanceCode: e.target.value }))
-            }
-            required
-          />
+          <label className="text-xs text-slate-600">
+            Login PIN (4+ digits; sign in with phone + PIN — PIN is not globally
+            unique)
+            <input
+              className={`mt-1 w-full rounded border bg-white px-2 py-1 ${
+                newMember.pin.length > 0 && newMember.pin.length < 4
+                  ? 'border-red-500 ring-1 ring-red-200'
+                  : 'border-slate-200'
+              }`}
+              placeholder="Login PIN"
+              value={newMember.pin}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, pin: e.target.value }))
+              }
+              required
+              minLength={4}
+              autoComplete="new-password"
+            />
+          </label>
+          <label className="text-xs text-slate-600">
+            Punch-in code (unique — used on Punch in screen)
+            <input
+              className={`mt-1 w-full rounded border bg-white px-2 py-1 font-mono ${
+                punchInTakenAdd
+                  ? 'border-red-500 ring-1 ring-red-200'
+                  : 'border-slate-200'
+              }`}
+              placeholder="Punch-in code"
+              value={newMember.attendanceCode}
+              onChange={(e) =>
+                setNewMember((m) => ({ ...m, attendanceCode: e.target.value }))
+              }
+              required
+              minLength={4}
+            />
+          </label>
+          {punchInTakenAdd && (
+            <p className="text-xs text-red-600">
+              That punch-in code is already in use. Choose another.
+            </p>
+          )}
           <p className="text-xs text-slate-500">Address</p>
           <input
             className="rounded border border-slate-200 bg-white px-2 py-1"
@@ -781,7 +1060,8 @@ export function AdminDashboard() {
           />
           <button
             type="submit"
-            className="rounded bg-slate-700 py-2 font-medium hover:bg-slate-600"
+            disabled={punchInTakenAdd}
+            className="rounded bg-slate-700 py-2 font-medium hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Save member
           </button>
@@ -795,118 +1075,353 @@ export function AdminDashboard() {
           <p className="mt-2 text-xs text-slate-400">{memberMsg}</p>
         )}
       </div>
+      )}
 
-      {session && (
-        <ul className="space-y-2">
-          {session.attendances.map((a) => (
-            <li
-              key={a.id}
-              className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-2.5 text-xs sm:text-sm"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium">{a.user.displayName}</p>
-                  <p className="text-xs text-slate-500">
-                    {new Date(a.punchInAt).toLocaleString()} ·{' '}
-                    {a.punchInStatus}
-                    {a.punchOutAt
-                      ? ` · out ${new Date(a.punchOutAt).toLocaleTimeString()}`
-                      : ' · no punch-out'}
-                  </p>
-                  {a.punchInStatus === 'CONFIRMED' && (
-                    <p className="text-xs text-blue-700/80">
-                      First-nine slot if confirmed order:{' '}
-                      {a.wouldBeFirstNine ? 'yes (earning day rate)' : 'no'}
+      {adminTab === 'today' && session && (
+        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
+          <h2 className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">
+            Checked in today ({session.attendances.length}) · {session.dateKey}
+          </h2>
+          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
+            Same controls as All members: view full DB record, edit and save, or
+            delete. Pending punch-ins must be confirmed or rejected first.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {session.attendances.map((a) => {
+              const row = memberRowForUserId(a.user.id)
+              return (
+                <li
+                  key={a.id}
+                  className="rounded-md border border-slate-200 bg-slate-50/80 p-2.5 text-[11px] leading-snug sm:text-xs"
+                >
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {a.user.displayName}
+                      </p>
+                      <p className="mt-0.5 text-slate-500">
+                        {new Date(a.punchInAt).toLocaleString()} ·{' '}
+                        <span
+                          className={
+                            a.punchInStatus === 'CONFIRMED'
+                              ? 'text-emerald-700'
+                              : a.punchInStatus === 'PENDING'
+                                ? 'text-amber-700'
+                                : 'text-slate-600'
+                          }
+                        >
+                          {a.punchInStatus}
+                        </span>
+                        {a.punchOutAt
+                          ? ` · out ${new Date(a.punchOutAt).toLocaleTimeString()}`
+                          : ' · no punch-out'}
+                      </p>
+                      {a.punchInStatus === 'CONFIRMED' && (
+                        <p className="mt-1 text-[10px] text-blue-700/85 sm:text-[11px]">
+                          First-nine:{' '}
+                          {a.wouldBeFirstNine ? 'yes (day rate)' : 'no'}
+                        </p>
+                      )}
+                    </div>
+                    {a.punchInStatus === 'PENDING' && (
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          className="rounded bg-emerald-800 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-700 sm:text-xs"
+                          onClick={() => void confirm(a.id)}
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded bg-slate-700 px-2.5 py-1 text-[11px] text-white hover:bg-slate-600 sm:text-xs"
+                          onClick={() => void reject(a.id)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                    {row && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-200/90 pt-2 text-[11px] sm:text-xs">
+                        <button
+                          type="button"
+                          className="text-blue-600/95 hover:underline"
+                          onClick={() => setViewMember(row)}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="text-slate-700 hover:underline"
+                          onClick={() => openEdit(row)}
+                        >
+                          Edit / save
+                        </button>
+                        <button
+                          type="button"
+                          className="text-red-700/90 hover:underline"
+                          onClick={() => void deleteMember(row.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+          {session.attendances.length === 0 && (
+            <p className="text-xs text-slate-500">No punch-ins yet today.</p>
+          )}
+        </div>
+      )}
+
+      {adminTab === 'checkio' && (
+        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
+          <h2 className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">
+            Check-in/out transactions ({attendanceTxns.length})
+          </h2>
+          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
+            View, edit/save, or delete recorded attendance transactions from the
+            database.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {attendanceTxns.map((tx) => (
+              <li
+                key={tx.id}
+                className="rounded-md border border-slate-200 bg-slate-50/80 p-2.5 text-[11px] leading-snug sm:text-xs"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-slate-900">
+                      {tx.userDisplayName}
                     </p>
-                  )}
-                </div>
-                {a.punchInStatus === 'PENDING' && (
-                  <div className="flex gap-2">
+                    <p className="truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">
+                      {tx.userPhone} · {tx.userPunchInCode}
+                    </p>
+                    <p className="mt-1 text-slate-600">
+                      In: {new Date(tx.punchInAt).toLocaleString()}
+                    </p>
+                    <p className="text-slate-600">
+                      Out:{' '}
+                      {tx.punchOutAt
+                        ? new Date(tx.punchOutAt).toLocaleString()
+                        : '—'}
+                    </p>
+                    <p className="text-slate-500">
+                      Session: {tx.sessionDateKey || '—'} · Status:{' '}
+                      <span
+                        className={
+                          tx.punchInStatus === 'CONFIRMED'
+                            ? 'text-emerald-700'
+                            : tx.punchInStatus === 'PENDING'
+                              ? 'text-amber-700'
+                              : 'text-slate-700'
+                        }
+                      >
+                        {tx.punchInStatus}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
                     <button
                       type="button"
-                      className="rounded bg-emerald-800 px-3 py-1 text-sm text-white hover:bg-emerald-700"
-                      onClick={() => void confirm(a.id)}
+                      className="text-slate-700 hover:underline"
+                      onClick={() => openEditTxn(tx)}
                     >
-                      Confirm
+                      Edit / save
                     </button>
                     <button
                       type="button"
-                      className="rounded bg-slate-700 px-3 py-1 text-sm hover:bg-slate-600"
-                      onClick={() => void reject(a.id)}
+                      className="text-red-700/90 hover:underline"
+                      onClick={() => void deleteTxn(tx.id)}
                     >
-                      Reject
+                      Delete
                     </button>
                   </div>
-                )}
-              </div>
-            </li>
-          ))}
-          {session.attendances.length === 0 && (
-            <li className="text-slate-500">No punch-ins yet today.</li>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {attendanceTxns.length === 0 && (
+            <p className="text-xs text-slate-500">No transactions found.</p>
           )}
-        </ul>
+        </div>
       )}
 
       {viewMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[min(90dvh,100%)] w-full max-w-md overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="truncate text-base font-semibold text-slate-900">
+        <div className={MODAL_BACKDROP}>
+          <div className="max-h-[min(90dvh,100%)] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-start justify-between gap-3 border-b border-slate-100 pb-2">
+              <h3 className="min-w-0 flex-1 truncate text-base font-semibold text-slate-900">
                 {viewMember.displayName}
               </h3>
+              <div className="flex shrink-0 items-start gap-3">
+                <div className="text-right">
+                  <span className="block text-[11px] text-slate-500">
+                    Member since
+                  </span>
+                  <span className="block max-w-[11rem] whitespace-normal text-[11px] font-medium leading-snug text-slate-600 sm:max-w-none sm:whitespace-nowrap">
+                    {new Date(viewMember.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={MODAL_TEXT_BTN}
+                  onClick={() => setViewMember(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <dl className="space-y-0 divide-y divide-slate-100 text-slate-700">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Phone</dt>
+                <dd className="text-right text-slate-900">{viewMember.phone}</dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Login PIN</dt>
+                <dd className="text-right text-slate-600">
+                  Set (stored encrypted — use Edit to change)
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Punch-in code</dt>
+                <dd className="text-right font-mono text-slate-900">
+                  {viewMember.attendanceCode}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Status</dt>
+                <dd className="text-right text-slate-900">
+                  {viewMember.isApproved ? 'Active' : 'Pending approval'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Address</dt>
+                <dd
+                  className="min-w-0 max-w-[min(100%,20rem)] truncate text-right text-slate-900"
+                  title={[
+                    [viewMember.addressLine1, viewMember.addressLine2]
+                      .filter(Boolean)
+                      .join(', '),
+                    [
+                      viewMember.city,
+                      viewMember.stateRegion,
+                      viewMember.postalCode,
+                    ]
+                      .filter(Boolean)
+                      .join(', '),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                >
+                  {(() => {
+                    const cityLine = [
+                      viewMember.city,
+                      viewMember.stateRegion,
+                      viewMember.postalCode,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')
+                    const streetLine = [
+                      viewMember.addressLine1,
+                      viewMember.addressLine2,
+                    ]
+                      .filter(Boolean)
+                      .join(', ')
+                    const one = [streetLine, cityLine].filter(Boolean).join(' · ')
+                    return one || '—'
+                  })()}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Zelle</dt>
+                <dd className="text-right text-slate-900">
+                  {viewMember.zellePhone || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Spouse Zelle</dt>
+                <dd className="text-right text-slate-900">
+                  {viewMember.wifeZellePhone || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Email</dt>
+                <dd className="break-all text-right text-slate-900">
+                  {viewMember.email || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Spouse phone</dt>
+                <dd className="text-right text-slate-900">
+                  {viewMember.spousePhone || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">Spouse email</dt>
+                <dd className="break-all text-right text-slate-900">
+                  {viewMember.spouseEmail || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">PayPal</dt>
+                <dd className="break-all text-right text-slate-900">
+                  {viewMember.paypalAccount || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">ACH routing</dt>
+                <dd className="text-right text-slate-900">
+                  {viewMember.achRoutingNumber || '—'}
+                </dd>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-2 sm:items-start">
+                <dt className="text-slate-500">ACH account</dt>
+                <dd className="text-right text-slate-900">
+                  {maskBankTail(viewMember.achAccountNumber)}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-2 text-[10px] text-slate-500 sm:text-[11px]">
+              Sign-in uses <strong>phone + login PIN</strong> (PIN is not unique by
+              itself). Punch-in at the kiosk uses the <strong>punch-in code</strong>{' '}
+              only.
+            </p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-200"
+                className="rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700"
+                onClick={() => {
+                  openEdit(viewMember)
+                  setViewMember(null)
+                }}
+              >
+                Edit / save
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 font-medium text-red-900 hover:bg-red-100"
+                onClick={() => void deleteMember(viewMember.id)}
+              >
+                Delete member
+              </button>
+              <button
+                type="button"
+                className={`rounded-lg px-4 py-2.5 sm:ml-auto ${MODAL_TEXT_BTN}`}
                 onClick={() => setViewMember(null)}
               >
                 Close
               </button>
             </div>
-            <dl className="grid gap-2 text-slate-700">
-              <dt className="text-slate-500">Phone</dt>
-              <dd>{viewMember.phone}</dd>
-              <dt className="text-slate-500">Attendance code</dt>
-              <dd className="font-mono">{viewMember.attendanceCode}</dd>
-              <dt className="text-slate-500">Status</dt>
-              <dd>{viewMember.isApproved ? 'Active' : 'Pending approval'}</dd>
-              <dt className="text-slate-500">Address</dt>
-              <dd>{viewMember.addressLine1 || '—'}</dd>
-              <dd>{viewMember.addressLine2 || ''}</dd>
-              <dd>
-                {[viewMember.city, viewMember.stateRegion, viewMember.postalCode]
-                  .filter(Boolean)
-                  .join(', ') || '—'}
-              </dd>
-              <dt className="text-slate-500">Zelle</dt>
-              <dd>{viewMember.zellePhone || '—'}</dd>
-              <dt className="text-slate-500">Spouse Zelle</dt>
-              <dd>{viewMember.wifeZellePhone || '—'}</dd>
-              <dt className="text-slate-500">Email</dt>
-              <dd>{viewMember.email || '—'}</dd>
-              <dt className="text-slate-500">Spouse phone</dt>
-              <dd>{viewMember.spousePhone || '—'}</dd>
-              <dt className="text-slate-500">Spouse email</dt>
-              <dd>{viewMember.spouseEmail || '—'}</dd>
-              <dt className="text-slate-500">PayPal</dt>
-              <dd>{viewMember.paypalAccount || '—'}</dd>
-              <dt className="text-slate-500">ACH routing</dt>
-              <dd>{viewMember.achRoutingNumber || '—'}</dd>
-              <dt className="text-slate-500">ACH account</dt>
-              <dd>{maskBankTail(viewMember.achAccountNumber)}</dd>
-            </dl>
-            <button
-              type="button"
-              className="mt-4 w-full rounded bg-slate-700 py-2 hover:bg-slate-600"
-              onClick={() => setViewMember(null)}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
 
       {editMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+        <div className={MODAL_BACKDROP}>
           <div className="max-h-[min(90dvh,100%)] w-full max-w-md overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="text-base font-semibold text-slate-900">
@@ -914,7 +1429,7 @@ export function AdminDashboard() {
               </h3>
               <button
                 type="button"
-                className="text-slate-400 hover:text-slate-200"
+                className={MODAL_TEXT_BTN}
                 onClick={() => setEditMember(null)}
               >
                 Cancel
@@ -952,25 +1467,45 @@ export function AdminDashboard() {
                   required
                 />
               </label>
-              <input
-                type="password"
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder="New PIN (leave blank to keep)"
-                value={editPin}
-                onChange={(e) => setEditPin(e.target.value)}
-              />
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder="Attendance code"
-                value={editForm.attendanceCode}
-                onChange={(e) =>
-                  setEditForm((f) => ({
-                    ...f,
-                    attendanceCode: e.target.value,
-                  }))
-                }
-                required
-              />
+              <label className="text-xs text-slate-600">
+                Login PIN (sign in with phone + PIN; leave blank to keep)
+                <input
+                  type="password"
+                  className={`mt-1 w-full rounded border bg-white px-2 py-1 ${
+                    editPin.length > 0 && editPin.length < 4
+                      ? 'border-red-500 ring-1 ring-red-200'
+                      : 'border-slate-200'
+                  }`}
+                  placeholder="New PIN (4+ digits)"
+                  value={editPin}
+                  onChange={(e) => setEditPin(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                Punch-in code (unique — used at Punch in screen)
+                <input
+                  className={`mt-1 w-full rounded border bg-white px-2 py-1 font-mono ${
+                    punchInTakenEdit
+                      ? 'border-red-500 ring-1 ring-red-200'
+                      : 'border-slate-200'
+                  }`}
+                  placeholder="Punch-in code"
+                  value={editForm.attendanceCode}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      attendanceCode: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              </label>
+              {punchInTakenEdit && (
+                <p className="text-xs text-red-600">
+                  That punch-in code is already in use. Choose another.
+                </p>
+              )}
               <p className="text-xs text-slate-500">Address</p>
               <input
                 className="rounded border border-slate-200 bg-white px-2 py-1"
@@ -1117,7 +1652,8 @@ export function AdminDashboard() {
               </label>
               <button
                 type="submit"
-                className="rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700"
+                disabled={punchInTakenEdit}
+                className="rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Save changes
               </button>
@@ -1131,6 +1667,89 @@ export function AdminDashboard() {
             </form>
             {editSaveMsg && (
               <p className="mt-2 text-xs text-red-600">{editSaveMsg}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {editTxn && (
+        <div className={MODAL_BACKDROP}>
+          <div className="max-h-[min(90dvh,100%)] w-full max-w-md overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-slate-900">
+                Edit check-in/out
+              </h3>
+              <button
+                type="button"
+                className={MODAL_TEXT_BTN}
+                onClick={() => setEditTxn(null)}
+              >
+                Cancel
+              </button>
+            </div>
+            <p className="mb-2 text-[11px] text-slate-500">
+              {editTxn.userDisplayName} · {editTxn.userPhone}
+            </p>
+            <form onSubmit={saveEditTxn} className="grid gap-2">
+              <label className="text-xs text-slate-600">
+                Punch-in datetime
+                <input
+                  type="datetime-local"
+                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                  value={editTxnForm.punchInAtLocal}
+                  onChange={(e) =>
+                    setEditTxnForm((f) => ({ ...f, punchInAtLocal: e.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                Punch-out datetime (optional)
+                <input
+                  type="datetime-local"
+                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                  value={editTxnForm.punchOutAtLocal}
+                  onChange={(e) =>
+                    setEditTxnForm((f) => ({ ...f, punchOutAtLocal: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                Status
+                <select
+                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                  value={editTxnForm.punchInStatus}
+                  onChange={(e) =>
+                    setEditTxnForm((f) => ({
+                      ...f,
+                      punchInStatus: e.target.value as
+                        | 'PENDING'
+                        | 'CONFIRMED'
+                        | 'REJECTED',
+                    }))
+                  }
+                >
+                  <option value="PENDING">PENDING</option>
+                  <option value="CONFIRMED">CONFIRMED</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700"
+              >
+                Save changes
+              </button>
+              <button
+                type="button"
+                className="rounded border border-red-200 bg-red-50 py-2 text-sm text-red-800 hover:bg-red-100"
+                onClick={() => void deleteTxn(editTxn.id)}
+              >
+                Delete transaction
+              </button>
+            </form>
+            {editTxnMsg && (
+              <p className="mt-2 text-xs text-red-600">{editTxnMsg}</p>
             )}
           </div>
         </div>

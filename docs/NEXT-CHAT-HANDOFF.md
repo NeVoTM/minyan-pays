@@ -1,12 +1,14 @@
 # Handoff for next chat — minyan-pays (Dovrey Evrit)
 
-**Last updated:** 2026-04-17  
+**Last updated:** 2026-04-17 (pushed before Saturday night return)  
 **Synagogue:** **Dovrey Evrit**  
 **GitHub account email:** elichalfinny@gmail.com  
 **GitHub username:** [NeVoTM](https://github.com/NeVoTM)  
 **Repository:** **`minyan-pays`** (private) → https://github.com/NeVoTM/minyan-pays
 
 Use this file so a new session can continue immediately.
+
+**When you return (Saturday night):** Open this file, run `git pull` on `main` (tracking `cur`), then say you are continuing from the handoff. Latest work includes admin **Check-in/out** transaction list/edit/delete, rewrite-ready spec in `docs/PROGRAM-SUMMARY.md`, and registration/punch-out/admin polish listed below.
 
 ---
 
@@ -28,6 +30,9 @@ Use this file so a new session can continue immediately.
 - Admin flow supports:
   - Admin login (`/admin`)
   - Admin dashboard (`/admin/app`) with member CRUD, approvals, treasury tools, export
+  - Sectioned admin UI: Overview, All members, Today’s check-ins, Add member, **Check-in/out**
+  - **Check-in/out:** list/edit/delete `Attendance` rows (`GET|PATCH|DELETE /api/admin/attendance[...]`)
+  - Pending-approval banner + tab hint counts
 
 ### Data model updates (Prisma)
 - `User` includes contact + payout fields (email, spouse info, PayPal, ACH).
@@ -42,12 +47,26 @@ Use this file so a new session can continue immediately.
 - Better API error hints for 502/503 and connection failures in `apps/web/src/api.ts`.
 - Desktop dev launcher created:
   - `C:\Users\17274\Desktop\Start minyan-pays dev.bat`
-- Signup enhancements:
-  - Terms checkbox
-  - Email field
-  - 3-3-4 phone formatting for phone + Zelle inputs
-  - Address limits and better scrolling behavior
-  - ZIP lookup autofill for city/state
+- `SETUP.md` notes SQLite is not wiped on normal restarts; `.db` is gitignored.
+- **Program writeup:** `docs/PROGRAM-SUMMARY.md` — stakeholder summary plus **Rewrite-Ready Functional Specification** for future redesigns.
+- Registration: optional punch-in code with server auto-assign; duplicate-code friendly errors.
+- Public punch-out: two-word name or 10-digit phone validation tightened (client + API).
+- Admin: punch-in code vs login PIN labeling; duplicate punch-in code checks; view-member modal actions and layout.
+
+### New API (admin attendance ledger)
+- `GET /api/admin/attendance` — list recent attendance transactions (member + session + timestamps + status).
+- `PATCH /api/admin/attendance/:id` — edit punch-in/out times and status.
+- `DELETE /api/admin/attendance/:id` — remove a transaction.
+
+### New library
+- `apps/api/src/lib/attendanceCode.ts` — unique punch-in code generation for registration when omitted.
+
+### Signup enhancements
+- Terms checkbox
+- Email field
+- 3-3-4 phone formatting for phone + Zelle inputs
+- Address limits and better scrolling behavior
+- ZIP lookup autofill for city/state
 - Global clock in header and Rabbi message banner across pages.
 
 ---
@@ -106,4 +125,4 @@ If browser shows connection refused or HTTP 502, ensure both services are runnin
 
 ## Next session prompt
 
-**“Continue minyan-pays from `C:\Users\17274\minyan-pays\docs\NEXT-CHAT-HANDOFF.md` and keep building the modern mobile UI + billing/settings flow.”**
+**“Continue minyan-pays from `C:\Users\17274\minyan-pays\docs\NEXT-CHAT-HANDOFF.md` — pull latest `main`, then continue admin polish, billing, or tests as listed in Next priorities.”**

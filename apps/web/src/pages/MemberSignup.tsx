@@ -89,6 +89,13 @@ export function MemberSignup() {
       setErr('Enter a valid 10-digit US phone number.')
       return
     }
+    const ac = f.attendanceCode.trim()
+    if (ac.length > 0 && ac.length < 4) {
+      setErr(
+        'Attendance code must be at least 4 characters, or leave blank for auto-assigned.'
+      )
+      return
+    }
     setLoading(true)
     try {
       const r = await api<{
@@ -102,7 +109,9 @@ export function MemberSignup() {
           lastName: f.lastName.trim(),
           phone: f.phoneDigits,
           pin: f.pin,
-          attendanceCode: f.attendanceCode.trim(),
+          ...(f.attendanceCode.trim().length >= 4
+            ? { attendanceCode: f.attendanceCode.trim() }
+            : {}),
           isMarried: f.isMarried,
           email: f.email.trim() || undefined,
           zellePhone: f.zelleDigits || undefined,
@@ -115,7 +124,7 @@ export function MemberSignup() {
         }),
       })
       setMsg(
-        `${r.message} Your attendance code: ${r.attendanceCode}. Save it — the rabbi will confirm when your account is approved.`
+        `${r.message} Your punch-in code: ${r.attendanceCode}. Save it — the rabbi will confirm when your account is approved.`
       )
       setF(empty())
       setAgreeTerms(false)
@@ -206,7 +215,7 @@ export function MemberSignup() {
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>Attendance code (unique)</span>
+            <span className={fieldLabel}>Punch-in code (optional)</span>
             <input
               className={pillInput}
               value={f.attendanceCode}
@@ -214,10 +223,12 @@ export function MemberSignup() {
                 setF((x) => ({ ...x, attendanceCode: e.target.value }))
               }
               onFocus={(e) => scrollFieldIntoView(e.target)}
-              required
-              minLength={4}
-              placeholder="Choose a code you will remember"
+              maxLength={32}
+              placeholder="Leave blank for auto-assigned code"
             />
+            <span className="mt-1 block text-[11px] text-slate-500">
+              4+ characters if you choose your own; must be unique.
+            </span>
           </label>
 
           <label className="block">

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireAdmin } from "../middleware/auth.js";
@@ -28,6 +28,12 @@ function trimOrNull(s: string | undefined | null): string | null {
   const t = s.trim();
   return t || null;
 }
+
+const attendanceTxnUpdateSchema = z.object({
+  punchInAt: z.string().datetime().optional(),
+  punchOutAt: z.union([z.string().datetime(), z.null()]).optional(),
+  punchInStatus: z.enum(["PENDING", "CONFIRMED", "REJECTED"]).optional(),
+});
 
 adminRouter.get("/session/today", async (_req, res) => {
   const dateKey = todayDateKey();
@@ -100,6 +106,22 @@ adminRouter.post("/members", async (req, res) => {
     throw e;
   }
 
+  const attendanceCodeNorm = d.attendanceCode.trim();
+  const codeTaken = await prisma.user.findFirst({
+    where: {
+      attendanceCode: attendanceCodeNorm,
+      role: "MEMBER",
+    },
+    select: { id: true },
+  });
+  if (codeTaken) {
+    res.status(409).json({
+      error:
+        "That punch-in code is already assigned to another member. Choose a different code.",
+    });
+    return;
+  }
+
   const pinHash = await bcrypt.hash(d.pin, 10);
   try {
     const user = await prisma.user.create({
@@ -108,7 +130,7 @@ adminRouter.post("/members", async (req, res) => {
         lastName: d.lastName.trim(),
         phone,
         pinHash,
-        attendanceCode: d.attendanceCode.trim(),
+        attendanceCode: attendanceCodeNorm,
         isMarried: d.isMarried ?? false,
         zellePhone: trimOrNull(d.zellePhone ?? undefined),
         wifeZellePhone: trimOrNull(d.wifeZellePhone ?? undefined),
@@ -137,6 +159,16 @@ adminRouter.post("/members", async (req, res) => {
       isApproved: user.isApproved,
     });
   } catch (e: unknown) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      res.status(409).json({
+        error:
+          "That punch-in code or phone is already in use. Change the punch-in code or phone.",
+      });
+      return;
+    }
     const msg = e instanceof Error ? e.message : "Create failed";
     res.status(409).json({ error: msg });
   }
@@ -309,7 +341,25 @@ adminRouter.patch("/members/:id", async (req, res) => {
   };
 
   if (p.attendanceCode !== undefined) {
-    updateData.attendanceCode = p.attendanceCode.trim();
+    const nextCode = p.attendanceCode.trim();
+    if (nextCode !== existing.attendanceCode) {
+      const taken = await prisma.user.findFirst({
+        where: {
+          attendanceCode: nextCode,
+          role: "MEMBER",
+          NOT: { id: existing.id },
+        },
+        select: { id: true },
+      });
+      if (taken) {
+        res.status(409).json({
+          error:
+            "That punch-in code is already assigned to another member. Choose a different code.",
+        });
+        return;
+      }
+    }
+    updateData.attendanceCode = nextCode;
   }
   if (p.pin !== undefined) {
     updateData.pinHash = await bcrypt.hash(p.pin, 10);
@@ -330,6 +380,16 @@ adminRouter.patch("/members/:id", async (req, res) => {
       isApproved: user.isApproved,
     });
   } catch (e: unknown) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      res.status(409).json({
+        error:
+          "That punch-in code or phone is already in use. Change the punch-in code or phone.",
+      });
+      return;
+    }
     const msg = e instanceof Error ? e.message : "Update failed";
     res.status(409).json({ error: msg });
   }
@@ -397,6 +457,118 @@ adminRouter.post("/attendance/:id/reject", async (req, res) => {
     data: { punchInStatus: "REJECTED" },
   });
   res.json({ id: updated.id, punchInStatus: updated.punchInStatus });
+});
+
+adminRouter.get("/attendance", async (_req, res) => {
+  const rows = await prisma.attendance.findMany({
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          attendanceCode: true,
+        },
+      },
+      session: {
+        select: {
+          id: true,
+          dateKey: true,
+        },
+      },
+    },
+    orderBy: [{ punchInAt: "desc" }],
+    take: 1000,
+  });
+  res.json(
+    rows.map((a) => ({
+      id: a.id,
+      sessionId: a.sessionId,
+      sessionDateKey: a.session?.dateKey ?? "",
+      userId: a.userId,
+      userDisplayName: fullName(a.user.firstName, a.user.lastName),
+      userPhone: a.user.phone,
+      userPunchInCode: a.user.attendanceCode,
+      punchInAt: a.punchInAt.toISOString(),
+      punchInStatus: a.punchInStatus,
+      punchInConfirmedAt: a.punchInConfirmedAt?.toISOString() ?? null,
+      punchOutAt: a.punchOutAt?.toISOString() ?? null,
+      createdAt: a.createdAt.toISOString(),
+    }))
+  );
+});
+
+adminRouter.patch("/attendance/:id", async (req, res) => {
+  const parsed = attendanceTxnUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const existing = await prisma.attendance.findUnique({
+    where: { id: req.params.id },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Attendance transaction not found" });
+    return;
+  }
+  const p = parsed.data;
+  const updateData: Prisma.AttendanceUpdateInput = {};
+  if (p.punchInAt !== undefined) {
+    updateData.punchInAt = new Date(p.punchInAt);
+  }
+  if (p.punchOutAt !== undefined) {
+    updateData.punchOutAt = p.punchOutAt ? new Date(p.punchOutAt) : null;
+  }
+  if (p.punchInStatus !== undefined) {
+    updateData.punchInStatus = p.punchInStatus;
+    if (p.punchInStatus === "CONFIRMED") {
+      updateData.punchInConfirmedAt = existing.punchInConfirmedAt ?? new Date();
+    } else if (p.punchInStatus === "PENDING") {
+      updateData.punchInConfirmedAt = null;
+    }
+  }
+  const updated = await prisma.attendance.update({
+    where: { id: existing.id },
+    data: updateData,
+    include: {
+      user: {
+        select: {
+          firstName: true,
+          lastName: true,
+          phone: true,
+          attendanceCode: true,
+        },
+      },
+      session: { select: { dateKey: true } },
+    },
+  });
+  res.json({
+    id: updated.id,
+    sessionId: updated.sessionId,
+    sessionDateKey: updated.session?.dateKey ?? "",
+    userId: updated.userId,
+    userDisplayName: fullName(updated.user.firstName, updated.user.lastName),
+    userPhone: updated.user.phone,
+    userPunchInCode: updated.user.attendanceCode,
+    punchInAt: updated.punchInAt.toISOString(),
+    punchInStatus: updated.punchInStatus,
+    punchInConfirmedAt: updated.punchInConfirmedAt?.toISOString() ?? null,
+    punchOutAt: updated.punchOutAt?.toISOString() ?? null,
+    createdAt: updated.createdAt.toISOString(),
+  });
+});
+
+adminRouter.delete("/attendance/:id", async (req, res) => {
+  const existing = await prisma.attendance.findUnique({
+    where: { id: req.params.id },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Attendance transaction not found" });
+    return;
+  }
+  await prisma.attendance.delete({ where: { id: existing.id } });
+  res.status(204).send();
 });
 
 adminRouter.patch("/settings", async (req, res) => {

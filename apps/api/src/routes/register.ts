@@ -7,7 +7,9 @@ import {
   assertNoMemberDuplicates,
   DuplicateMemberError,
 } from "../lib/memberDuplicates.js";
-import { memberFieldsSchema } from "../lib/memberSchemas.js";
+import { Prisma } from "@prisma/client";
+import { generateUniqueAttendanceCode } from "../lib/attendanceCode.js";
+import { registerMemberSchema } from "../lib/memberSchemas.js";
 
 export const registerRouter = Router();
 
@@ -18,7 +20,7 @@ function trimOrNull(s: string | undefined | null): string | null {
 }
 
 registerRouter.post("/", async (req, res) => {
-  const parsed = memberFieldsSchema.safeParse(req.body);
+  const parsed = registerMemberSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
@@ -41,6 +43,31 @@ registerRouter.post("/", async (req, res) => {
     throw e;
   }
 
+  const requestedCode = d.attendanceCode?.trim();
+  let attendanceCode: string;
+  if (requestedCode && requestedCode.length >= 4) {
+    const taken = await prisma.user.findFirst({
+      where: { attendanceCode: requestedCode },
+      select: { id: true },
+    });
+    if (taken) {
+      res.status(409).json({
+        error:
+          "That attendance code is already in use. Choose another or leave the field blank for an auto-assigned code.",
+      });
+      return;
+    }
+    attendanceCode = requestedCode;
+  } else if (requestedCode && requestedCode.length > 0) {
+    res.status(400).json({
+      error:
+        "Attendance code must be at least 4 characters, or leave blank for an auto-assigned code.",
+    });
+    return;
+  } else {
+    attendanceCode = await generateUniqueAttendanceCode(prisma);
+  }
+
   const pinHash = await bcrypt.hash(d.pin, 10);
   try {
     const user = await prisma.user.create({
@@ -49,7 +76,7 @@ registerRouter.post("/", async (req, res) => {
         lastName: d.lastName.trim(),
         phone,
         pinHash,
-        attendanceCode: d.attendanceCode.trim(),
+        attendanceCode,
         isMarried: d.isMarried ?? false,
         zellePhone: trimOrNull(d.zellePhone ?? undefined),
         wifeZellePhone: trimOrNull(d.wifeZellePhone ?? undefined),
@@ -71,6 +98,16 @@ registerRouter.post("/", async (req, res) => {
       attendanceCode: user.attendanceCode,
     });
   } catch (e: unknown) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      res.status(409).json({
+        error:
+          "That attendance code is already in use. Choose another or leave blank for an auto-assigned code.",
+      });
+      return;
+    }
     const msg = e instanceof Error ? e.message : "Registration failed";
     res.status(409).json({ error: msg });
   }

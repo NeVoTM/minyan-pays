@@ -6,8 +6,10 @@
 
 ## Database
 
-- **Local (fastest):** **SQLite** — `DATABASE_URL="file:./dev.db"` in `apps/api/.env` (see `apps/api/.env.example`). Prisma schema uses `provider = "sqlite"`.
+- **Local (fastest):** **SQLite** — `DATABASE_URL="file:./dev.db"` in `apps/api/.env` (see `apps/api/.env.example`). The file is created under `apps/api/prisma/dev.db`. Prisma schema uses `provider = "sqlite"`.
 - **Free cloud (recommended for real data):** **Neon PostgreSQL** — step-by-step: [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md). After switching the Prisma `provider` to `postgresql` and setting `DATABASE_URL`, run `npx prisma db push` in `apps/api`.
+
+**Does `npm run dev` or a code update wipe the database?** No. SQLite data stays on disk until you delete the `.db` file, run `prisma migrate reset`, or point `DATABASE_URL` somewhere else. `*.db` is gitignored, so a **fresh git clone** starts with an empty DB until you add members again.
 
 ## One-time setup
 
