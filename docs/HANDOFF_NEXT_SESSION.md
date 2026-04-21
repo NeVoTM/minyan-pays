@@ -85,6 +85,13 @@ Date: 2026-04-20
 
 ## Current Known Discussion Items / Pending Decisions
 
+### Event menu (next session)
+- Add a new **Event menu** feature and define:
+  - who can create/edit events (Admin, Rabbi, or both)
+  - attendee/member event sign-up and check-in behavior
+  - whether event attendance affects payouts or reports
+  - event calendar/list UX and required fields (date/time/location/capacity/notes)
+
 ### Wife-focused program track (new campaign direction)
 Requested concept:
 - Engage wives as primary payout recipients/influence path to increase husband attendance.
@@ -114,4 +121,11 @@ Proposed scope for next session:
    - per-rabbi attendance
    - per-rabbi payout status.
 4. Add targeted tests for new setup flows and role permissions.
+
+## Next Chat Discussion List
+- [ ] Event menu scope (roles, lifecycle, and attendee workflow).
+- [ ] Wife-focused flow v1 (menu placement, auth path, payout visibility).
+- [ ] Rabbi member-delete guard rule (no payment due + no attendance history).
+- [ ] Admin cross-location supervision screen (per-rabbi members/check-ins/payouts).
+- [ ] Notification policy (member/wife/rabbi/admin: approvals, payouts, attendance).
 
