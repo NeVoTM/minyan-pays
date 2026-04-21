@@ -11,6 +11,8 @@
 
 **Does `npm run dev` or a code update wipe the database?** No. SQLite data stays on disk until you delete the `.db` file, run `prisma migrate reset`, or point `DATABASE_URL` somewhere else. `*.db` is gitignored, so a **fresh git clone** starts with an empty DB until you add members again.
 
+**Why did my members disappear?** See [docs/DATA_AND_BACKUPS.md](./docs/DATA_AND_BACKUPS.md) (resets, new clones, wrong `DATABASE_URL`, backups).
+
 ## One-time setup
 
 ```powershell

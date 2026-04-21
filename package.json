@@ -14,6 +14,7 @@
     "db:generate": "npm run db:generate --workspace apps/api",
     "db:migrate": "npm run db:migrate --workspace apps/api",
     "db:push": "npm run db:push --workspace apps/api",
+    "db:seed": "npm run db:seed --workspace apps/api",
     "tunnel": "npx --yes localtunnel --port 5173"
   },
   "workspaces": [

@@ -3,35 +3,114 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { normalizePhone } from "../lib/phone.js";
-import { signAdminToken, signMemberToken } from "../middleware/auth.js";
+import {
+  signAdminToken,
+  signMemberToken,
+  signRabbiToken,
+} from "../middleware/auth.js";
+import {
+  getOrganizationBySlug,
+  normalizeOrgSlug,
+} from "../lib/organizationService.js";
 
 export const authRouter = Router();
 
 const adminLogin = z.object({
   password: z.string().min(1),
+  organizationSlug: z.string().min(1),
 });
 
 const memberLogin = z.object({
   phone: z.string().min(7),
   pin: z.string().min(4).max(12),
+  organizationSlug: z.string().min(1),
 });
 
-authRouter.post("/admin", (req, res) => {
+authRouter.post("/admin", async (req, res) => {
   const parsed = adminLogin.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const expected = process.env.ADMIN_PASSWORD?.trim();
-  if (!expected) {
-    res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
+  const slug = normalizeOrgSlug(parsed.data.organizationSlug);
+  if (!slug) {
+    res.status(400).json({ error: "Invalid organization slug." });
     return;
   }
-  if (parsed.data.password.trim() !== expected) {
+  const org = await getOrganizationBySlug(slug);
+  if (!org) {
+    res.status(404).json({ error: "Unknown organization." });
+    return;
+  }
+
+  const password = parsed.data.password.trim();
+  let ok = false;
+  if (org.adminPasswordHash) {
+    ok = await bcrypt.compare(password, org.adminPasswordHash);
+  } else {
+    const expected = process.env.ADMIN_PASSWORD?.trim();
+    if (!expected) {
+      res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
+      return;
+    }
+    ok = password === expected;
+  }
+
+  if (!ok) {
     res.status(401).json({ error: "Invalid password" });
     return;
   }
-  res.json({ token: signAdminToken() });
+  res.json({ token: signAdminToken(org.id) });
+});
+
+/**
+ * Rabbi menu login (per location). If `rabbiPasswordHash` is not set, falls back to
+ * `RABBI_PASSWORD` env, then admin password / `ADMIN_PASSWORD` (same as admin login).
+ */
+authRouter.post("/rabbi", async (req, res) => {
+  const parsed = adminLogin.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const slug = normalizeOrgSlug(parsed.data.organizationSlug);
+  if (!slug) {
+    res.status(400).json({ error: "Invalid organization slug." });
+    return;
+  }
+  const org = await getOrganizationBySlug(slug);
+  if (!org) {
+    res.status(404).json({ error: "Unknown organization." });
+    return;
+  }
+
+  const password = parsed.data.password.trim();
+  let ok = false;
+  if (org.rabbiPasswordHash) {
+    ok = await bcrypt.compare(password, org.rabbiPasswordHash);
+  } else {
+    const rabbiEnv = process.env.RABBI_PASSWORD?.trim();
+    if (rabbiEnv) {
+      ok = password === rabbiEnv;
+    } else if (org.adminPasswordHash) {
+      ok = await bcrypt.compare(password, org.adminPasswordHash);
+    } else {
+      const expected = process.env.ADMIN_PASSWORD?.trim();
+      if (!expected) {
+        res.status(500).json({
+          error: "Set rabbi password on the organization, or RABBI_PASSWORD / ADMIN_PASSWORD.",
+        });
+        return;
+      }
+      ok = password === expected;
+    }
+  }
+
+  if (!ok) {
+    res.status(401).json({ error: "Invalid password" });
+    return;
+  }
+  res.json({ token: signRabbiToken(org.id) });
 });
 
 authRouter.post("/member", async (req, res) => {
@@ -40,14 +119,27 @@ authRouter.post("/member", async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
+  const slug = normalizeOrgSlug(parsed.data.organizationSlug);
+  if (!slug) {
+    res.status(400).json({ error: "Invalid organization slug." });
+    return;
+  }
+  const org = await getOrganizationBySlug(slug);
+  if (!org) {
+    res.status(404).json({ error: "Unknown organization." });
+    return;
+  }
+
   const phone = normalizePhone(parsed.data.phone);
-  const user = await prisma.user.findUnique({ where: { phone } });
+  const user = await prisma.user.findFirst({
+    where: { phone, organizationId: org.id },
+  });
   if (!user) {
     res.status(401).json({ error: "Unknown phone or PIN" });
     return;
   }
-  const ok = await bcrypt.compare(parsed.data.pin, user.pinHash);
-  if (!ok) {
+  const pinOk = await bcrypt.compare(parsed.data.pin, user.pinHash);
+  if (!pinOk) {
     res.status(401).json({ error: "Unknown phone or PIN" });
     return;
   }
@@ -58,5 +150,5 @@ authRouter.post("/member", async (req, res) => {
     });
     return;
   }
-  res.json({ token: signMemberToken(user.id) });
+  res.json({ token: signMemberToken(user.id, org.id) });
 });

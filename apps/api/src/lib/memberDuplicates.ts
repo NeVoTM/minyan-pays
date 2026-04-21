@@ -6,6 +6,7 @@ function nameKey(firstName: string, lastName: string): string {
 }
 
 export type DuplicateCheckInput = {
+  organizationId: string;
   excludeUserId?: string;
   firstName: string;
   lastName: string;
@@ -20,6 +21,7 @@ export async function assertNoMemberDuplicates(
 ): Promise<void> {
   const phoneDup = await prisma.user.findFirst({
     where: {
+      organizationId: data.organizationId,
       phone: data.phone,
       ...(data.excludeUserId ? { NOT: { id: data.excludeUserId } } : {}),
     },
@@ -39,6 +41,7 @@ export async function assertNoMemberDuplicates(
   const nk = nameKey(data.firstName, data.lastName);
   const members = await prisma.user.findMany({
     where: {
+      organizationId: data.organizationId,
       role: "MEMBER",
       ...(data.excludeUserId ? { NOT: { id: data.excludeUserId } } : {}),
     },

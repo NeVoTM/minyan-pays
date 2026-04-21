@@ -1,21 +1,24 @@
 import { NavLink } from 'react-router-dom'
-
-const items: { to: string; label: string; end?: boolean }[] = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/punch', label: 'Punch', end: true },
-  { to: '/punch/out', label: 'Leave', end: true },
-  { to: '/member', label: 'Member', end: true },
-  { to: '/admin', label: 'Admin', end: true },
-]
+import { useTranslation } from 'react-i18next'
 
 export function MobileNav() {
+  const { t } = useTranslation()
+  const items: { to: string; labelKey: string; end?: boolean }[] = [
+    { to: '/', labelKey: 'nav.home', end: true },
+    { to: '/punch', labelKey: 'nav.punch', end: true },
+    { to: '/punch/out', labelKey: 'nav.leave', end: true },
+    { to: '/member', labelKey: 'nav.member', end: true },
+    { to: '/rabbi', labelKey: 'nav.rabbi', end: true },
+    { to: '/admin', labelKey: 'nav.admin', end: true },
+  ]
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 rounded-t-[1.75rem] border border-slate-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_32px_rgba(15,23,42,0.08)] backdrop-blur-md"
       aria-label="Main"
     >
       <div className="mx-auto flex max-w-md items-stretch justify-between px-1 pt-1">
-        {items.map(({ to, label, end }) => (
+        {items.map(({ to, labelKey, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -29,7 +32,7 @@ export function MobileNav() {
               ].join(' ')
             }
           >
-            {label}
+            {t(labelKey)}
           </NavLink>
         ))}
       </div>

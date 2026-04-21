@@ -28,11 +28,11 @@ export const memberFieldsSchema = z.object({
   zellePhone: z.string().optional().nullable(),
   wifeZellePhone: z.string().optional().nullable(),
   bonusRecipient: z.enum(["SELF", "WIFE"]).optional(),
-  addressLine1: optionalAddressLine.optional(),
+  addressLine1: z.string().min(1).max(100),
   addressLine2: optionalAddressLine.optional(),
-  city: z.string().max(80).optional().nullable(),
-  stateRegion: z.string().max(32).optional().nullable(),
-  postalCode: z.string().max(10).optional().nullable(),
+  city: z.string().min(1).max(80),
+  stateRegion: z.string().min(1).max(32),
+  postalCode: z.string().regex(/^\d{5}$/),
   email: optionalEmail.optional(),
   spousePhone: optionalText.optional(),
   spouseEmail: optionalEmail.optional(),
@@ -45,6 +45,7 @@ export const memberFieldsSchema = z.object({
 export const registerMemberSchema = memberFieldsSchema
   .omit({ attendanceCode: true })
   .extend({
+    organizationSlug: z.string().min(1),
     attendanceCode: z.preprocess(
       (v) => (v == null || v === "" ? undefined : String(v).trim()),
       z.union([z.undefined(), z.string().min(4).max(32)])

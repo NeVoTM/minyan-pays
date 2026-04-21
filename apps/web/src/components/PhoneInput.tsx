@@ -9,6 +9,9 @@ type Props = {
   disabled?: boolean
   className?: string
   placeholder?: string
+  /** Use "off" on signup to reduce browser password-save pairing with PIN. */
+  autoComplete?: string
+  inputName?: string
   onBlur?: () => void
   onFocus?: (e: FocusEvent<HTMLInputElement>) => void
 }
@@ -21,6 +24,8 @@ export function PhoneInput({
   disabled,
   className = 'w-full rounded border border-slate-600 bg-slate-950 px-2 py-1',
   placeholder = '555-123-4567',
+  autoComplete = 'tel',
+  inputName,
   onBlur,
   onFocus,
 }: Props) {
@@ -29,7 +34,8 @@ export function PhoneInput({
       id={id}
       type="tel"
       inputMode="numeric"
-      autoComplete="tel"
+      autoComplete={autoComplete}
+      name={inputName}
       placeholder={placeholder}
       className={className}
       value={formatPhoneDigits(value)}

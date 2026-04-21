@@ -1,3 +1,5 @@
+import { getOrgSlugForApi } from './lib/orgSlugGetter'
+
 const API_HINT =
   'Start the servers: double-click "Start minyan-pays dev.bat" on the Desktop, or run "cd C:\\Users\\17274\\minyan-pays" then "npm run dev" (needs API on port 3001 and web on 5173).'
 
@@ -9,6 +11,8 @@ export async function api<T>(
   const h = new Headers(headers)
   h.set('Content-Type', 'application/json')
   if (token) h.set('Authorization', `Bearer ${token}`)
+  const orgSlug = getOrgSlugForApi()
+  if (orgSlug) h.set('X-Organization-Slug', orgSlug)
   let res: Response
   try {
     res = await fetch(path, { ...rest, headers: h })
@@ -42,6 +46,8 @@ export async function fetchBlob(
 ): Promise<Blob> {
   const h = new Headers()
   if (options.token) h.set('Authorization', `Bearer ${options.token}`)
+  const orgSlug = getOrgSlugForApi()
+  if (orgSlug) h.set('X-Organization-Slug', orgSlug)
   let res: Response
   try {
     res = await fetch(path, { headers: h })

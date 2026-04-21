@@ -1,14 +1,14 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { authMiddleware, requireAdmin } from "../middleware/auth.js";
-import { todayDateKey } from "../lib/dates.js";
+import { authMiddleware, requireAdmin, type JwtPayload } from "../middleware/auth.js";
+import { todayDateKeyInZone } from "../lib/dates.js";
 import {
   computeAllMembersWeekSummary,
-  getSettings,
-  getTreasury,
+  getOrganizationSettings,
+  getTreasuryForOrg,
   rankFirstNine,
 } from "../lib/earnings.js";
 import { normalizeOptionalUsPhone, normalizePhone } from "../lib/phone.js";
@@ -23,6 +23,10 @@ export const adminRouter = Router();
 adminRouter.use(authMiddleware);
 adminRouter.use(requireAdmin);
 
+function orgId(req: Request): string {
+  return (req as Request & { auth: JwtPayload }).auth.organizationId;
+}
+
 function trimOrNull(s: string | undefined | null): string | null {
   if (s == null || s === "") return null;
   const t = s.trim();
@@ -35,10 +39,18 @@ const attendanceTxnUpdateSchema = z.object({
   punchInStatus: z.enum(["PENDING", "CONFIRMED", "REJECTED"]).optional(),
 });
 
-adminRouter.get("/session/today", async (_req, res) => {
-  const dateKey = todayDateKey();
+adminRouter.get("/session/today", async (req, res) => {
+  const oid = orgId(req);
+  const org = await prisma.organization.findUnique({ where: { id: oid } });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
+  const dateKey = todayDateKeyInZone(org.timezone);
   let session = await prisma.minyanSession.findUnique({
-    where: { dateKey },
+    where: {
+      organizationId_dateKey: { organizationId: oid, dateKey },
+    },
     include: {
       attendances: {
         include: { user: true },
@@ -48,7 +60,7 @@ adminRouter.get("/session/today", async (_req, res) => {
   });
   if (!session) {
     session = await prisma.minyanSession.create({
-      data: { dateKey, status: "OPEN" },
+      data: { organizationId: oid, dateKey, status: "OPEN" },
       include: {
         attendances: {
           include: { user: true },
@@ -57,7 +69,7 @@ adminRouter.get("/session/today", async (_req, res) => {
       },
     });
   }
-  const settings = await getSettings();
+  const settings = await getOrganizationSettings(oid);
   const firstMap = rankFirstNine(session.attendances, settings.firstNineSlots);
   res.json({
     dateKey,
@@ -83,6 +95,7 @@ adminRouter.get("/session/today", async (_req, res) => {
 });
 
 adminRouter.post("/members", async (req, res) => {
+  const oid = orgId(req);
   const parsed = memberFieldsSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
@@ -92,6 +105,7 @@ adminRouter.post("/members", async (req, res) => {
   const phone = normalizePhone(d.phone);
   try {
     await assertNoMemberDuplicates(prisma, {
+      organizationId: oid,
       firstName: d.firstName,
       lastName: d.lastName,
       phone,
@@ -109,6 +123,7 @@ adminRouter.post("/members", async (req, res) => {
   const attendanceCodeNorm = d.attendanceCode.trim();
   const codeTaken = await prisma.user.findFirst({
     where: {
+      organizationId: oid,
       attendanceCode: attendanceCodeNorm,
       role: "MEMBER",
     },
@@ -126,6 +141,7 @@ adminRouter.post("/members", async (req, res) => {
   try {
     const user = await prisma.user.create({
       data: {
+        organizationId: oid,
         firstName: d.firstName.trim(),
         lastName: d.lastName.trim(),
         phone,
@@ -135,11 +151,11 @@ adminRouter.post("/members", async (req, res) => {
         zellePhone: trimOrNull(d.zellePhone ?? undefined),
         wifeZellePhone: trimOrNull(d.wifeZellePhone ?? undefined),
         bonusRecipient: d.bonusRecipient ?? "WIFE",
-        addressLine1: trimOrNull(d.addressLine1 ?? undefined),
+        addressLine1: d.addressLine1.trim(),
         addressLine2: trimOrNull(d.addressLine2 ?? undefined),
-        city: trimOrNull(d.city ?? undefined),
-        stateRegion: trimOrNull(d.stateRegion ?? undefined),
-        postalCode: trimOrNull(d.postalCode ?? undefined),
+        city: d.city.trim(),
+        stateRegion: d.stateRegion.trim(),
+        postalCode: d.postalCode.trim(),
         email: d.email ?? null,
         spousePhone: normalizeOptionalUsPhone(d.spousePhone ?? null),
         spouseEmail: d.spouseEmail ?? null,
@@ -174,9 +190,10 @@ adminRouter.post("/members", async (req, res) => {
   }
 });
 
-adminRouter.get("/members", async (_req, res) => {
+adminRouter.get("/members", async (req, res) => {
+  const oid = orgId(req);
   const users = await prisma.user.findMany({
-    where: { role: "MEMBER" },
+    where: { role: "MEMBER", organizationId: oid },
     orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     select: {
       id: true,
@@ -213,8 +230,9 @@ adminRouter.get("/members", async (_req, res) => {
 });
 
 adminRouter.get("/members/:id", async (req, res) => {
+  const oid = orgId(req);
   const user = await prisma.user.findFirst({
-    where: { id: req.params.id, role: "MEMBER" },
+    where: { id: req.params.id, role: "MEMBER", organizationId: oid },
     select: {
       id: true,
       firstName: true,
@@ -252,13 +270,14 @@ adminRouter.get("/members/:id", async (req, res) => {
 });
 
 adminRouter.patch("/members/:id", async (req, res) => {
+  const oid = orgId(req);
   const parsed = memberUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
   const existing = await prisma.user.findFirst({
-    where: { id: req.params.id, role: "MEMBER" },
+    where: { id: req.params.id, role: "MEMBER", organizationId: oid },
   });
   if (!existing) {
     res.status(404).json({ error: "Member not found" });
@@ -278,6 +297,7 @@ adminRouter.patch("/members/:id", async (req, res) => {
 
   try {
     await assertNoMemberDuplicates(prisma, {
+      organizationId: oid,
       excludeUserId: existing.id,
       firstName,
       lastName,
@@ -345,6 +365,7 @@ adminRouter.patch("/members/:id", async (req, res) => {
     if (nextCode !== existing.attendanceCode) {
       const taken = await prisma.user.findFirst({
         where: {
+          organizationId: oid,
           attendanceCode: nextCode,
           role: "MEMBER",
           NOT: { id: existing.id },
@@ -396,8 +417,9 @@ adminRouter.patch("/members/:id", async (req, res) => {
 });
 
 adminRouter.delete("/members/:id", async (req, res) => {
+  const oid = orgId(req);
   const existing = await prisma.user.findFirst({
-    where: { id: req.params.id, role: "MEMBER" },
+    where: { id: req.params.id, role: "MEMBER", organizationId: oid },
   });
   if (!existing) {
     res.status(404).json({ error: "Member not found" });
@@ -408,8 +430,9 @@ adminRouter.delete("/members/:id", async (req, res) => {
 });
 
 adminRouter.post("/attendance/:id/confirm", async (req, res) => {
-  const treasury = await getTreasury();
-  const settings = await getSettings();
+  const oid = orgId(req);
+  const treasury = await getTreasuryForOrg(oid);
+  const settings = await getOrganizationSettings(oid);
   if (treasury.systemLocked) {
     res.status(423).json({ error: "System locked" });
     return;
@@ -420,8 +443,11 @@ adminRouter.post("/attendance/:id/confirm", async (req, res) => {
   }
 
   const id = req.params.id;
-  const att = await prisma.attendance.findUnique({
-    where: { id },
+  const att = await prisma.attendance.findFirst({
+    where: {
+      id,
+      session: { organizationId: oid },
+    },
     include: {
       session: { include: { attendances: { include: { user: true } } } },
     },
@@ -446,8 +472,11 @@ adminRouter.post("/attendance/:id/confirm", async (req, res) => {
 });
 
 adminRouter.post("/attendance/:id/reject", async (req, res) => {
+  const oid = orgId(req);
   const id = req.params.id;
-  const att = await prisma.attendance.findUnique({ where: { id } });
+  const att = await prisma.attendance.findFirst({
+    where: { id, session: { organizationId: oid } },
+  });
   if (!att || att.punchInStatus !== "PENDING") {
     res.status(400).json({ error: "Not pending" });
     return;
@@ -459,8 +488,10 @@ adminRouter.post("/attendance/:id/reject", async (req, res) => {
   res.json({ id: updated.id, punchInStatus: updated.punchInStatus });
 });
 
-adminRouter.get("/attendance", async (_req, res) => {
+adminRouter.get("/attendance", async (req, res) => {
+  const oid = orgId(req);
   const rows = await prisma.attendance.findMany({
+    where: { session: { organizationId: oid } },
     include: {
       user: {
         select: {
@@ -500,13 +531,14 @@ adminRouter.get("/attendance", async (_req, res) => {
 });
 
 adminRouter.patch("/attendance/:id", async (req, res) => {
+  const oid = orgId(req);
   const parsed = attendanceTxnUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const existing = await prisma.attendance.findUnique({
-    where: { id: req.params.id },
+  const existing = await prisma.attendance.findFirst({
+    where: { id: req.params.id, session: { organizationId: oid } },
   });
   if (!existing) {
     res.status(404).json({ error: "Attendance transaction not found" });
@@ -560,8 +592,9 @@ adminRouter.patch("/attendance/:id", async (req, res) => {
 });
 
 adminRouter.delete("/attendance/:id", async (req, res) => {
-  const existing = await prisma.attendance.findUnique({
-    where: { id: req.params.id },
+  const oid = orgId(req);
+  const existing = await prisma.attendance.findFirst({
+    where: { id: req.params.id, session: { organizationId: oid } },
   });
   if (!existing) {
     res.status(404).json({ error: "Attendance transaction not found" });
@@ -571,41 +604,83 @@ adminRouter.delete("/attendance/:id", async (req, res) => {
   res.status(204).send();
 });
 
+const orgSettingsPublicSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  kind: true,
+  synagogueName: true,
+  rabbiBanner: true,
+  firstNineCents: true,
+  weeklyBonusCents: true,
+  firstNineSlots: true,
+  minReserveCents: true,
+  timezone: true,
+  defaultLocale: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 adminRouter.patch("/settings", async (req, res) => {
+  const oid = orgId(req);
   const schema = z.object({
     synagogueName: z.string().optional(),
     rabbiBanner: z.union([z.string().max(2000), z.null()]).optional(),
+    rabbiPassword: z
+      .union([z.string().trim().min(4).max(64), z.null()])
+      .optional(),
     firstNineCents: z.number().int().min(0).optional(),
     weeklyBonusCents: z.number().int().min(0).optional(),
     firstNineSlots: z.number().int().min(1).max(50).optional(),
     minReserveCents: z.number().int().min(0).optional(),
+    timezone: z.string().min(1).max(80).optional(),
+    defaultLocale: z.enum(["en", "he", "es", "ru", "fr"]).optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const s = await prisma.appSettings.upsert({
-    where: { id: "singleton" },
-    create: { id: "singleton", ...parsed.data },
-    update: parsed.data,
+  const updateData: Prisma.OrganizationUpdateInput = {
+    ...parsed.data,
+  };
+  delete (updateData as { rabbiPassword?: string | null }).rabbiPassword;
+  if (parsed.data.rabbiPassword !== undefined) {
+    updateData.rabbiPasswordHash = parsed.data.rabbiPassword
+      ? await bcrypt.hash(parsed.data.rabbiPassword, 10)
+      : null;
+  }
+
+  const s = await prisma.organization.update({
+    where: { id: oid },
+    data: updateData,
+    select: orgSettingsPublicSelect,
   });
   res.json(s);
 });
 
-adminRouter.get("/settings", async (_req, res) => {
-  const s = await getSettings();
+adminRouter.get("/settings", async (req, res) => {
+  const oid = orgId(req);
+  const s = await prisma.organization.findUnique({
+    where: { id: oid },
+    select: orgSettingsPublicSelect,
+  });
+  if (!s) {
+    res.status(404).json({ error: "Organization not found" });
+    return;
+  }
   res.json(s);
 });
 
 adminRouter.post("/treasury/fund", async (req, res) => {
+  const oid = orgId(req);
   const schema = z.object({ deltaCents: z.number().int() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const t = await getTreasury();
+  const t = await getTreasuryForOrg(oid);
   const updated = await prisma.treasury.update({
     where: { id: t.id },
     data: { balanceCents: t.balanceCents + parsed.data.deltaCents },
@@ -614,13 +689,14 @@ adminRouter.post("/treasury/fund", async (req, res) => {
 });
 
 adminRouter.patch("/treasury/lock", async (req, res) => {
+  const oid = orgId(req);
   const schema = z.object({ systemLocked: z.boolean() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const t = await getTreasury();
+  const t = await getTreasuryForOrg(oid);
   const updated = await prisma.treasury.update({
     where: { id: t.id },
     data: { systemLocked: parsed.data.systemLocked },
@@ -628,8 +704,9 @@ adminRouter.patch("/treasury/lock", async (req, res) => {
   res.json(updated);
 });
 
-adminRouter.get("/treasury", async (_req, res) => {
-  const t = await getTreasury();
+adminRouter.get("/treasury", async (req, res) => {
+  const oid = orgId(req);
+  const t = await getTreasuryForOrg(oid);
   res.json(t);
 });
 
@@ -638,12 +715,22 @@ const weekKeyParam = z
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD (any day in the week)");
 
 adminRouter.get("/reports/week/:weekKey", async (req, res) => {
+  const oid = orgId(req);
+  const org = await prisma.organization.findUnique({ where: { id: oid } });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
   const parsed = weekKeyParam.safeParse(req.params.weekKey);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const summary = await computeAllMembersWeekSummary(parsed.data);
+  const summary = await computeAllMembersWeekSummary(
+    parsed.data,
+    oid,
+    org.timezone
+  );
   res.json(summary);
 });
 
@@ -655,13 +742,21 @@ function csvEscape(value: string): string {
 }
 
 adminRouter.get("/export/week/:weekKey.csv", async (req, res) => {
+  const oid = orgId(req);
+  const org = await prisma.organization.findUnique({ where: { id: oid } });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
   const parsed = weekKeyParam.safeParse(req.params.weekKey);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
   const { weekSundayKey, rows } = await computeAllMembersWeekSummary(
-    parsed.data
+    parsed.data,
+    oid,
+    org.timezone
   );
 
   const header = [

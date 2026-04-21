@@ -4,6 +4,7 @@ import cors from "cors";
 import { authRouter } from "./routes/auth.js";
 import { punchRouter } from "./routes/punch.js";
 import { adminRouter } from "./routes/admin.js";
+import { rabbiRouter } from "./routes/rabbi.js";
 import { memberRouter } from "./routes/member.js";
 import { registerRouter } from "./routes/register.js";
 import { publicRouter } from "./routes/public.js";
@@ -16,6 +17,11 @@ app.use(
   cors({
     origin: webOrigin,
     credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Organization-Slug",
+    ],
   })
 );
 app.use(express.json());
@@ -29,6 +35,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/register", registerRouter);
 app.use("/api/punch", punchRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/rabbi", rabbiRouter);
 app.use("/api/me", memberRouter);
 
 app.use(

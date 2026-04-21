@@ -1,14 +1,57 @@
 import { Router } from "express";
+import zipcodes from "zipcodes";
 import { prisma } from "../lib/prisma.js";
-import { getSettings } from "../lib/earnings.js";
+import {
+  getOrganizationBySlug,
+  getOrgSlugFromRequest,
+  normalizeOrgSlug,
+} from "../lib/organizationService.js";
 
 export const publicRouter = Router();
 
-publicRouter.get("/config", async (_req, res) => {
-  const s = await getSettings();
+/** List organizations (for home / picker). */
+publicRouter.get("/organizations", async (_req, res) => {
+  const rows = await prisma.organization.findMany({
+    orderBy: [{ kind: "asc" }, { name: "asc" }],
+    select: {
+      slug: true,
+      name: true,
+      kind: true,
+      synagogueName: true,
+      defaultLocale: true,
+    },
+  });
+  res.json(rows);
+});
+
+publicRouter.get("/config", async (req, res) => {
+  const slug =
+    normalizeOrgSlug(
+      typeof req.query.organizationSlug === "string"
+        ? req.query.organizationSlug
+        : undefined
+    ) ?? getOrgSlugFromRequest(req);
+
+  if (!slug) {
+    res.status(400).json({
+      error:
+        "organizationSlug query or X-Organization-Slug header is required.",
+    });
+    return;
+  }
+
+  const org = await getOrganizationBySlug(slug);
+  if (!org) {
+    res.status(404).json({ error: "Unknown organization." });
+    return;
+  }
+
   res.json({
-    synagogueName: s.synagogueName,
-    rabbiBanner: s.rabbiBanner ?? null,
+    organizationSlug: org.slug,
+    synagogueName: org.synagogueName,
+    rabbiBanner: org.rabbiBanner ?? null,
+    defaultLocale: org.defaultLocale,
+    timezone: org.timezone,
   });
 });
 
@@ -27,6 +70,21 @@ publicRouter.get("/zip/:zip", async (req, res) => {
       city: cached.city,
       state: cached.state,
     });
+    return;
+  }
+
+  const local = zipcodes.lookup(zip) as
+    | { city: string; state: string }
+    | undefined;
+  if (local?.city && local?.state) {
+    const city = local.city;
+    const state = local.state;
+    await prisma.zipCache.upsert({
+      where: { zip },
+      create: { zip, city, state },
+      update: { city, state },
+    });
+    res.json({ zip, city, state });
     return;
   }
 

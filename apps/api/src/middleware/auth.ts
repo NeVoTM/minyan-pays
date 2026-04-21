@@ -4,25 +4,48 @@ import { prisma } from "../lib/prisma.js";
 
 export type JwtPayload = {
   sub: string;
-  role: "ADMIN" | "MEMBER";
+  role: "ADMIN" | "MEMBER" | "RABBI";
+  organizationId: string;
 };
 
-export function signAdminToken(): string {
+export function signAdminToken(organizationId: string): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
-  return jwt.sign({ sub: "admin", role: "ADMIN" }, secret, { expiresIn: "12h" });
+  return jwt.sign(
+    { sub: "admin", role: "ADMIN", organizationId },
+    secret,
+    { expiresIn: "12h" }
+  );
 }
 
-export function signMemberToken(userId: string): string {
+export function signRabbiToken(organizationId: string): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
-  return jwt.sign({ sub: userId, role: "MEMBER" }, secret, { expiresIn: "30d" });
+  return jwt.sign(
+    { sub: "rabbi", role: "RABBI", organizationId },
+    secret,
+    { expiresIn: "12h" }
+  );
+}
+
+export function signMemberToken(userId: string, organizationId: string): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is required");
+  return jwt.sign(
+    { sub: userId, role: "MEMBER", organizationId },
+    secret,
+    { expiresIn: "30d" }
+  );
 }
 
 export function verifyToken(token: string): JwtPayload {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
-  return jwt.verify(token, secret) as JwtPayload;
+  const p = jwt.verify(token, secret) as JwtPayload;
+  if (!p.organizationId) {
+    throw new Error("Invalid token: missing organization");
+  }
+  return p;
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -42,8 +65,18 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const a = (req as Request & { auth?: JwtPayload }).auth;
-  if (!a || a.role !== "ADMIN") {
+  if (!a || a.role !== "ADMIN" || !a.organizationId) {
     res.status(403).json({ error: "Admin only" });
+    return;
+  }
+  next();
+}
+
+/** Rabbi dashboard (approvals, check-ins, payouts) — not full admin. */
+export function requireRabbi(req: Request, res: Response, next: NextFunction) {
+  const a = (req as Request & { auth?: JwtPayload }).auth;
+  if (!a || a.role !== "RABBI" || !a.organizationId) {
+    res.status(403).json({ error: "Rabbi only" });
     return;
   }
   next();
@@ -51,7 +84,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 export function requireMember(req: Request, res: Response, next: NextFunction) {
   const a = (req as Request & { auth?: JwtPayload }).auth;
-  if (!a || a.role !== "MEMBER") {
+  if (!a || a.role !== "MEMBER" || !a.organizationId) {
     res.status(403).json({ error: "Member only" });
     return;
   }
@@ -64,15 +97,23 @@ export async function requireApprovedMember(
   next: NextFunction
 ) {
   const a = (req as Request & { auth?: JwtPayload }).auth;
-  if (!a || a.role !== "MEMBER") {
+  if (!a || a.role !== "MEMBER" || !a.organizationId) {
     res.status(403).json({ error: "Member only" });
     return;
   }
   const user = await prisma.user.findUnique({
     where: { id: a.sub },
-    select: { isApproved: true },
+    select: { isApproved: true, organizationId: true },
   });
-  if (!user?.isApproved) {
+  if (!user) {
+    res.status(403).json({ error: "Member only" });
+    return;
+  }
+  if (user.organizationId !== a.organizationId) {
+    res.status(403).json({ error: "Invalid session" });
+    return;
+  }
+  if (!user.isApproved) {
     res.status(403).json({
       error:
         "Account pending rabbi approval. You will be able to sign in after approval.",

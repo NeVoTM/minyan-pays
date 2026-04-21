@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
+import { useOrg } from '../context/OrgContext'
 import { PhoneInput } from '../components/PhoneInput'
 import { formatPhoneDigits } from '../lib/phoneDisplay'
 import {
@@ -11,6 +13,7 @@ import {
   pageTitle,
   pillInput,
   pillTextarea,
+  pinInput,
   primaryBtn,
 } from '../lib/uiClasses'
 
@@ -39,6 +42,10 @@ function scrollFieldIntoView(el: EventTarget | null) {
 }
 
 export function MemberSignup() {
+  const { t } = useTranslation()
+  const { organizationSlug, organizations } = useOrg()
+  const selectedOrgName =
+    organizations.find((o) => o.slug === organizationSlug)?.synagogueName ?? ''
   const [f, setF] = useState(() => empty())
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -71,7 +78,7 @@ export function MemberSignup() {
         stateRegion: r.state,
       }))
     } catch (e: unknown) {
-      setZipErr(e instanceof Error ? e.message : 'ZIP lookup failed')
+      setZipErr(e instanceof Error ? e.message : t('signup.zipFailed'))
     } finally {
       setZipLoading(false)
     }
@@ -82,18 +89,38 @@ export function MemberSignup() {
     setErr(null)
     setMsg(null)
     if (!agreeTerms) {
-      setErr('Please agree to the terms to continue.')
+      setErr(t('signup.agreeTerms'))
+      return
+    }
+    if (!f.firstName.trim() || !f.lastName.trim()) {
+      setErr(t('signup.nameRequired'))
       return
     }
     if (f.phoneDigits.length !== 10) {
-      setErr('Enter a valid 10-digit US phone number.')
+      setErr(t('signup.phoneInvalid'))
+      return
+    }
+    if (f.pin.length < 4) {
+      setErr(t('signup.pinTooShort'))
+      return
+    }
+    const zip5 = f.postalCode.replace(/\D/g, '').slice(0, 5)
+    if (
+      !f.addressLine1.trim() ||
+      !f.city.trim() ||
+      !f.stateRegion.trim() ||
+      zip5.length !== 5
+    ) {
+      setErr(t('signup.addressRequired'))
       return
     }
     const ac = f.attendanceCode.trim()
     if (ac.length > 0 && ac.length < 4) {
-      setErr(
-        'Attendance code must be at least 4 characters, or leave blank for auto-assigned.'
-      )
+      setErr(t('signup.codeRule'))
+      return
+    }
+    if (!organizationSlug) {
+      setErr(t('signup.chooseOrgFirst'))
       return
     }
     setLoading(true)
@@ -105,6 +132,7 @@ export function MemberSignup() {
       }>('/api/register', {
         method: 'POST',
         body: JSON.stringify({
+          organizationSlug,
           firstName: f.firstName.trim(),
           lastName: f.lastName.trim(),
           phone: f.phoneDigits,
@@ -116,20 +144,23 @@ export function MemberSignup() {
           email: f.email.trim() || undefined,
           zellePhone: f.zelleDigits || undefined,
           wifeZellePhone: f.wifeZelleDigits || undefined,
-          addressLine1: f.addressLine1.trim() || undefined,
+          addressLine1: f.addressLine1.trim(),
           addressLine2: f.addressLine2.trim() || undefined,
-          city: f.city.trim() || undefined,
-          stateRegion: f.stateRegion.trim() || undefined,
-          postalCode: f.postalCode.trim() || undefined,
+          city: f.city.trim(),
+          stateRegion: f.stateRegion.trim(),
+          postalCode: zip5,
         }),
       })
       setMsg(
-        `${r.message} Your punch-in code: ${r.attendanceCode}. Save it — the rabbi will confirm when your account is approved.`
+        t('signup.successMsg', {
+          message: r.message,
+          code: r.attendanceCode,
+        })
       )
       setF(empty())
       setAgreeTerms(false)
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : 'Registration failed')
+      setErr(e instanceof Error ? e.message : t('signup.registerFailed'))
     } finally {
       setLoading(false)
     }
@@ -140,9 +171,11 @@ export function MemberSignup() {
       <div className="flex items-start gap-3">
         <BackLink to="/" />
         <div>
-          <h1 className={pageTitle}>Create an account</h1>
+          <h1 className={pageTitle}>{t('signup.title')}</h1>
           <p className={pageSubtitle}>
-            Join the minyan roster. The rabbi approves new members before punch-in.
+            {t('signup.subtitle', {
+              synagogueName: selectedOrgName,
+            })}
           </p>
         </div>
       </div>
@@ -159,10 +192,29 @@ export function MemberSignup() {
       )}
 
       <div className={cardShell}>
-        <form onSubmit={submit} className="space-y-4 text-sm">
+        <form
+          onSubmit={submit}
+          className="space-y-4 text-sm"
+          autoComplete="off"
+        >
+          <input
+            type="text"
+            className="hidden"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden
+          />
+          <input
+            type="password"
+            className="hidden"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden
+          />
+
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className={fieldLabel}>First name</span>
+              <span className={fieldLabel}>{t('signup.firstName')}</span>
               <input
                 className={pillInput}
                 value={f.firstName}
@@ -171,11 +223,12 @@ export function MemberSignup() {
                 }
                 onFocus={(e) => scrollFieldIntoView(e.target)}
                 required
-                placeholder="First name"
+                autoComplete="off"
+                placeholder={t('signup.firstName')}
               />
             </label>
             <label className="block">
-              <span className={fieldLabel}>Last name</span>
+              <span className={fieldLabel}>{t('signup.lastName')}</span>
               <input
                 className={pillInput}
                 value={f.lastName}
@@ -184,38 +237,46 @@ export function MemberSignup() {
                 }
                 onFocus={(e) => scrollFieldIntoView(e.target)}
                 required
-                placeholder="Last name"
+                autoComplete="off"
+                placeholder={t('signup.lastName')}
               />
             </label>
           </div>
 
           <label className="block">
-            <span className={fieldLabel}>Mobile phone</span>
+            <span className={fieldLabel}>{t('signup.mobilePhone')}</span>
             <PhoneInput
               className={pillInput}
               value={f.phoneDigits}
               onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
               onBlur={applyPhoneDefaults}
               required
+              autoComplete="off"
             />
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>PIN (4+ digits)</span>
+            <span className={fieldLabel}>{t('signup.pinLabel')}</span>
             <input
-              type="password"
-              className={pillInput}
+              type="text"
+              inputMode="numeric"
+              className={pinInput}
               value={f.pin}
-              onChange={(e) => setF((x) => ({ ...x, pin: e.target.value }))}
+              onChange={(e) =>
+                setF((x) => ({
+                  ...x,
+                  pin: e.target.value.replace(/\D/g, '').slice(0, 12),
+                }))
+              }
               onFocus={(e) => scrollFieldIntoView(e.target)}
               required
               minLength={4}
-              autoComplete="new-password"
+              autoComplete="off"
             />
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>Punch-in code (optional)</span>
+            <span className={fieldLabel}>{t('signup.punchCodeOpt')}</span>
             <input
               className={pillInput}
               value={f.attendanceCode}
@@ -224,15 +285,16 @@ export function MemberSignup() {
               }
               onFocus={(e) => scrollFieldIntoView(e.target)}
               maxLength={32}
-              placeholder="Leave blank for auto-assigned code"
+              autoComplete="off"
+              placeholder={t('signup.punchCodePlaceholder')}
             />
             <span className="mt-1 block text-[11px] text-slate-500">
-              4+ characters if you choose your own; must be unique.
+              {t('signup.punchCodeHint')}
             </span>
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>Email (optional)</span>
+            <span className={fieldLabel}>{t('signup.emailOpt')}</span>
             <input
               type="email"
               autoComplete="email"
@@ -245,10 +307,10 @@ export function MemberSignup() {
           </label>
 
           <div>
-            <p className={fieldLabel}>Street address (max 100 chars / line)</p>
+            <p className={fieldLabel}>{t('signup.addrTitle')}</p>
             <textarea
               className={pillTextarea}
-              placeholder="Line 1"
+              placeholder={t('signup.line1')}
               maxLength={100}
               rows={2}
               value={f.addressLine1}
@@ -259,10 +321,12 @@ export function MemberSignup() {
                 }))
               }
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              required
+              autoComplete="street-address"
             />
             <textarea
               className={`${pillTextarea} mt-2`}
-              placeholder="Line 2 (optional)"
+              placeholder={t('signup.line2')}
               maxLength={100}
               rows={2}
               value={f.addressLine2}
@@ -273,31 +337,36 @@ export function MemberSignup() {
                 }))
               }
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              autoComplete="off"
             />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <input
               className={pillInput}
-              placeholder="City"
+              placeholder={t('signup.city')}
               maxLength={80}
               value={f.city}
               onChange={(e) => setF((x) => ({ ...x, city: e.target.value }))}
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              required
+              autoComplete="address-level2"
             />
             <input
               className={pillInput}
-              placeholder="State"
+              placeholder={t('signup.state')}
               maxLength={32}
               value={f.stateRegion}
               onChange={(e) =>
                 setF((x) => ({ ...x, stateRegion: e.target.value }))
               }
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              required
+              autoComplete="address-level1"
             />
             <input
               className={pillInput}
-              placeholder="ZIP"
+              placeholder={t('signup.zip')}
               inputMode="numeric"
               maxLength={5}
               value={f.postalCode}
@@ -309,10 +378,12 @@ export function MemberSignup() {
               }
               onBlur={() => void lookupZip()}
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              required
+              autoComplete="postal-code"
             />
           </div>
           {zipLoading && (
-            <p className="text-[11px] text-slate-500">Looking up ZIP…</p>
+            <p className="text-[11px] text-slate-500">{t('signup.zipLookup')}</p>
           )}
           {zipErr && (
             <p className="text-[11px] text-amber-700">{zipErr}</p>
@@ -327,11 +398,11 @@ export function MemberSignup() {
                 setF((x) => ({ ...x, isMarried: e.target.checked }))
               }
             />
-            Married (spouse Zelle for bonus)
+            {t('signup.married')}
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>Your Zelle (optional)</span>
+            <span className={fieldLabel}>{t('signup.zelleYou')}</span>
             <PhoneInput
               className={pillInput}
               placeholder={
@@ -342,10 +413,11 @@ export function MemberSignup() {
               value={f.zelleDigits}
               onChange={(d) => setF((x) => ({ ...x, zelleDigits: d }))}
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              autoComplete="off"
             />
           </label>
           <label className="block">
-            <span className={fieldLabel}>Spouse Zelle (optional)</span>
+            <span className={fieldLabel}>{t('signup.zelleSpouse')}</span>
             <PhoneInput
               className={pillInput}
               placeholder={
@@ -356,6 +428,7 @@ export function MemberSignup() {
               value={f.wifeZelleDigits}
               onChange={(d) => setF((x) => ({ ...x, wifeZelleDigits: d }))}
               onFocus={(e) => scrollFieldIntoView(e.target)}
+              autoComplete="off"
             />
           </label>
 
@@ -367,27 +440,27 @@ export function MemberSignup() {
               onChange={(e) => setAgreeTerms(e.target.checked)}
             />
             <span>
-              I agree to the{' '}
+              {t('signup.terms')}{' '}
               <span className="font-semibold text-blue-600">
-                terms &amp; conditions
+                {t('signup.termsBold')}
               </span>{' '}
-              and authorize text messages about minyan attendance and payouts.
+              {t('signup.termsEnd')}
             </span>
           </label>
 
           <button type="submit" disabled={loading} className={primaryBtn}>
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? t('signup.submitting') : t('signup.submit')}
           </button>
         </form>
       </div>
 
       <p className="text-center text-sm text-slate-500">
-        Already registered?{' '}
+        {t('signup.already')}{' '}
         <Link
           to="/member"
           className="font-semibold text-blue-600 hover:underline"
         >
-          Sign in
+          {t('signup.signIn')}
         </Link>
       </p>
     </div>

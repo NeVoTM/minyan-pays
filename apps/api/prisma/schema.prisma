@@ -25,15 +25,46 @@ enum BonusRecipient {
   WIFE
 }
 
+enum OrganizationKind {
+  SYNAGOGUE
+  STUDY_HALL
+}
+
+model Organization {
+  id               String           @id @default(cuid())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  slug             String           @unique
+  name             String
+  kind             OrganizationKind @default(SYNAGOGUE)
+  synagogueName    String
+  rabbiBanner      String?
+  firstNineCents   Int              @default(1500)
+  weeklyBonusCents Int              @default(3000)
+  firstNineSlots   Int              @default(9)
+  minReserveCents  Int              @default(0)
+  timezone         String           @default("America/New_York")
+  defaultLocale    String           @default("he")
+  adminPasswordHash String?
+  /** Optional; if null, rabbi login falls back to admin password (env or adminPasswordHash). */
+  rabbiPasswordHash String?
+
+  users          User[]
+  minyanSessions MinyanSession[]
+  treasury       Treasury?
+}
+
 model User {
   id               String           @id @default(cuid())
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  organizationId   String
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   firstName        String
   lastName         String
-  phone            String           @unique
+  phone            String
   pinHash          String
-  attendanceCode   String           @unique
+  attendanceCode   String
   role             Role             @default(MEMBER)
   isMarried        Boolean          @default(false)
   zellePhone       String?
@@ -53,52 +84,50 @@ model User {
   isApproved       Boolean          @default(true)
   attendances      Attendance[]
   weeklyPayouts    WeeklyPayout[]
+
+  @@unique([organizationId, phone])
+  @@unique([organizationId, attendanceCode])
 }
 
-model AppSettings {
-  id               String @id @default("singleton")
-  synagogueName    String @default("Dovrey Evrit")
-  rabbiBanner      String?
-  firstNineCents   Int    @default(1500)
-  weeklyBonusCents Int    @default(3000)
-  firstNineSlots   Int    @default(9)
-  minReserveCents  Int    @default(0)
-  timezone         String @default("America/New_York")
+model Treasury {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  balanceCents   Int          @default(0)
+  systemLocked   Boolean      @default(false)
 }
 
 /** Cached US ZIP lookups (filled from public API on first request). */
 model ZipCache {
-  zip   String   @id
-  city  String
-  state String
+  zip       String   @id
+  city      String
+  state     String
   fetchedAt DateTime @default(now())
 }
 
-model Treasury {
-  id             String  @id @default("singleton")
-  balanceCents   Int     @default(0)
-  systemLocked   Boolean @default(false)
-}
-
 model MinyanSession {
-  id           String       @id @default(cuid())
-  createdAt    DateTime     @default(now())
-  dateKey      String       @unique
-  status       String       @default("OPEN")
-  attendances  Attendance[]
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dateKey        String
+  status         String        @default("OPEN")
+  attendances    Attendance[]
+
+  @@unique([organizationId, dateKey])
 }
 
 model Attendance {
-  id                  String      @id @default(cuid())
-  createdAt           DateTime    @default(now())
-  sessionId           String
-  session             MinyanSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  userId              String
-  user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  punchInAt           DateTime
-  punchInStatus       PunchStatus @default(PENDING)
-  punchInConfirmedAt  DateTime?
-  punchOutAt          DateTime?
+  id                 String        @id @default(cuid())
+  createdAt          DateTime      @default(now())
+  sessionId          String
+  session            MinyanSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  punchInAt          DateTime
+  punchInStatus      PunchStatus   @default(PENDING)
+  punchInConfirmedAt DateTime?
+  punchOutAt         DateTime?
 
   @@unique([userId, sessionId])
 }

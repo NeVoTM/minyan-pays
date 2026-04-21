@@ -2,9 +2,10 @@ import type { PrismaClient } from "@prisma/client";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-/** Random unique attendance code (6 chars), excluding ambiguous characters. */
+/** Random unique attendance code (6 chars) within an organization. */
 export async function generateUniqueAttendanceCode(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  organizationId: string
 ): Promise<string> {
   for (let attempt = 0; attempt < 40; attempt++) {
     let code = "";
@@ -12,7 +13,7 @@ export async function generateUniqueAttendanceCode(
       code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]!;
     }
     const exists = await prisma.user.findFirst({
-      where: { attendanceCode: code },
+      where: { organizationId, attendanceCode: code },
       select: { id: true },
     });
     if (!exists) return code;

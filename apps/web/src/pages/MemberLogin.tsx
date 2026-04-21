@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
 import { PhoneInput } from '../components/PhoneInput'
+import { useOrg } from '../context/OrgContext'
 import {
   fieldLabel,
   pageSubtitle,
   pageTitle,
   pillInput,
+  pinInput,
   primaryBtn,
   cardShell,
 } from '../lib/uiClasses'
@@ -15,6 +18,8 @@ import {
 const KEY = 'minyan_member_token'
 
 export function MemberLogin() {
+  const { t } = useTranslation()
+  const { organizationSlug } = useOrg()
   const [phoneDigits, setPhoneDigits] = useState('')
   const [pin, setPin] = useState('')
   const [err, setErr] = useState<string | null>(null)
@@ -23,6 +28,10 @@ export function MemberLogin() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
+    if (!organizationSlug) {
+      setErr('Choose a location first.')
+      return
+    }
     if (phoneDigits.length !== 10) {
       setErr('Enter a valid 10-digit phone number.')
       return
@@ -30,7 +39,11 @@ export function MemberLogin() {
     try {
       const r = await api<{ token: string }>('/api/auth/member', {
         method: 'POST',
-        body: JSON.stringify({ phone: phoneDigits, pin }),
+        body: JSON.stringify({
+          phone: phoneDigits,
+          pin,
+          organizationSlug,
+        }),
       })
       localStorage.setItem(KEY, r.token)
       nav('/member/app')
@@ -44,32 +57,50 @@ export function MemberLogin() {
       <div className="flex items-start gap-3">
         <BackLink to="/" />
         <div>
-          <h1 className={pageTitle}>Welcome back</h1>
-          <p className={pageSubtitle}>Sign in with your phone and PIN.</p>
+          <h1 className={pageTitle}>{t('memberLogin.title')}</h1>
+          <p className={pageSubtitle}>{t('memberLogin.subtitle')}</p>
         </div>
       </div>
 
       <div className={cardShell}>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} autoComplete="off" className="space-y-4">
+          <input
+            type="text"
+            className="hidden"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden
+          />
+          <input
+            type="password"
+            className="hidden"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden
+          />
           <label className="block">
-            <span className={fieldLabel}>Phone</span>
+            <span className={fieldLabel}>{t('memberLogin.phone')}</span>
             <PhoneInput
               className={pillInput}
               value={phoneDigits}
               onChange={setPhoneDigits}
               required
+              autoComplete="off"
             />
           </label>
           <label className="block">
-            <span className={fieldLabel}>PIN</span>
+            <span className={fieldLabel}>{t('memberLogin.pin')}</span>
             <input
-              type="password"
-              className={pillInput}
+              type="text"
+              inputMode="numeric"
+              className={pinInput}
               value={pin}
-              onChange={(e) => setPin(e.target.value)}
+              onChange={(e) =>
+                setPin(e.target.value.replace(/\D/g, '').slice(0, 12))
+              }
               required
               minLength={4}
-              autoComplete="current-password"
+              autoComplete="off"
             />
           </label>
           {err && (
@@ -78,15 +109,15 @@ export function MemberLogin() {
             </p>
           )}
           <button type="submit" className={primaryBtn}>
-            View balance
+            {t('memberLogin.submit')}
           </button>
         </form>
       </div>
 
       <p className="text-center text-sm text-slate-500">
-        New here?{' '}
+        {t('memberLogin.newHere')}{' '}
         <Link to="/member/signup" className="font-semibold text-blue-600 hover:underline">
-          Create an account
+          {t('memberLogin.create')}
         </Link>
       </p>
     </div>

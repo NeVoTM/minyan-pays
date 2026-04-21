@@ -13,9 +13,9 @@ import {
   primaryBtn,
 } from '../lib/uiClasses'
 
-const KEY = 'minyan_admin_token'
+export const RABBI_KEY = 'minyan_rabbi_token'
 
-export function AdminLogin() {
+export function RabbiLogin() {
   const { t } = useTranslation()
   const { organizationSlug } = useOrg()
   const [password, setPassword] = useState('')
@@ -26,18 +26,18 @@ export function AdminLogin() {
     e.preventDefault()
     setErr(null)
     if (!organizationSlug) {
-      setErr('Choose a location first.')
+      setErr(t('rabbiLogin.chooseOrgFirst'))
       return
     }
     try {
-      const r = await api<{ token: string }>('/api/auth/admin', {
+      const r = await api<{ token: string }>('/api/auth/rabbi', {
         method: 'POST',
         body: JSON.stringify({ password, organizationSlug }),
       })
-      localStorage.setItem(KEY, r.token)
-      nav('/admin/app')
+      localStorage.setItem(RABBI_KEY, r.token)
+      nav('/rabbi/app')
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : 'Login failed')
+      setErr(e instanceof Error ? e.message : t('rabbiLogin.loginFailed'))
     }
   }
 
@@ -46,19 +46,18 @@ export function AdminLogin() {
       <div className="flex items-start gap-3">
         <BackLink to="/" />
         <div>
-          <h1 className={pageTitle}>{t('adminLogin.title')}</h1>
-          <p className={pageSubtitle}>{t('adminLogin.subtitle')}</p>
+          <h1 className={pageTitle}>{t('rabbiLogin.title')}</h1>
+          <p className={pageSubtitle}>{t('rabbiLogin.subtitle')}</p>
         </div>
       </div>
 
       <div className={cardShell}>
         <form onSubmit={submit} className="space-y-4">
           <label className="block">
-            <span className={fieldLabel}>{t('adminLogin.password')}</span>
+            <span className={fieldLabel}>{t('rabbiLogin.password')}</span>
             <input
               type="password"
               className={pillInput}
-              placeholder={t('adminLogin.passwordPh')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -70,7 +69,7 @@ export function AdminLogin() {
             </p>
           )}
           <button type="submit" className={primaryBtn}>
-            {t('adminLogin.submit')}
+            {t('rabbiLogin.submit')}
           </button>
         </form>
       </div>

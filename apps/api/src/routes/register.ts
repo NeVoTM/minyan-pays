@@ -10,6 +10,10 @@ import {
 import { Prisma } from "@prisma/client";
 import { generateUniqueAttendanceCode } from "../lib/attendanceCode.js";
 import { registerMemberSchema } from "../lib/memberSchemas.js";
+import {
+  getOrganizationBySlug,
+  normalizeOrgSlug,
+} from "../lib/organizationService.js";
 
 export const registerRouter = Router();
 
@@ -26,9 +30,21 @@ registerRouter.post("/", async (req, res) => {
     return;
   }
   const d = parsed.data;
+  const slug = normalizeOrgSlug(d.organizationSlug);
+  if (!slug) {
+    res.status(400).json({ error: "Invalid organization slug." });
+    return;
+  }
+  const org = await getOrganizationBySlug(slug);
+  if (!org) {
+    res.status(404).json({ error: "Unknown organization." });
+    return;
+  }
+
   const phone = normalizePhone(d.phone);
   try {
     await assertNoMemberDuplicates(prisma, {
+      organizationId: org.id,
       firstName: d.firstName,
       lastName: d.lastName,
       phone,
@@ -47,7 +63,7 @@ registerRouter.post("/", async (req, res) => {
   let attendanceCode: string;
   if (requestedCode && requestedCode.length >= 4) {
     const taken = await prisma.user.findFirst({
-      where: { attendanceCode: requestedCode },
+      where: { organizationId: org.id, attendanceCode: requestedCode },
       select: { id: true },
     });
     if (taken) {
@@ -65,13 +81,14 @@ registerRouter.post("/", async (req, res) => {
     });
     return;
   } else {
-    attendanceCode = await generateUniqueAttendanceCode(prisma);
+    attendanceCode = await generateUniqueAttendanceCode(prisma, org.id);
   }
 
   const pinHash = await bcrypt.hash(d.pin, 10);
   try {
     const user = await prisma.user.create({
       data: {
+        organizationId: org.id,
         firstName: d.firstName.trim(),
         lastName: d.lastName.trim(),
         phone,
@@ -81,11 +98,11 @@ registerRouter.post("/", async (req, res) => {
         zellePhone: trimOrNull(d.zellePhone ?? undefined),
         wifeZellePhone: trimOrNull(d.wifeZellePhone ?? undefined),
         bonusRecipient: d.bonusRecipient ?? "WIFE",
-        addressLine1: trimOrNull(d.addressLine1 ?? undefined),
+        addressLine1: d.addressLine1.trim(),
         addressLine2: trimOrNull(d.addressLine2 ?? undefined),
-        city: trimOrNull(d.city ?? undefined),
-        stateRegion: trimOrNull(d.stateRegion ?? undefined),
-        postalCode: trimOrNull(d.postalCode ?? undefined),
+        city: d.city.trim(),
+        stateRegion: d.stateRegion.trim(),
+        postalCode: d.postalCode.trim(),
         email: d.email ?? null,
         isApproved: false,
       },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ClockBar } from './components/ClockBar'
 import { MobileNav } from './components/MobileNav'
 import { RabbiBanner } from './components/RabbiBanner'
@@ -8,32 +9,148 @@ import { PunchIn } from './pages/PunchIn'
 import { PunchOut } from './pages/PunchOut'
 import { AdminLogin } from './pages/AdminLogin'
 import { AdminDashboard } from './pages/AdminDashboard'
+import { RabbiLogin } from './pages/RabbiLogin'
+import { RabbiDashboard } from './pages/RabbiDashboard'
 import { MemberLogin } from './pages/MemberLogin'
 import { MemberDashboard } from './pages/MemberDashboard'
 import { MemberSignup } from './pages/MemberSignup'
 import { MemberBilling } from './pages/MemberBilling'
+import { useOrg } from './context/OrgContext'
+import {
+  applyOrgDefaultLocale,
+  SUPPORTED_LANGS,
+  type AppLang,
+  setLanguageOverride,
+} from './i18n'
+import { cardShell } from './lib/uiClasses'
 
-type PublicConfig = { synagogueName: string; rabbiBanner: string | null }
+type PublicConfig = {
+  organizationSlug: string
+  synagogueName: string
+  rabbiBanner: string | null
+  defaultLocale: string
+  timezone: string
+}
+
+function OrgPicker() {
+  const { t } = useTranslation()
+  const { organizations, setOrganizationSlug } = useOrg()
+
+  return (
+    <div className="space-y-6 px-1 py-2">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight text-slate-900">
+          {t('org.chooseTitle')}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          {t('org.chooseHint')}
+        </p>
+      </div>
+      <div className="space-y-3">
+        {organizations.map((o) => (
+          <button
+            key={o.slug}
+            type="button"
+            onClick={() => setOrganizationSlug(o.slug)}
+            className={`${cardShell} w-full text-left transition hover:border-blue-200 hover:shadow-md`}
+          >
+            <div className="font-semibold text-slate-900">{o.synagogueName}</div>
+            <div className="mt-1 text-xs text-slate-500">
+              {o.kind === 'SYNAGOGUE'
+                ? t('org.kindSynagogue')
+                : t('org.kindStudyHall')}{' '}
+              · {o.name}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
+  const { t, i18n } = useTranslation()
+  const { organizationSlug, organizations, loading } = useOrg()
   const [pub, setPub] = useState<PublicConfig | null>(null)
+  const isRtl = i18n.language === 'he'
 
   useEffect(() => {
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr'
+    document.documentElement.lang = i18n.language === 'he' ? 'he' : 'en'
+  }, [isRtl, i18n.language])
+
+  useEffect(() => {
+    if (!organizationSlug) {
+      setPub(null)
+      return
+    }
     let cancelled = false
-    fetch('/api/public/config')
+    const q = new URLSearchParams({ organizationSlug })
+    fetch(`/api/public/config?${q.toString()}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j: PublicConfig | null) => {
-        if (!cancelled && j) setPub(j)
+        if (!cancelled && j) {
+          setPub(j)
+          applyOrgDefaultLocale(j.defaultLocale)
+        }
       })
       .catch(() => {})
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [organizationSlug])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#f3f4f6] text-slate-600">
+        …
+      </div>
+    )
+  }
+
+  if (!organizationSlug || organizations.length === 0) {
+    return (
+      <BrowserRouter>
+        <div
+          className="flex min-h-dvh flex-col bg-[#f3f4f6] text-slate-900"
+          dir={isRtl ? 'rtl' : 'ltr'}
+        >
+          <header className="shrink-0 border-b border-slate-200/80 bg-white px-4 py-3 shadow-sm">
+            <div className="mx-auto flex max-w-md items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="block text-lg font-bold tracking-tight text-blue-600">
+                  {t('app.title')}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 sm:text-xs">
+                  {t('app.subtitle')}
+                </span>
+              </div>
+              <LangToggle />
+            </div>
+          </header>
+          <main className="mx-auto w-full max-w-md flex-1 overflow-y-auto px-4 py-6">
+            {organizations.length === 0 ? (
+              <p className="text-center text-sm text-slate-600">
+                No locations configured. Run{' '}
+                <code className="rounded bg-slate-100 px-1">npm run db:seed</code>{' '}
+                in the API folder after{' '}
+                <code className="rounded bg-slate-100 px-1">npm run db:push</code>.
+              </p>
+            ) : (
+              <OrgPicker />
+            )}
+          </main>
+        </div>
+      </BrowserRouter>
+    )
+  }
 
   return (
     <BrowserRouter>
-      <div className="flex min-h-dvh flex-col bg-[#f3f4f6] text-slate-900">
+      <div
+        className="flex min-h-dvh flex-col bg-[#f3f4f6] text-slate-900"
+        dir={isRtl ? 'rtl' : 'ltr'}
+      >
         <header className="shrink-0 border-b border-slate-200/80 bg-white px-4 py-3 shadow-sm">
           <div className="mx-auto flex max-w-md items-start justify-between gap-3">
             <div className="min-w-0">
@@ -41,13 +158,16 @@ export default function App() {
                 to="/"
                 className="block truncate text-lg font-bold tracking-tight text-blue-600"
               >
-                minyan-pays
+                {t('app.title')}
               </Link>
               <span className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
-                {pub?.synagogueName ?? 'Dovrey Evrit'}
+                {pub?.synagogueName ?? '…'}
               </span>
             </div>
-            <ClockBar />
+            <div className="flex shrink-0 items-center gap-2">
+              <LangToggle />
+              <ClockBar />
+            </div>
           </div>
         </header>
         <RabbiBanner text={pub?.rabbiBanner} />
@@ -58,6 +178,8 @@ export default function App() {
             <Route path="/punch/out" element={<PunchOut />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/app" element={<AdminDashboard />} />
+            <Route path="/rabbi" element={<RabbiLogin />} />
+            <Route path="/rabbi/app" element={<RabbiDashboard />} />
             <Route path="/member" element={<MemberLogin />} />
             <Route path="/member/signup" element={<MemberSignup />} />
             <Route path="/member/app" element={<MemberDashboard />} />
@@ -68,5 +190,30 @@ export default function App() {
         <MobileNav />
       </div>
     </BrowserRouter>
+  )
+}
+
+function LangToggle() {
+  const { i18n, t } = useTranslation()
+  const current = SUPPORTED_LANGS.includes(i18n.language as AppLang)
+    ? (i18n.language as AppLang)
+    : 'en'
+  return (
+    <label className="flex items-center gap-1 text-xs font-medium text-slate-600"
+    >
+      <span className="sr-only">{t('lang.label')}</span>
+      <select
+        aria-label={t('lang.label')}
+        className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+        value={current}
+        onChange={(e) => setLanguageOverride(e.target.value as AppLang)}
+      >
+        {SUPPORTED_LANGS.map((lng) => (
+          <option key={lng} value={lng}>
+            {t(`lang.${lng}`)}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
