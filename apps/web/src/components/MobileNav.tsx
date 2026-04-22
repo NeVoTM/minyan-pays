@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next'
 export function MobileNav() {
   const { t } = useTranslation()
   const items: { to: string; labelKey: string; end?: boolean }[] = [
-    { to: '/', labelKey: 'nav.home', end: true },
     { to: '/punch', labelKey: 'nav.punch', end: true },
     { to: '/punch/out', labelKey: 'nav.leave', end: true },
-    { to: '/member', labelKey: 'nav.member', end: true },
+    { to: '/', labelKey: 'nav.member', end: true },
+    { to: '/member', labelKey: 'nav.memberBalance', end: true },
     { to: '/rabbi', labelKey: 'nav.rabbi', end: true },
     { to: '/admin', labelKey: 'nav.admin', end: true },
   ]
@@ -24,12 +24,29 @@ export function MobileNav() {
             to={to}
             end={end}
             className={({ isActive }) =>
-              [
-                'flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center text-[10px] font-semibold leading-tight tracking-tight transition sm:text-[11px]',
-                isActive
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-slate-500 active:bg-slate-50 active:text-slate-700',
-              ].join(' ')
+              (() => {
+                const base =
+                  'flex min-h-[3.25rem] min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-0.5 py-1.5 text-center text-[10px] font-semibold uppercase leading-tight tracking-tight transition sm:text-[11px]'
+                if (to === '/punch') {
+                  return `${base} ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'text-emerald-700/90 active:bg-emerald-50 active:text-emerald-800'
+                  }`
+                }
+                if (to === '/punch/out') {
+                  return `${base} ${
+                    isActive
+                      ? 'bg-rose-50 text-rose-700'
+                      : 'text-rose-700/90 active:bg-rose-50 active:text-rose-800'
+                  }`
+                }
+                return `${base} ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-slate-500 active:bg-slate-50 active:text-slate-700'
+                }`
+              })()
             }
           >
             {t(labelKey)}

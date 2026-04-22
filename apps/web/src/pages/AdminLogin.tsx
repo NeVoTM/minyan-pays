@@ -7,7 +7,6 @@ import { useOrg } from '../context/OrgContext'
 import {
   cardShell,
   fieldLabel,
-  pageSubtitle,
   pageTitle,
   pillInput,
   primaryBtn,
@@ -47,7 +46,6 @@ export function AdminLogin() {
         <BackLink to="/" />
         <div>
           <h1 className={pageTitle}>{t('adminLogin.title')}</h1>
-          <p className={pageSubtitle}>{t('adminLogin.subtitle')}</p>
         </div>
       </div>
 

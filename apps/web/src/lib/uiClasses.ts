@@ -15,9 +15,13 @@ export const cardShell =
 export const primaryBtn =
   'w-full rounded-full bg-gradient-to-r from-blue-600 to-blue-500 py-4 text-[15px] font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:from-blue-500 hover:to-blue-600 active:scale-[0.99] disabled:opacity-50'
 
-/** Two-tone blue — punch-out “Record departure” (distinct from punch-in). */
+/** Large green CTA for check-in action. */
+export const punchInCheckInBtn =
+  'w-full rounded-full bg-gradient-to-r from-emerald-700 to-emerald-500 py-5 text-[18px] font-bold text-white shadow-lg shadow-emerald-700/30 transition hover:from-emerald-600 hover:to-emerald-400 active:scale-[0.99] disabled:opacity-50'
+
+/** Large red CTA for check-out action. */
 export const punchOutDepartureBtn =
-  'w-full rounded-full bg-gradient-to-r from-blue-900 via-blue-600 to-sky-400 py-4 text-[15px] font-semibold text-white shadow-lg shadow-blue-900/30 transition hover:from-blue-800 hover:via-blue-500 hover:to-sky-300 active:scale-[0.99] disabled:opacity-50'
+  'w-full rounded-full bg-gradient-to-r from-rose-800 to-red-600 py-5 text-[18px] font-bold text-white shadow-lg shadow-red-800/30 transition hover:from-rose-700 hover:to-red-500 active:scale-[0.99] disabled:opacity-50'
 
 /** Mask digits like a password without using type=password (avoids browser save-password pairing). */
 export const pinInput =

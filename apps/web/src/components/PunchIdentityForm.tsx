@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { PhoneInput } from './PhoneInput'
@@ -6,7 +6,7 @@ import {
   fieldLabel,
   pillInput,
   pinInput,
-  primaryBtn,
+  punchInCheckInBtn,
   punchOutDepartureBtn,
 } from '../lib/uiClasses'
 
@@ -30,111 +30,27 @@ type Props = {
 
 export function PunchIdentityForm({ mode }: Props) {
   const { t } = useTranslation()
-  const readerId = useRef(`punch-qr-${Math.random().toString(36).slice(2, 11)}`)
-  const readerContainerId = readerId.current
-  const [code, setCode] = useState('')
   const [phoneDigits, setPhoneDigits] = useState('')
   const [pin, setPin] = useState('')
-  const [smartCode, setSmartCode] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null)
-
-  const clearOther = useCallback(
-    (keep: 'code' | 'phone' | 'smart') => {
-      if (keep !== 'code') setCode('')
-      if (keep !== 'phone') {
-        setPhoneDigits('')
-        setPin('')
-      }
-      if (keep !== 'smart') setSmartCode('')
-    },
-    []
-  )
 
   const canSubmit = (() => {
-    const s = smartCode.trim()
-    const c = code.trim()
-    if (s.length > 0) return true
-    if (phoneDigits.length === 10 && pin.length >= 4) return true
-    if (c.length >= 4) return true
+    if (phoneDigits.length >= 10 && pin.length === 4) return true
     return false
   })()
-
-  useEffect(() => {
-    if (!scanning) return
-
-    let cancelled = false
-    const timer = setTimeout(async () => {
-      try {
-        const { Html5Qrcode } = await import('html5-qrcode')
-        const h = new Html5Qrcode(readerContainerId)
-        scannerRef.current = h
-        await h.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
-          (decoded) => {
-            if (cancelled) return
-            const t = decoded.trim()
-            setSmartCode(t)
-            setCode('')
-            setPhoneDigits('')
-            setPin('')
-            void h.stop().then(() => {
-              scannerRef.current = null
-              setScanning(false)
-            })
-          },
-          () => {}
-        )
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setErr(e instanceof Error ? e.message : t('punchCommon.scanFailed'))
-          setScanning(false)
-        }
-      }
-    }, 200)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-      void scannerRef.current?.stop().catch(() => {})
-      scannerRef.current = null
-    }
-  }, [scanning, readerContainerId, t])
-
-  async function stopScan() {
-    try {
-      await scannerRef.current?.stop()
-    } catch {
-      /* ignore */
-    }
-    scannerRef.current = null
-    setScanning(false)
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
     setMsg(null)
-    const s = smartCode.trim()
-    const c = code.trim()
-    const modes = [
-      s.length > 0,
-      phoneDigits.length === 10 && pin.length >= 4,
-      c.length >= 4,
-    ].filter(Boolean).length
+    const modes = [phoneDigits.length >= 10 && pin.length === 4].filter(Boolean).length
     if (modes !== 1) {
-      setErr(t('punchCommon.oneMode'))
+      setErr(t('punchCommon.needOne'))
       return
     }
-    let body: Record<string, string>
-    if (s.length > 0) body = { smartCode: s }
-    else if (phoneDigits.length === 10 && pin.length >= 4)
-      body = { phone: phoneDigits, pin }
-    else body = { attendanceCode: c }
+    const body: Record<string, string> = { phone: phoneDigits, pin }
 
     setLoading(true)
     try {
@@ -158,10 +74,8 @@ export function PunchIdentityForm({ mode }: Props) {
         const when = new Date(r.punchOutAt).toLocaleString()
         setMsg(t('punchOut.success', { name: r.displayName, when }))
       }
-      setCode('')
       setPhoneDigits('')
       setPin('')
-      setSmartCode('')
     } catch (e: unknown) {
       setMsg(null)
       setErr(e instanceof Error ? e.message : t('punchOut.error'))
@@ -170,7 +84,7 @@ export function PunchIdentityForm({ mode }: Props) {
     }
   }
 
-  const btnClass = mode === 'in' ? primaryBtn : punchOutDepartureBtn
+  const btnClass = mode === 'in' ? punchInCheckInBtn : punchOutDepartureBtn
   const submitKey = mode === 'in' ? 'punchIn.submit' : 'punchOut.submit'
   const loadingKey = mode === 'in' ? 'punchIn.sending' : 'punchOut.saving'
 
@@ -193,95 +107,43 @@ export function PunchIdentityForm({ mode }: Props) {
         />
 
         <div className="space-y-3">
-          <label className="block">
-            <span className={fieldLabel}>{t('punchIn.code')}</span>
-            <input
-              className={`${pillInput} font-mono tracking-widest`}
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value)
-                if (e.target.value.trim()) clearOther('code')
-              }}
-              autoComplete="off"
-              inputMode="text"
-              placeholder="••••••"
-            />
-          </label>
-          <p className="text-center text-xs font-medium text-slate-400">
-            {t('common.or')}
-          </p>
-          <label className="block">
-            <span className={fieldLabel}>{t('punchCommon.phonePinTitle')}</span>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className={fieldLabel}>{t('memberLogin.phone')}</span>
             <PhoneInput
               className={pillInput}
               value={phoneDigits}
               onChange={(d) => {
                 setPhoneDigits(d)
-                if (d.length > 0 || pin.length > 0) clearOther('phone')
               }}
+              maxDigits={15}
+              formatMode="intl"
+              placeholder="123-456-7890"
               autoComplete="off"
             />
+            {phoneDigits.length > 10 && (
+              <p className="mt-1 text-[11px] text-amber-700">
+                International format: country code - territory code - city code - local tel#
+              </p>
+            )}
           </label>
-          <label className="block">
-            <span className={fieldLabel}>{t('memberLogin.pin')}</span>
+            <label className="block">
+              <span className={fieldLabel}>{t('memberLogin.pin')}</span>
             <input
               type="text"
               inputMode="numeric"
               className={pinInput}
               value={pin}
               onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, '').slice(0, 12)
+                const v = e.target.value.replace(/\D/g, '').slice(0, 4)
                 setPin(v)
-                if (v.length > 0 || phoneDigits.length > 0) clearOther('phone')
               }}
               autoComplete="off"
               minLength={4}
+              maxLength={4}
             />
           </label>
-          <p className="text-center text-xs font-medium text-slate-400">
-            {t('common.or')}
-          </p>
-          <label className="block">
-            <span className={fieldLabel}>{t('punchCommon.smartCodeLabel')}</span>
-            <textarea
-              className={`${pillInput} min-h-[4.5rem] resize-y font-mono text-xs`}
-              value={smartCode}
-              onChange={(e) => {
-                setSmartCode(e.target.value)
-                if (e.target.value.trim()) clearOther('smart')
-              }}
-              autoComplete="off"
-              placeholder={t('punchCommon.smartCodePh')}
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {!scanning ? (
-              <button
-                type="button"
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                onClick={() => {
-                  setErr(null)
-                  setScanning(true)
-                }}
-              >
-                {t('punchCommon.scanQr')}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                onClick={() => void stopScan()}
-              >
-                {t('punchCommon.stopScan')}
-              </button>
-            )}
           </div>
-          {scanning && (
-            <div
-              id={readerContainerId}
-              className="min-h-[240px] overflow-hidden rounded-2xl border border-slate-200 bg-black/5"
-            />
-          )}
         </div>
 
         {err && (
@@ -294,9 +156,6 @@ export function PunchIdentityForm({ mode }: Props) {
           {loading ? t(loadingKey) : t(submitKey)}
         </button>
       </form>
-      {!canSubmit && (
-        <p className="text-xs text-slate-500">{t('punchCommon.needOne')}</p>
-      )}
       {msg && (
         <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-100">
           {msg}

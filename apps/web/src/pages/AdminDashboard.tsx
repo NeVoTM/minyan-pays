@@ -126,14 +126,18 @@ export function AdminDashboard() {
   const token = localStorage.getItem(KEY)
   const [session, setSession] = useState<SessionResp | null>(null)
   const [members, setMembers] = useState<MemberRow[]>([])
-  const [treasury, setTreasury] = useState<{
-    balanceCents: number
-    systemLocked: boolean
-  } | null>(null)
   const [settings, setSettings] = useState<{
     slug: string
     name: string
     synagogueName?: string
+    locationAddress?: string | null
+    locationPhone?: string | null
+    locationEmail?: string | null
+    locationWebsite?: string | null
+    rabbiName?: string | null
+    rabbiAddress?: string | null
+    rabbiPhone?: string | null
+    rabbiEmail?: string | null
     defaultLocale: 'en' | 'he' | 'es' | 'ru' | 'fr'
     rabbiBanner?: string | null
     firstNineCents: number
@@ -152,20 +156,23 @@ export function AdminDashboard() {
     punchOutAtLocal: '',
     punchInStatus: 'PENDING',
   })
-  const [rabbiDraft, setRabbiDraft] = useState('')
   const [locationNameDraft, setLocationNameDraft] = useState('')
+  const [locationAddressDraft, setLocationAddressDraft] = useState('')
+  const [locationPhoneDraft, setLocationPhoneDraft] = useState('')
+  const [locationEmailDraft, setLocationEmailDraft] = useState('')
+  const [locationWebsiteDraft, setLocationWebsiteDraft] = useState('')
   const [locationLocaleDraft, setLocationLocaleDraft] = useState<
     'en' | 'he' | 'es' | 'ru' | 'fr'
   >('he')
   const [locationSetupMsg, setLocationSetupMsg] = useState<string | null>(null)
+  const [rabbiNameDraft, setRabbiNameDraft] = useState('')
+  const [rabbiAddressDraft, setRabbiAddressDraft] = useState('')
+  const [rabbiPhoneDraft, setRabbiPhoneDraft] = useState('')
+  const [rabbiEmailDraft, setRabbiEmailDraft] = useState('')
   const [rabbiPasswordDraft, setRabbiPasswordDraft] = useState('')
   const [rabbiSetupMsg, setRabbiSetupMsg] = useState<string | null>(null)
-  const [rabbiBannerMsg, setRabbiBannerMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [fund, setFund] = useState('')
-  const [newMember, setNewMember] = useState(() => emptyMemberForm())
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
-  const [memberConfirm, setMemberConfirm] = useState<string | null>(null)
   const [weekExportDate, setWeekExportDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   )
@@ -186,7 +193,6 @@ export function AdminDashboard() {
     prevAdminTab.current = adminTab
     if (adminTab !== prev) {
       setMemberMsg(null)
-      setMemberConfirm(null)
     }
   }, [adminTab])
 
@@ -196,16 +202,20 @@ export function AdminDashboard() {
       return
     }
     try {
-      const [s, t, st, m, tx] = await Promise.all([
+      const [s, st, m, tx] = await Promise.all([
         api<SessionResp>('/api/admin/session/today', { token }),
-        api<{ balanceCents: number; systemLocked: boolean }>(
-          '/api/admin/treasury',
-          { token }
-        ),
         api<{
           slug: string
           name: string
           synagogueName?: string
+          locationAddress?: string | null
+          locationPhone?: string | null
+          locationEmail?: string | null
+          locationWebsite?: string | null
+          rabbiName?: string | null
+          rabbiAddress?: string | null
+          rabbiPhone?: string | null
+          rabbiEmail?: string | null
           defaultLocale: 'en' | 'he' | 'es' | 'ru' | 'fr'
           rabbiBanner?: string | null
           firstNineCents: number
@@ -216,11 +226,17 @@ export function AdminDashboard() {
         api<AttendanceTxn[]>('/api/admin/attendance', { token }),
       ])
       setSession(s)
-      setTreasury(t)
       setSettings(st)
-      setRabbiDraft(st.rabbiBanner ?? '')
       setLocationNameDraft(st.synagogueName ?? '')
+      setLocationAddressDraft(st.locationAddress ?? '')
+      setLocationPhoneDraft(st.locationPhone ?? '')
+      setLocationEmailDraft(st.locationEmail ?? '')
+      setLocationWebsiteDraft(st.locationWebsite ?? '')
       setLocationLocaleDraft(st.defaultLocale ?? 'he')
+      setRabbiNameDraft(st.rabbiName ?? '')
+      setRabbiAddressDraft(st.rabbiAddress ?? '')
+      setRabbiPhoneDraft(st.rabbiPhone ?? '')
+      setRabbiEmailDraft(st.rabbiEmail ?? '')
       setMembers(m)
       setAttendanceTxns(tx)
       setErr(null)
@@ -386,25 +402,6 @@ export function AdminDashboard() {
     return members.find((m) => m.id === userId)
   }
 
-  function toLocalInputValue(iso: string | null): string {
-    if (!iso) return ''
-    const d = new Date(iso)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-      d.getDate()
-    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }
-
-  function openEditTxn(tx: AttendanceTxn) {
-    setEditTxn(tx)
-    setEditTxnMsg(null)
-    setEditTxnForm({
-      punchInAtLocal: toLocalInputValue(tx.punchInAt),
-      punchOutAtLocal: toLocalInputValue(tx.punchOutAt),
-      punchInStatus: tx.punchInStatus,
-    })
-  }
-
   async function saveEditTxn(e: React.FormEvent) {
     e.preventDefault()
     if (!token || !editTxn) return
@@ -451,113 +448,6 @@ export function AdminDashboard() {
     }
   }
 
-  async function addFunds(e: React.FormEvent) {
-    e.preventDefault()
-    if (!token || !fund) return
-    const cents = Math.round(parseFloat(fund) * 100)
-    if (Number.isNaN(cents)) return
-    await api('/api/admin/treasury/fund', {
-      method: 'POST',
-      token,
-      body: JSON.stringify({ deltaCents: cents }),
-    })
-    setFund('')
-    await load()
-  }
-
-  async function createMember(e: React.FormEvent) {
-    e.preventDefault()
-    if (!token) return
-    setMemberMsg(null)
-    setMemberConfirm(null)
-    if (newMember.phoneDigits.length !== 10) {
-      setMemberMsg(t('admin.phone10Us'))
-      return
-    }
-    if (
-      newMember.spousePhoneDigits.length > 0 &&
-      newMember.spousePhoneDigits.length !== 10
-    ) {
-      setMemberMsg(t('admin.spousePhone10'))
-      return
-    }
-    if (isPunchInCodeTaken(members, newMember.attendanceCode)) {
-      setMemberMsg(t('admin.punchTakenErr'))
-      return
-    }
-    const zip5 = newMember.postalCode.replace(/\D/g, '').slice(0, 5)
-    if (
-      !newMember.addressLine1.trim() ||
-      !newMember.city.trim() ||
-      !newMember.stateRegion.trim() ||
-      zip5.length !== 5
-    ) {
-      setMemberMsg(t('admin.addressRequired'))
-      return
-    }
-    try {
-      const r = await api<{
-        displayName: string
-        attendanceCode: string
-        phone: string
-      }>('/api/admin/members', {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          firstName: newMember.firstName.trim(),
-          lastName: newMember.lastName.trim(),
-          phone: newMember.phoneDigits,
-          pin: newMember.pin,
-          attendanceCode: newMember.attendanceCode.trim(),
-          isMarried: newMember.isMarried,
-          zellePhone: newMember.zellePhone.trim() || undefined,
-          wifeZellePhone: newMember.wifeZellePhone.trim() || undefined,
-          addressLine1: newMember.addressLine1.trim(),
-          addressLine2: newMember.addressLine2.trim() || undefined,
-          city: newMember.city.trim(),
-          stateRegion: newMember.stateRegion.trim(),
-          postalCode: zip5,
-          email: newMember.email.trim() || undefined,
-          spouseEmail: newMember.spouseEmail.trim() || undefined,
-          paypalAccount: newMember.paypalAccount.trim() || undefined,
-          achRoutingNumber: newMember.achRoutingNumber.trim() || undefined,
-          achAccountNumber: newMember.achAccountNumber.trim() || undefined,
-          spousePhone:
-            newMember.spousePhoneDigits.length === 10
-              ? newMember.spousePhoneDigits
-              : undefined,
-        }),
-      })
-      setMemberConfirm(
-        t('admin.savedMember', {
-          name: r.displayName,
-          phone: r.phone,
-          code: r.attendanceCode,
-        })
-      )
-      setNewMember(emptyMemberForm())
-      await load()
-    } catch (e: unknown) {
-      setMemberMsg(e instanceof Error ? e.message : t('admin.createFailed'))
-    }
-  }
-
-  async function saveRabbiBanner() {
-    if (!token) return
-    setRabbiBannerMsg(null)
-    try {
-      await api('/api/admin/settings', {
-        method: 'PATCH',
-        token,
-        body: JSON.stringify({ rabbiBanner: rabbiDraft.trim() || null }),
-      })
-      setRabbiBannerMsg(t('admin.bannerSaved'))
-      await load()
-    } catch (e: unknown) {
-      setRabbiBannerMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
-    }
-  }
-
   async function saveLocationSetup(e: React.FormEvent) {
     e.preventDefault()
     if (!token) return
@@ -573,10 +463,36 @@ export function AdminDashboard() {
         token,
         body: JSON.stringify({
           synagogueName: trimmedName,
+          locationAddress: locationAddressDraft.trim() || null,
+          locationPhone: locationPhoneDraft.trim() || null,
+          locationEmail: locationEmailDraft.trim() || null,
+          locationWebsite: locationWebsiteDraft.trim() || null,
           defaultLocale: locationLocaleDraft,
         }),
       })
       setLocationSetupMsg(t('admin.locationSaved'))
+      await load()
+    } catch (e: unknown) {
+      setLocationSetupMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
+    }
+  }
+
+  async function clearLocationSetup() {
+    if (!token || !settings) return
+    setLocationSetupMsg(null)
+    try {
+      await api('/api/admin/settings', {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({
+          synagogueName: settings.name,
+          locationAddress: null,
+          locationPhone: null,
+          locationEmail: null,
+          locationWebsite: null,
+        }),
+      })
+      setLocationSetupMsg(t('admin.locationDeleted'))
       await load()
     } catch (e: unknown) {
       setLocationSetupMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
@@ -596,6 +512,10 @@ export function AdminDashboard() {
         method: 'PATCH',
         token,
         body: JSON.stringify({
+          rabbiName: rabbiNameDraft.trim() || null,
+          rabbiAddress: rabbiAddressDraft.trim() || null,
+          rabbiPhone: rabbiPhoneDraft.trim() || null,
+          rabbiEmail: rabbiEmailDraft.trim() || null,
           rabbiPassword: rabbiPasswordDraft.trim() || null,
         }),
       })
@@ -607,14 +527,26 @@ export function AdminDashboard() {
     }
   }
 
-  async function toggleLock() {
-    if (!token || !treasury) return
-    await api('/api/admin/treasury/lock', {
-      method: 'PATCH',
-      token,
-      body: JSON.stringify({ systemLocked: !treasury.systemLocked }),
-    })
-    await load()
+  async function clearRabbiSetup() {
+    if (!token) return
+    setRabbiSetupMsg(null)
+    try {
+      await api('/api/admin/settings', {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({
+          rabbiName: null,
+          rabbiAddress: null,
+          rabbiPhone: null,
+          rabbiEmail: null,
+          rabbiPassword: null,
+        }),
+      })
+      setRabbiSetupMsg(t('admin.rabbiDeleted'))
+      await load()
+    } catch (e: unknown) {
+      setRabbiSetupMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
+    }
   }
 
   async function downloadWeekPayoutCsv() {
@@ -644,7 +576,7 @@ export function AdminDashboard() {
       <button
         key={id}
         type="button"
-        className={`rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium leading-tight sm:text-xs ${
+        className={`rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium uppercase leading-tight sm:text-xs ${
           on
             ? 'border-blue-500 bg-blue-50 text-blue-900 shadow-sm'
             : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -658,10 +590,6 @@ export function AdminDashboard() {
 
   const checkedInCount = session?.attendances.length ?? 0
   const pendingApprovalCount = members.filter((m) => !m.isApproved).length
-  const punchInTakenAdd = useMemo(
-    () => isPunchInCodeTaken(members, newMember.attendanceCode),
-    [members, newMember.attendanceCode]
-  )
   const punchInTakenEdit = useMemo(
     () =>
       editMember
@@ -722,13 +650,10 @@ export function AdminDashboard() {
         </p>
       </div>
       {err && <p className="text-xs text-red-600">{err}</p>}
+      {memberMsg && <p className="text-xs text-slate-600">{memberMsg}</p>}
 
       <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label={t('admin.navAria')}>
         {tabBtn('overview', t('admin.tabOverview'))}
-        {tabBtn(
-          'approvals',
-          t('admin.tabApprovals', { count: pendingApprovalCount })
-        )}
         {tabBtn(
           'members',
           pendingApprovalCount
@@ -739,62 +664,10 @@ export function AdminDashboard() {
         )}
         {tabBtn('today', t('admin.tabToday'))}
         {tabBtn('add', t('admin.tabAdd'))}
-        {tabBtn('checkio', t('admin.tabCheckIo'))}
       </nav>
-
-      {pendingApprovalCount > 0 && (
-        <div
-          className="animate-pulse rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-950 ring-1 ring-amber-200/80 sm:text-xs"
-          role="status"
-        >
-          {t('admin.pendingLine', { count: pendingApprovalCount })}{' '}
-          <button
-            type="button"
-            className="text-amber-900 underline decoration-amber-700/60"
-            onClick={() => setAdminTab('approvals')}
-          >
-            {t('admin.allMembersLink')}
-          </button>{' '}
-          {t('admin.pendingLineEnd')}
-        </div>
-      )}
 
       {adminTab === 'overview' && (
         <>
-          {treasury && (
-            <div className="rounded-md border border-slate-200 bg-slate-50 ring-1 ring-slate-100 p-3 text-xs sm:text-sm">
-              <p>
-                {t('admin.treasury')}{' '}
-                <strong>${(treasury.balanceCents / 100).toFixed(2)}</strong>
-              </p>
-              <p className="text-slate-400">
-                {t('admin.locked')}{' '}
-                {treasury.systemLocked ? t('common.yes') : t('common.no')}
-              </p>
-              <button
-                type="button"
-                className="mt-2 text-blue-600/90 hover:underline"
-                onClick={() => void toggleLock()}
-              >
-                {t('admin.toggleLock')}
-              </button>
-              <form onSubmit={addFunds} className="mt-3 flex gap-2">
-                <input
-                  className="flex-1 rounded border border-slate-200 bg-white px-2 py-1"
-                  placeholder={t('admin.addUsd')}
-                  value={fund}
-                  onChange={(e) => setFund(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="rounded bg-slate-700 px-3 py-1 text-sm"
-                >
-                  {t('admin.fund')}
-                </button>
-              </form>
-            </div>
-          )}
-
       {settings && (
         <div className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm">
           <h2 className="mb-2 font-medium text-slate-800">
@@ -811,6 +684,44 @@ export function AdminDashboard() {
                 value={locationNameDraft}
                 onChange={(e) => setLocationNameDraft(e.target.value)}
                 placeholder={t('admin.locationDisplayName')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.address')}
+              <input
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={locationAddressDraft}
+                onChange={(e) => setLocationAddressDraft(e.target.value)}
+                placeholder={t('admin.address')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.phone')}
+              <input
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={locationPhoneDraft}
+                onChange={(e) => setLocationPhoneDraft(e.target.value)}
+                placeholder={t('admin.phone')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.labelEmail')}
+              <input
+                type="email"
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={locationEmailDraft}
+                onChange={(e) => setLocationEmailDraft(e.target.value)}
+                placeholder={t('admin.labelEmail')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.website')}
+              <input
+                type="url"
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={locationWebsiteDraft}
+                onChange={(e) => setLocationWebsiteDraft(e.target.value)}
+                placeholder="https://example.org"
               />
             </label>
             <label className="text-xs text-slate-600">
@@ -834,12 +745,21 @@ export function AdminDashboard() {
             <p className="text-[11px] text-slate-500">
               {t('admin.locationInternalSlug')}: <strong>{settings.slug}</strong>
             </p>
-            <button
-              type="submit"
-              className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-            >
-              {t('admin.saveLocationSetup')}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                {t('admin.saveLocationSetup')}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100"
+                onClick={() => void clearLocationSetup()}
+              >
+                {t('common.delete')}
+              </button>
+            </div>
           </form>
           {locationSetupMsg && (
             <p className="mt-2 text-[11px] text-slate-500">{locationSetupMsg}</p>
@@ -857,6 +777,43 @@ export function AdminDashboard() {
           </p>
           <form className="grid gap-2" onSubmit={saveRabbiSetup}>
             <label className="text-xs text-slate-600">
+              {t('admin.rabbiName')}
+              <input
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={rabbiNameDraft}
+                onChange={(e) => setRabbiNameDraft(e.target.value)}
+                placeholder={t('admin.rabbiName')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.address')}
+              <input
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={rabbiAddressDraft}
+                onChange={(e) => setRabbiAddressDraft(e.target.value)}
+                placeholder={t('admin.address')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.phone')}
+              <input
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={rabbiPhoneDraft}
+                onChange={(e) => setRabbiPhoneDraft(e.target.value)}
+                placeholder={t('admin.phone')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
+              {t('admin.labelEmail')}
+              <input
+                type="email"
+                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                value={rabbiEmailDraft}
+                onChange={(e) => setRabbiEmailDraft(e.target.value)}
+                placeholder={t('admin.labelEmail')}
+              />
+            </label>
+            <label className="text-xs text-slate-600">
               {t('admin.rabbiPasswordLabel')}
               <input
                 type="password"
@@ -867,12 +824,21 @@ export function AdminDashboard() {
                 autoComplete="new-password"
               />
             </label>
-            <button
-              type="submit"
-              className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-            >
-              {t('admin.saveRabbiSetup')}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                {t('admin.saveRabbiSetup')}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100"
+                onClick={() => void clearRabbiSetup()}
+              >
+                {t('common.delete')}
+              </button>
+            </div>
           </form>
           {rabbiSetupMsg && (
             <p className="mt-2 text-[11px] text-slate-500">{rabbiSetupMsg}</p>
@@ -888,32 +854,6 @@ export function AdminDashboard() {
             weekly: (settings.weeklyBonusCents / 100).toFixed(2),
           })}
         </p>
-      )}
-
-      {settings && (
-        <div className="rounded-md border border-blue-200 bg-blue-50/80 p-3 text-xs sm:text-sm">
-          <h2 className="mb-2 font-medium text-blue-900/95 sm:text-sm">
-            {t('admin.rabbiBannerTitle')}
-          </h2>
-          <textarea
-            className="w-full rounded border border-slate-200 bg-white px-2 py-2 text-slate-200"
-            rows={3}
-            maxLength={2000}
-            placeholder={t('admin.rabbiBannerPh')}
-            value={rabbiDraft}
-            onChange={(e) => setRabbiDraft(e.target.value)}
-          />
-          <button
-            type="button"
-            className="mt-2 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-            onClick={() => void saveRabbiBanner()}
-          >
-            {t('admin.saveBanner')}
-          </button>
-          {rabbiBannerMsg && (
-            <p className="mt-2 text-[11px] text-slate-400">{rabbiBannerMsg}</p>
-          )}
-        </div>
       )}
 
       <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
@@ -1088,224 +1028,20 @@ export function AdminDashboard() {
       )}
 
       {adminTab === 'add' && (
-      <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-        <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-          {t('admin.addMemberTitle')}
-        </h2>
-        <form onSubmit={createMember} className="grid gap-2 text-sm">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input
-              className="rounded border border-slate-200 bg-white px-2 py-1"
-              placeholder={t('signup.firstName')}
-              value={newMember.firstName}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, firstName: e.target.value }))
-              }
-              required
-            />
-            <input
-              className="rounded border border-slate-200 bg-white px-2 py-1"
-              placeholder={t('signup.lastName')}
-              value={newMember.lastName}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, lastName: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <label className="text-xs text-slate-400">
-            {t('admin.phone')}
-            <PhoneInput
-              className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-              value={newMember.phoneDigits}
-              onChange={(d) =>
-                setNewMember((m) => ({ ...m, phoneDigits: d }))
-              }
-              required
-            />
-          </label>
-          <label className="text-xs text-slate-600">
-            {t('admin.loginPinLabel')}
-            <input
-              className={`mt-1 w-full rounded border bg-white px-2 py-1 ${
-                newMember.pin.length > 0 && newMember.pin.length < 4
-                  ? 'border-red-500 ring-1 ring-red-200'
-                  : 'border-slate-200'
-              }`}
-              placeholder={t('admin.loginPinPh')}
-              value={newMember.pin}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, pin: e.target.value }))
-              }
-              required
-              minLength={4}
-              autoComplete="new-password"
-            />
-          </label>
-          <label className="text-xs text-slate-600">
-            {t('admin.punchInLabel')}
-            <input
-              className={`mt-1 w-full rounded border bg-white px-2 py-1 font-mono ${
-                punchInTakenAdd
-                  ? 'border-red-500 ring-1 ring-red-200'
-                  : 'border-slate-200'
-              }`}
-              placeholder={t('admin.punchInPh')}
-              value={newMember.attendanceCode}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, attendanceCode: e.target.value }))
-              }
-              required
-              minLength={4}
-            />
-          </label>
-          {punchInTakenAdd && (
-            <p className="text-xs text-red-600">{t('admin.punchInTaken')}</p>
-          )}
-          <p className="text-xs text-slate-500">{t('admin.address')}</p>
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('admin.street1')}
-            value={newMember.addressLine1}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, addressLine1: e.target.value }))
-            }
-          />
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('admin.street2')}
-            value={newMember.addressLine2}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, addressLine2: e.target.value }))
-            }
-          />
-          <div className="grid gap-2 sm:grid-cols-3">
-            <input
-              className="rounded border border-slate-200 bg-white px-2 py-1"
-              placeholder={t('signup.city')}
-              value={newMember.city}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, city: e.target.value }))
-              }
-            />
-            <input
-              className="rounded border border-slate-200 bg-white px-2 py-1"
-              placeholder={t('signup.state')}
-              value={newMember.stateRegion}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, stateRegion: e.target.value }))
-              }
-            />
-            <input
-              className="rounded border border-slate-200 bg-white px-2 py-1"
-              placeholder={t('signup.zip')}
-              value={newMember.postalCode}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, postalCode: e.target.value }))
-              }
-            />
-          </div>
-          <label className="flex items-center gap-2 text-slate-400">
-            <input
-              type="checkbox"
-              checked={newMember.isMarried}
-              onChange={(e) =>
-                setNewMember((m) => ({ ...m, isMarried: e.target.checked }))
-              }
-            />
-            {t('signup.married')}
-          </label>
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('signup.zelleYou')}
-            value={newMember.zellePhone}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, zellePhone: e.target.value }))
-            }
-          />
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('signup.zelleSpouse')}
-            value={newMember.wifeZellePhone}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, wifeZellePhone: e.target.value }))
-            }
-          />
-          <p className="text-xs text-slate-500">{t('admin.contactPayment')}</p>
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            type="email"
-            autoComplete="email"
-            placeholder={t('signup.emailOpt')}
-            value={newMember.email}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, email: e.target.value }))
-            }
-          />
-          <label className="text-xs text-slate-400">
-            {t('admin.spousePhone')}
-            <PhoneInput
-              className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-              value={newMember.spousePhoneDigits}
-              onChange={(d) =>
-                setNewMember((m) => ({ ...m, spousePhoneDigits: d }))
-              }
-            />
-          </label>
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            type="email"
-            autoComplete="off"
-            placeholder={t('signup.spouseEmail')}
-            value={newMember.spouseEmail}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, spouseEmail: e.target.value }))
-            }
-          />
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('admin.paypalPh')}
-            value={newMember.paypalAccount}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, paypalAccount: e.target.value }))
-            }
-          />
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('admin.achRouting')}
-            inputMode="numeric"
-            value={newMember.achRoutingNumber}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, achRoutingNumber: e.target.value }))
-            }
-          />
-          <input
-            className="rounded border border-slate-200 bg-white px-2 py-1"
-            placeholder={t('admin.achAccount')}
-            inputMode="numeric"
-            autoComplete="off"
-            value={newMember.achAccountNumber}
-            onChange={(e) =>
-              setNewMember((m) => ({ ...m, achAccountNumber: e.target.value }))
-            }
-          />
-          <button
-            type="submit"
-            disabled={punchInTakenAdd}
-            className="rounded bg-slate-700 py-2 font-medium hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {t('admin.saveMember')}
-          </button>
-        </form>
-        {memberConfirm && (
-          <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
-            {memberConfirm}
+        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
+          <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
+            {t('admin.addMemberTitle')}
+          </h2>
+          <p className="text-[11px] text-slate-500 sm:text-xs">
+            {t('admin.addUsesJoinRegister')}
           </p>
-        )}
-        {memberMsg && memberMsg !== memberConfirm && (
-          <p className="mt-2 text-xs text-slate-400">{memberMsg}</p>
-        )}
-      </div>
+          <Link
+            to="/member/signup"
+            className="mt-3 inline-flex rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {t('home.signupCta')}
+          </Link>
+        </div>
       )}
 
       {adminTab === 'today' && session && (
@@ -1414,80 +1150,6 @@ export function AdminDashboard() {
         </div>
       )}
 
-      {adminTab === 'checkio' && (
-        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-          <h2 className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">
-            {t('admin.checkIoTitle', { count: attendanceTxns.length })}
-          </h2>
-          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.checkIoHelp')}
-          </p>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {attendanceTxns.map((tx) => (
-              <li
-                key={tx.id}
-                className="rounded-md border border-slate-200 bg-slate-50/80 p-2.5 text-[11px] leading-snug sm:text-xs"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-slate-900">
-                      {tx.userDisplayName}
-                    </p>
-                    <p className="truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">
-                      {tx.userPhone} · {tx.userPunchInCode}
-                    </p>
-                    <p className="mt-1 text-slate-600">
-                      {t('admin.inLabel')}{' '}
-                      {new Date(tx.punchInAt).toLocaleString()}
-                    </p>
-                    <p className="text-slate-600">
-                      {t('admin.outLabel')}{' '}
-                      {tx.punchOutAt
-                        ? new Date(tx.punchOutAt).toLocaleString()
-                        : t('common.dash')}
-                    </p>
-                    <p className="text-slate-500">
-                      {t('admin.sessionLabel')}{' '}
-                      {tx.sessionDateKey || t('common.dash')} ·{' '}
-                      {t('admin.statusLabel')}{' '}
-                      <span
-                        className={
-                          tx.punchInStatus === 'CONFIRMED'
-                            ? 'text-emerald-700'
-                            : tx.punchInStatus === 'PENDING'
-                              ? 'text-amber-700'
-                              : 'text-slate-700'
-                        }
-                      >
-                        {fmtAttendanceStatus(tx.punchInStatus)}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <button
-                      type="button"
-                      className="text-slate-700 hover:underline"
-                      onClick={() => openEditTxn(tx)}
-                    >
-                      {t('admin.editSave')}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-red-700/90 hover:underline"
-                      onClick={() => void deleteTxn(tx.id)}
-                    >
-                      {t('common.delete')}
-                    </button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {attendanceTxns.length === 0 && (
-            <p className="text-xs text-slate-500">{t('admin.noTxns')}</p>
-          )}
-        </div>
-      )}
 
       {viewMember && (
         <div className={MODAL_BACKDROP}>

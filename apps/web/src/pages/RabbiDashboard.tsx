@@ -56,7 +56,9 @@ export function RabbiDashboard() {
   const { t } = useTranslation()
   const nav = useNavigate()
   const token = localStorage.getItem(RABBI_KEY)
-  const [tab, setTab] = useState<'approvals' | 'today' | 'payouts'>('approvals')
+  const [tab, setTab] = useState<'approvals' | 'today' | 'payouts' | 'banner'>(
+    'approvals'
+  )
   const [pending, setPending] = useState<PendingMember[]>([])
   const [session, setSession] = useState<SessionResp | null>(null)
   const [weekDate, setWeekDate] = useState(() =>
@@ -65,6 +67,7 @@ export function RabbiDashboard() {
   const [weekReport, setWeekReport] = useState<WeekReport | null>(null)
   const [paidDraft, setPaidDraft] = useState<Record<string, boolean>>({})
   const [filterDate, setFilterDate] = useState<string>('')
+  const [bannerDraft, setBannerDraft] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
@@ -74,12 +77,14 @@ export function RabbiDashboard() {
       return
     }
     try {
-      const [p, s] = await Promise.all([
+      const [p, s, st] = await Promise.all([
         api<PendingMember[]>('/api/rabbi/members/pending', { token }),
         api<SessionResp>('/api/rabbi/session/today', { token }),
+        api<{ rabbiBanner: string }>('/api/rabbi/settings', { token }),
       ])
       setPending(p)
       setSession(s)
+      setBannerDraft(st.rabbiBanner ?? '')
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
     }
@@ -163,6 +168,22 @@ export function RabbiDashboard() {
     }
   }
 
+  async function saveBanner() {
+    if (!token) return
+    setErr(null)
+    setMsg(null)
+    try {
+      await api('/api/rabbi/settings/banner', {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ rabbiBanner: bannerDraft.trim() || null }),
+      })
+      setMsg(t('rabbi.bannerSaved'))
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
+    }
+  }
+
   const fmtAttendanceStatus = (s: string) =>
     s === 'PENDING'
       ? t('admin.statusPending')
@@ -237,11 +258,11 @@ export function RabbiDashboard() {
       {msg && <p className="text-xs text-emerald-700">{msg}</p>}
 
       <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Rabbi">
-        {(['approvals', 'today', 'payouts'] as const).map((id) => (
+        {(['approvals', 'today', 'payouts', 'banner'] as const).map((id) => (
           <button
             key={id}
             type="button"
-            className={`rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium sm:text-xs ${
+            className={`rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium uppercase sm:text-xs ${
               tab === id
                 ? 'border-blue-500 bg-blue-50 text-blue-900'
                 : 'border-slate-200 bg-white text-slate-700'
@@ -418,6 +439,29 @@ export function RabbiDashboard() {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {tab === 'banner' && (
+        <div className="rounded-md border border-blue-200 bg-blue-50/80 p-3 text-xs sm:text-sm">
+          <h2 className="mb-2 font-medium text-blue-900/95 sm:text-sm">
+            {t('rabbi.bannerTitle')}
+          </h2>
+          <textarea
+            className="w-full rounded border border-slate-200 bg-white px-2 py-2 text-slate-700"
+            rows={4}
+            maxLength={2000}
+            placeholder={t('rabbi.bannerPlaceholder')}
+            value={bannerDraft}
+            onChange={(e) => setBannerDraft(e.target.value)}
+          />
+          <button
+            type="button"
+            className="mt-2 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+            onClick={() => void saveBanner()}
+          >
+            {t('rabbi.saveBanner')}
+          </button>
         </div>
       )}
     </div>

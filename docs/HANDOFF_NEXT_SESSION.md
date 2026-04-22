@@ -2,6 +2,54 @@
 
 Date: 2026-04-20
 
+## Latest Session Updates (2026-04-22)
+
+### Auth and role access
+- Rabbi login no longer falls back to admin password.
+- Rabbi menu access now requires Rabbi setup (`rabbiPasswordHash`) per location.
+- If Rabbi setup is missing, Rabbi login returns explicit setup-required error.
+
+### Admin menu restructuring
+- Restored **Overview** tab and kept **Location setup** + **Rabbi setup** in Admin.
+- Removed Admin treasury block UI and related frontend code paths.
+- Removed Admin approvals and check-in/out tabs from active navigation flow.
+- Admin **Add member** now routes to the same Join/Register signup flow (`/member/signup`) instead of duplicate inline form.
+
+### Rabbi menu expansion
+- Moved treasury/export capability into Rabbi API surface:
+  - `GET /api/rabbi/treasury`
+  - `POST /api/rabbi/treasury/fund`
+  - `PATCH /api/rabbi/treasury/lock`
+  - `GET /api/rabbi/export/week/:weekKey.csv`
+- Banner save/edit remains in Rabbi menu.
+
+### Punch-in / punch-out flow simplification
+- Removed punch-in code + smart code/QR from active check-in/out flow.
+- Check-in/out now use **phone + 4-digit PIN** only.
+- UI condensed to one-row identity entry on punch screens.
+- Updated punch-out subtitle text to:
+  - "After the Rabbi confirms your punch-in, record punch-out."
+- Default phone placeholder set to US format (`123-456-7890`), with international-entry helper prompt shown when digits exceed 10.
+
+### Navigation and labeling updates
+- Bottom nav labels forced to uppercase styling.
+- Check-in menu color set to green; check-out menu color set to red.
+- Added **Member Balance** menu item and moved sign-in access there.
+- Join/Register page simplified (removed extra intro/helper text).
+
+### Member balance screen updates
+- Member login inputs condensed to one row (phone + PIN).
+- Removed "New here? Create an account" prompt from member balance menu.
+
+### Data model updates
+- `Organization` expanded with location/rabbi profile fields:
+  - `locationAddress`, `locationPhone`, `locationEmail`, `locationWebsite`
+  - `rabbiName`, `rabbiAddress`, `rabbiPhone`, `rabbiEmail`
+
+### Build and runtime status
+- Full workspace build currently passes (`api` + `web`).
+- Dev server currently runs with Vite auto-fallback when `5173` is occupied (typically on `5174`).
+
 ## What Was Added/Changed
 
 ### Data safety and continuity

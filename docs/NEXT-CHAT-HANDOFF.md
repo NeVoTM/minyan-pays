@@ -1,14 +1,31 @@
 # Handoff for next chat — minyan-pays (Dovrey Evrit)
 
-**Last updated:** 2026-04-17 (pushed before Saturday night return)  
+**Last updated:** 2026-04-22  
 **Synagogue:** **Dovrey Evrit**  
 **GitHub account email:** elichalfinny@gmail.com  
 **GitHub username:** [NeVoTM](https://github.com/NeVoTM)  
 **Repository:** **`minyan-pays`** (private) → https://github.com/NeVoTM/minyan-pays
 
-Use this file so a new session can continue immediately.
+Use this file so a new session can continue immediately.  
+For full, current detail of the latest iteration, read: `docs/HANDOFF_NEXT_SESSION.md`.
 
-**When you return (Saturday night):** Open this file, run `git pull` on `main` (tracking `cur`), then say you are continuing from the handoff. Latest work includes admin **Check-in/out** transaction list/edit/delete, rewrite-ready spec in `docs/PROGRAM-SUMMARY.md`, and registration/punch-out/admin polish listed below.
+**When you return:** Open this file, run `git pull` on `main`, then continue from `docs/HANDOFF_NEXT_SESSION.md` (latest source of truth).
+
+---
+
+## Snapshot of latest changes (2026-04-22)
+
+- Rabbi login hardened: no admin-password fallback; Rabbi setup required.
+- Admin menu reset to keep **Overview** with **Location setup** + **Rabbi setup** visible.
+- Admin treasury block removed from UI/code.
+- Rabbi menu now owns treasury/export actions (API routes added under `/api/rabbi/...`).
+- Punch flow simplified to **phone + PIN** only (code/QR removed from active flow).
+- Navigation/style polish:
+  - uppercase menu labels
+  - green check-in / red check-out nav coloring
+  - Member Balance menu introduced; sign-in moved there.
+- Member login layout condensed to one-row phone+PIN.
+- Organization schema expanded for location + rabbi profile/contact fields.
 
 ---
 

@@ -610,6 +610,14 @@ const orgSettingsPublicSelect = {
   name: true,
   kind: true,
   synagogueName: true,
+  locationAddress: true,
+  locationPhone: true,
+  locationEmail: true,
+  locationWebsite: true,
+  rabbiName: true,
+  rabbiAddress: true,
+  rabbiPhone: true,
+  rabbiEmail: true,
   rabbiBanner: true,
   firstNineCents: true,
   weeklyBonusCents: true,
@@ -625,6 +633,14 @@ adminRouter.patch("/settings", async (req, res) => {
   const oid = orgId(req);
   const schema = z.object({
     synagogueName: z.string().optional(),
+    locationAddress: z.union([z.string().max(300), z.null()]).optional(),
+    locationPhone: z.union([z.string().max(40), z.null()]).optional(),
+    locationEmail: z.union([z.string().email(), z.null()]).optional(),
+    locationWebsite: z.union([z.string().url(), z.null()]).optional(),
+    rabbiName: z.union([z.string().max(120), z.null()]).optional(),
+    rabbiAddress: z.union([z.string().max(300), z.null()]).optional(),
+    rabbiPhone: z.union([z.string().max(40), z.null()]).optional(),
+    rabbiEmail: z.union([z.string().email(), z.null()]).optional(),
     rabbiBanner: z.union([z.string().max(2000), z.null()]).optional(),
     rabbiPassword: z
       .union([z.string().trim().min(4).max(64), z.null()])

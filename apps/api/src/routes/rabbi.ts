@@ -27,6 +27,19 @@ const weekKeyParam = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD (any day in the week)");
 
+rabbiRouter.get("/settings", async (req, res) => {
+  const oid = orgId(req);
+  const org = await prisma.organization.findUnique({
+    where: { id: oid },
+    select: { rabbiBanner: true },
+  });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
+  res.json({ rabbiBanner: org.rabbiBanner ?? "" });
+});
+
 /** Members waiting for approval at this location. */
 rabbiRouter.get("/members/pending", async (req, res) => {
   const oid = orgId(req);
@@ -253,6 +266,9 @@ const payoutMarkSchema = z.object({
   marks: z.record(z.string(), z.boolean()),
 });
 
+const treasuryFundSchema = z.object({ deltaCents: z.number().int() });
+const treasuryLockSchema = z.object({ systemLocked: z.boolean() });
+
 /** Mark weekly payout rows paid/unpaid (checkboxes). Amounts come from computed earnings. */
 rabbiRouter.patch("/reports/week/:weekKey/payouts", async (req, res) => {
   const oid = orgId(req);
@@ -308,4 +324,123 @@ rabbiRouter.patch("/reports/week/:weekKey/payouts", async (req, res) => {
   );
 
   res.json({ ok: true, weekSundayKey, updated: Object.keys(marks).length });
+});
+
+rabbiRouter.get("/treasury", async (req, res) => {
+  const oid = orgId(req);
+  const t = await getTreasuryForOrg(oid);
+  res.json(t);
+});
+
+rabbiRouter.post("/treasury/fund", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = treasuryFundSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const t = await getTreasuryForOrg(oid);
+  const updated = await prisma.treasury.update({
+    where: { id: t.id },
+    data: { balanceCents: t.balanceCents + parsed.data.deltaCents },
+  });
+  res.json(updated);
+});
+
+rabbiRouter.patch("/treasury/lock", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = treasuryLockSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const t = await getTreasuryForOrg(oid);
+  const updated = await prisma.treasury.update({
+    where: { id: t.id },
+    data: { systemLocked: parsed.data.systemLocked },
+  });
+  res.json(updated);
+});
+
+function csvEscape(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+rabbiRouter.get("/export/week/:weekKey.csv", async (req, res) => {
+  const oid = orgId(req);
+  const org = await prisma.organization.findUnique({ where: { id: oid } });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
+  const parsed = weekKeyParam.safeParse(req.params.weekKey);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const { weekSundayKey, rows } = await computeAllMembersWeekSummary(
+    parsed.data,
+    oid,
+    org.timezone
+  );
+  const header = [
+    "first_name",
+    "last_name",
+    "phone",
+    "week_sunday",
+    "daily_first_nine_cents",
+    "weekly_bonus_cents",
+    "total_cents",
+    "bonus_recipient",
+    "pay_to_zelle",
+    "user_id",
+  ];
+  const lines = [
+    header.join(","),
+    ...rows.map((r) => {
+      const daily = r.breakdown.dailyLines.reduce((s, l) => s + l.amountCents, 0);
+      return [
+        csvEscape(r.firstName),
+        csvEscape(r.lastName),
+        csvEscape(r.phone),
+        csvEscape(weekSundayKey),
+        String(daily),
+        String(r.breakdown.weeklyBonusCents),
+        String(r.breakdown.totalCents),
+        csvEscape(r.bonusRecipient),
+        csvEscape(r.suggestedPayoutZelle ?? ""),
+        csvEscape(r.userId),
+      ].join(",");
+    }),
+  ];
+  const body = lines.join("\r\n") + "\r\n";
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="minyan-payouts-${weekSundayKey}.csv"`
+  );
+  res.send(body);
+});
+
+const rabbiBannerSchema = z.object({
+  rabbiBanner: z.union([z.string().max(2000), z.null()]),
+});
+
+/** Rabbi-managed public banner message for this location. */
+rabbiRouter.patch("/settings/banner", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = rabbiBannerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const updated = await prisma.organization.update({
+    where: { id: oid },
+    data: { rabbiBanner: parsed.data.rabbiBanner },
+    select: { rabbiBanner: true },
+  });
+  res.json({ rabbiBanner: updated.rabbiBanner ?? null });
 });

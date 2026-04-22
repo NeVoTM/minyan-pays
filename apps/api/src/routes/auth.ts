@@ -63,10 +63,7 @@ authRouter.post("/admin", async (req, res) => {
   res.json({ token: signAdminToken(org.id) });
 });
 
-/**
- * Rabbi menu login (per location). If `rabbiPasswordHash` is not set, falls back to
- * `RABBI_PASSWORD` env, then admin password / `ADMIN_PASSWORD` (same as admin login).
- */
+/** Rabbi menu login (per location). Requires location rabbi setup. */
 authRouter.post("/rabbi", async (req, res) => {
   const parsed = adminLogin.safeParse(req.body);
   if (!parsed.success) {
@@ -85,26 +82,13 @@ authRouter.post("/rabbi", async (req, res) => {
   }
 
   const password = parsed.data.password.trim();
-  let ok = false;
-  if (org.rabbiPasswordHash) {
-    ok = await bcrypt.compare(password, org.rabbiPasswordHash);
-  } else {
-    const rabbiEnv = process.env.RABBI_PASSWORD?.trim();
-    if (rabbiEnv) {
-      ok = password === rabbiEnv;
-    } else if (org.adminPasswordHash) {
-      ok = await bcrypt.compare(password, org.adminPasswordHash);
-    } else {
-      const expected = process.env.ADMIN_PASSWORD?.trim();
-      if (!expected) {
-        res.status(500).json({
-          error: "Set rabbi password on the organization, or RABBI_PASSWORD / ADMIN_PASSWORD.",
-        });
-        return;
-      }
-      ok = password === expected;
-    }
+  if (!org.rabbiPasswordHash) {
+    res.status(403).json({
+      error: "Rabbi is not setup for this location yet. Ask admin to configure Rabbi setup.",
+    });
+    return;
   }
+  const ok = await bcrypt.compare(password, org.rabbiPasswordHash);
 
   if (!ok) {
     res.status(401).json({ error: "Invalid password" });

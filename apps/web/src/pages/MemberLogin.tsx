@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
@@ -78,31 +78,33 @@ export function MemberLogin() {
             autoComplete="off"
             aria-hidden
           />
-          <label className="block">
-            <span className={fieldLabel}>{t('memberLogin.phone')}</span>
-            <PhoneInput
-              className={pillInput}
-              value={phoneDigits}
-              onChange={setPhoneDigits}
-              required
-              autoComplete="off"
-            />
-          </label>
-          <label className="block">
-            <span className={fieldLabel}>{t('memberLogin.pin')}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              className={pinInput}
-              value={pin}
-              onChange={(e) =>
-                setPin(e.target.value.replace(/\D/g, '').slice(0, 12))
-              }
-              required
-              minLength={4}
-              autoComplete="off"
-            />
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className={fieldLabel}>{t('memberLogin.phone')}</span>
+              <PhoneInput
+                className={pillInput}
+                value={phoneDigits}
+                onChange={setPhoneDigits}
+                required
+                autoComplete="off"
+              />
+            </label>
+            <label className="block">
+              <span className={fieldLabel}>{t('memberLogin.pin')}</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={pinInput}
+                value={pin}
+                onChange={(e) =>
+                  setPin(e.target.value.replace(/\D/g, '').slice(0, 12))
+                }
+                required
+                minLength={4}
+                autoComplete="off"
+              />
+            </label>
+          </div>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">
               {err}
@@ -114,12 +116,6 @@ export function MemberLogin() {
         </form>
       </div>
 
-      <p className="text-center text-sm text-slate-500">
-        {t('memberLogin.newHere')}{' '}
-        <Link to="/member/signup" className="font-semibold text-blue-600 hover:underline">
-          {t('memberLogin.create')}
-        </Link>
-      </p>
     </div>
   )
 }

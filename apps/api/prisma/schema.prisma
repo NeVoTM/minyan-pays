@@ -38,6 +38,14 @@ model Organization {
   name             String
   kind             OrganizationKind @default(SYNAGOGUE)
   synagogueName    String
+  locationAddress  String?
+  locationPhone    String?
+  locationEmail    String?
+  locationWebsite  String?
+  rabbiName        String?
+  rabbiAddress     String?
+  rabbiPhone       String?
+  rabbiEmail       String?
   rabbiBanner      String?
   firstNineCents   Int              @default(1500)
   weeklyBonusCents Int              @default(3000)
