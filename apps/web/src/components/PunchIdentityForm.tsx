@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { PhoneInput } from './PhoneInput'
+import { useOrg } from '../context/OrgContext'
 import {
   fieldLabel,
   pillInput,
@@ -30,11 +31,42 @@ type Props = {
 
 export function PunchIdentityForm({ mode }: Props) {
   const { t } = useTranslation()
+  const { organizations, organizationSlug } = useOrg()
   const [phoneDigits, setPhoneDigits] = useState('')
   const [pin, setPin] = useState('')
+  const [locationSlug, setLocationSlug] = useState<string>('')
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!locationSlug) {
+      setLocationSlug(
+        organizationSlug ?? organizations[0]?.slug ?? ''
+      )
+    }
+  }, [organizationSlug, organizations, locationSlug])
+
+  useEffect(() => {
+    if (mode !== 'out') return
+    if (phoneDigits.length < 10 || pin.length !== 4) return
+    void (async () => {
+      try {
+        const r = await api<{
+          organizationSlug: string
+          synagogueName: string
+          locationAddress: string | null
+        }>('/api/punch/out-location-default', {
+          method: 'POST',
+          body: JSON.stringify({ phone: phoneDigits, pin }),
+          orgSlug: null,
+        })
+        setLocationSlug(r.organizationSlug)
+      } catch {
+        /* keep manual selection */
+      }
+    })()
+  }, [mode, phoneDigits, pin])
 
   const canSubmit = (() => {
     if (phoneDigits.length >= 10 && pin.length === 4) return true
@@ -50,7 +82,11 @@ export function PunchIdentityForm({ mode }: Props) {
       setErr(t('punchCommon.needOne'))
       return
     }
-    const body: Record<string, string> = { phone: phoneDigits, pin }
+    const body: Record<string, string> = {
+      phone: phoneDigits,
+      pin,
+      organizationSlug: locationSlug,
+    }
 
     setLoading(true)
     try {
@@ -59,6 +95,7 @@ export function PunchIdentityForm({ mode }: Props) {
         const r = await api<PunchInResp>(path, {
           method: 'POST',
           body: JSON.stringify(body),
+          orgSlug: locationSlug || null,
         })
         setMsg(
           t('punchIn.success', {
@@ -70,6 +107,7 @@ export function PunchIdentityForm({ mode }: Props) {
         const r = await api<PunchOutResp>(path, {
           method: 'POST',
           body: JSON.stringify(body),
+          orgSlug: locationSlug || null,
         })
         const when = new Date(r.punchOutAt).toLocaleString()
         setMsg(t('punchOut.success', { name: r.displayName, when }))
@@ -107,6 +145,21 @@ export function PunchIdentityForm({ mode }: Props) {
         />
 
         <div className="space-y-3">
+          <label className="block">
+            <span className={fieldLabel}>{t('punchCommon.locationLabel')}</span>
+            <select
+              className={pillInput}
+              value={locationSlug}
+              onChange={(e) => setLocationSlug(e.target.value)}
+            >
+              {organizations.map((o) => (
+                <option key={o.slug} value={o.slug}>
+                  {o.synagogueName}
+                  {o.locationAddress ? ` - ${o.locationAddress}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <span className={fieldLabel}>{t('memberLogin.phone')}</span>

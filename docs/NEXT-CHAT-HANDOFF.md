@@ -26,6 +26,8 @@ For full, current detail of the latest iteration, read: `docs/HANDOFF_NEXT_SESSI
   - Member Balance menu introduced; sign-in moved there.
 - Member login layout condensed to one-row phone+PIN.
 - Organization schema expanded for location + rabbi profile/contact fields.
+- Punch flow now includes a location dropdown (name + address), and check-out auto-defaults to linked active check-in location.
+- Prisma schema sync + seed commands were run after updates (`db push`, `db:seed`).
 
 ---
 

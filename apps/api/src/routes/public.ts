@@ -18,6 +18,7 @@ publicRouter.get("/organizations", async (_req, res) => {
       name: true,
       kind: true,
       synagogueName: true,
+      locationAddress: true,
       defaultLocale: true,
     },
   });

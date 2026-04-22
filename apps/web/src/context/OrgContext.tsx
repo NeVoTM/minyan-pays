@@ -16,6 +16,7 @@ export type OrganizationRow = {
   name: string
   kind: 'SYNAGOGUE' | 'STUDY_HALL'
   synagogueName: string
+  locationAddress?: string | null
   defaultLocale: string
 }
 

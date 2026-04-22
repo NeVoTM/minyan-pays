@@ -5,14 +5,15 @@ const API_HINT =
 
 export async function api<T>(
   path: string,
-  options: RequestInit & { token?: string | null } = {}
+  options: RequestInit & { token?: string | null; orgSlug?: string | null } = {}
 ): Promise<T> {
-  const { token, headers, ...rest } = options
+  const { token, orgSlug, headers, ...rest } = options
   const h = new Headers(headers)
   h.set('Content-Type', 'application/json')
   if (token) h.set('Authorization', `Bearer ${token}`)
-  const orgSlug = getOrgSlugForApi()
-  if (orgSlug) h.set('X-Organization-Slug', orgSlug)
+  const effectiveOrgSlug =
+    orgSlug !== undefined ? orgSlug : getOrgSlugForApi()
+  if (effectiveOrgSlug) h.set('X-Organization-Slug', effectiveOrgSlug)
   let res: Response
   try {
     res = await fetch(path, { ...rest, headers: h })

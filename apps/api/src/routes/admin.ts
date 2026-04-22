@@ -39,6 +39,16 @@ const attendanceTxnUpdateSchema = z.object({
   punchInStatus: z.enum(["PENDING", "CONFIRMED", "REJECTED"]).optional(),
 });
 
+const rabbiProfileSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  address: z.union([z.string().max(300), z.null()]).optional(),
+  city: z.union([z.string().max(120), z.null()]).optional(),
+  stateRegion: z.union([z.string().max(120), z.null()]).optional(),
+  postalCode: z.union([z.string().max(30), z.null()]).optional(),
+  phone: z.union([z.string().max(40), z.null()]).optional(),
+  email: z.union([z.string().email(), z.null()]).optional(),
+});
+
 adminRouter.get("/session/today", async (req, res) => {
   const oid = orgId(req);
   const org = await prisma.organization.findUnique({ where: { id: oid } });
@@ -604,6 +614,83 @@ adminRouter.delete("/attendance/:id", async (req, res) => {
   res.status(204).send();
 });
 
+adminRouter.get("/rabbis", async (req, res) => {
+  const oid = orgId(req);
+  const rabbis = await prisma.rabbi.findMany({
+    where: { organizationId: oid },
+    orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+  });
+  res.json(rabbis);
+});
+
+adminRouter.post("/rabbis", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = rabbiProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const rabbi = await prisma.rabbi.create({
+    data: {
+      organizationId: oid,
+      name: d.name.trim(),
+      address: trimOrNull(d.address),
+      city: trimOrNull(d.city),
+      stateRegion: trimOrNull(d.stateRegion),
+      postalCode: trimOrNull(d.postalCode),
+      phone: normalizeOptionalUsPhone(d.phone ?? null),
+      email: trimOrNull(d.email),
+    },
+  });
+  res.status(201).json(rabbi);
+});
+
+adminRouter.patch("/rabbis/:id", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = rabbiProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const existing = await prisma.rabbi.findFirst({
+    where: { id: req.params.id, organizationId: oid },
+    select: { id: true },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Rabbi not found" });
+    return;
+  }
+  const d = parsed.data;
+  const rabbi = await prisma.rabbi.update({
+    where: { id: existing.id },
+    data: {
+      name: d.name.trim(),
+      address: trimOrNull(d.address),
+      city: trimOrNull(d.city),
+      stateRegion: trimOrNull(d.stateRegion),
+      postalCode: trimOrNull(d.postalCode),
+      phone: normalizeOptionalUsPhone(d.phone ?? null),
+      email: trimOrNull(d.email),
+    },
+  });
+  res.json(rabbi);
+});
+
+adminRouter.delete("/rabbis/:id", async (req, res) => {
+  const oid = orgId(req);
+  const existing = await prisma.rabbi.findFirst({
+    where: { id: req.params.id, organizationId: oid },
+    select: { id: true },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Rabbi not found" });
+    return;
+  }
+  await prisma.rabbi.delete({ where: { id: existing.id } });
+  res.status(204).send();
+});
+
 const orgSettingsPublicSelect = {
   id: true,
   slug: true,
@@ -660,6 +747,9 @@ adminRouter.patch("/settings", async (req, res) => {
   const updateData: Prisma.OrganizationUpdateInput = {
     ...parsed.data,
   };
+  if (parsed.data.locationPhone !== undefined) {
+    updateData.locationPhone = normalizeOptionalUsPhone(parsed.data.locationPhone);
+  }
   delete (updateData as { rabbiPassword?: string | null }).rabbiPassword;
   if (parsed.data.rabbiPassword !== undefined) {
     updateData.rabbiPasswordHash = parsed.data.rabbiPassword

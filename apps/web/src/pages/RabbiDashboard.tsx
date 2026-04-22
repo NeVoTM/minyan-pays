@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { api } from '../api'
+import { api, fetchBlob } from '../api'
 import { RABBI_KEY } from './RabbiLogin'
 
 type PendingMember = {
@@ -62,6 +62,9 @@ export function RabbiDashboard() {
   const [pending, setPending] = useState<PendingMember[]>([])
   const [session, setSession] = useState<SessionResp | null>(null)
   const [weekDate, setWeekDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  )
+  const [weekExportDate, setWeekExportDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   )
   const [weekReport, setWeekReport] = useState<WeekReport | null>(null)
@@ -181,6 +184,28 @@ export function RabbiDashboard() {
       setMsg(t('rabbi.bannerSaved'))
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
+    }
+  }
+
+  async function downloadWeekPayoutCsv() {
+    if (!token) return
+    setErr(null)
+    setMsg(null)
+    try {
+      const blob = await fetchBlob(
+        `/api/rabbi/export/week/${weekExportDate}.csv`,
+        { token }
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `minyan-payouts-${weekExportDate}.csv`
+      a.rel = 'noopener'
+      a.click()
+      URL.revokeObjectURL(url)
+      setMsg(t('rabbi.downloadStarted'))
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : t('rabbi.exportFailed'))
     }
   }
 
@@ -344,6 +369,30 @@ export function RabbiDashboard() {
 
       {tab === 'payouts' && (
         <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="rounded-md border border-slate-200 bg-white p-3">
+            <h2 className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">
+              {t('rabbi.weeklyExport')}
+            </h2>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-xs text-slate-600">
+                {t('rabbi.weekAnyDay')}
+                <input
+                  type="date"
+                  className="mx-1 rounded border border-slate-200 px-2 py-1"
+                  value={weekExportDate}
+                  onChange={(e) => setWeekExportDate(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="rounded bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-100"
+                onClick={() => void downloadWeekPayoutCsv()}
+              >
+                {t('rabbi.downloadCsv')}
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-xs text-slate-600">
               {t('rabbi.weekLabel')}

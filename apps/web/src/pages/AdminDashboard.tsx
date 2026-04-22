@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { api, fetchBlob } from '../api'
+import { api } from '../api'
 import { PhoneInput } from '../components/PhoneInput'
 
 const KEY = 'minyan_admin_token'
@@ -67,6 +67,17 @@ type AttendanceTxn = {
   createdAt: string
 }
 
+type RabbiProfile = {
+  id: string
+  name: string
+  address: string | null
+  city: string | null
+  stateRegion: string | null
+  postalCode: string | null
+  phone: string | null
+  email: string | null
+}
+
 function emptyMemberForm() {
   return {
     firstName: '',
@@ -92,7 +103,9 @@ function emptyMemberForm() {
 }
 
 function phoneDigitsFromE164(phone: string): string {
-  return phone.replace(/\D/g, '').replace(/^1/, '').slice(0, 10)
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1)
+  return digits.slice(0, 10)
 }
 
 function maskBankTail(s: string | null): string {
@@ -165,18 +178,20 @@ export function AdminDashboard() {
     'en' | 'he' | 'es' | 'ru' | 'fr'
   >('he')
   const [locationSetupMsg, setLocationSetupMsg] = useState<string | null>(null)
+  const [isLocationEditing, setIsLocationEditing] = useState(false)
+  const [rabbis, setRabbis] = useState<RabbiProfile[]>([])
+  const [rabbiEditId, setRabbiEditId] = useState<string | null>(null)
   const [rabbiNameDraft, setRabbiNameDraft] = useState('')
   const [rabbiAddressDraft, setRabbiAddressDraft] = useState('')
+  const [rabbiCityDraft, setRabbiCityDraft] = useState('')
+  const [rabbiStateDraft, setRabbiStateDraft] = useState('')
+  const [rabbiZipDraft, setRabbiZipDraft] = useState('')
   const [rabbiPhoneDraft, setRabbiPhoneDraft] = useState('')
   const [rabbiEmailDraft, setRabbiEmailDraft] = useState('')
   const [rabbiPasswordDraft, setRabbiPasswordDraft] = useState('')
   const [rabbiSetupMsg, setRabbiSetupMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
-  const [weekExportDate, setWeekExportDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  )
-  const [exportMsg, setExportMsg] = useState<string | null>(null)
   const [viewMember, setViewMember] = useState<MemberRow | null>(null)
   const [editMember, setEditMember] = useState<MemberRow | null>(null)
   const [editForm, setEditForm] = useState(() => emptyMemberForm())
@@ -202,7 +217,7 @@ export function AdminDashboard() {
       return
     }
     try {
-      const [s, st, m, tx] = await Promise.all([
+      const [s, st, m, tx, rb] = await Promise.all([
         api<SessionResp>('/api/admin/session/today', { token }),
         api<{
           slug: string
@@ -224,6 +239,7 @@ export function AdminDashboard() {
         }>('/api/admin/settings', { token }),
         api<MemberRow[]>('/api/admin/members', { token }),
         api<AttendanceTxn[]>('/api/admin/attendance', { token }),
+        api<RabbiProfile[]>('/api/admin/rabbis', { token }),
       ])
       setSession(s)
       setSettings(st)
@@ -233,10 +249,7 @@ export function AdminDashboard() {
       setLocationEmailDraft(st.locationEmail ?? '')
       setLocationWebsiteDraft(st.locationWebsite ?? '')
       setLocationLocaleDraft(st.defaultLocale ?? 'he')
-      setRabbiNameDraft(st.rabbiName ?? '')
-      setRabbiAddressDraft(st.rabbiAddress ?? '')
-      setRabbiPhoneDraft(st.rabbiPhone ?? '')
-      setRabbiEmailDraft(st.rabbiEmail ?? '')
+      setRabbis(rb)
       setMembers(m)
       setAttendanceTxns(tx)
       setErr(null)
@@ -470,6 +483,7 @@ export function AdminDashboard() {
           defaultLocale: locationLocaleDraft,
         }),
       })
+      setIsLocationEditing(false)
       setLocationSetupMsg(t('admin.locationSaved'))
       await load()
     } catch (e: unknown) {
@@ -492,6 +506,7 @@ export function AdminDashboard() {
           locationWebsite: null,
         }),
       })
+      setIsLocationEditing(false)
       setLocationSetupMsg(t('admin.locationDeleted'))
       await load()
     } catch (e: unknown) {
@@ -499,27 +514,66 @@ export function AdminDashboard() {
     }
   }
 
+  function resetRabbiForm() {
+    setRabbiEditId(null)
+    setRabbiNameDraft('')
+    setRabbiAddressDraft('')
+    setRabbiCityDraft('')
+    setRabbiStateDraft('')
+    setRabbiZipDraft('')
+    setRabbiPhoneDraft('')
+    setRabbiEmailDraft('')
+  }
+
+  function beginEditRabbi(r: RabbiProfile) {
+    setRabbiEditId(r.id)
+    setRabbiNameDraft(r.name ?? '')
+    setRabbiAddressDraft(r.address ?? '')
+    setRabbiCityDraft(r.city ?? '')
+    setRabbiStateDraft(r.stateRegion ?? '')
+    setRabbiZipDraft(r.postalCode ?? '')
+    setRabbiPhoneDraft(r.phone ? phoneDigitsFromE164(r.phone) : '')
+    setRabbiEmailDraft(r.email ?? '')
+  }
+
   async function saveRabbiSetup(e: React.FormEvent) {
     e.preventDefault()
     if (!token) return
     setRabbiSetupMsg(null)
+    if (!rabbiNameDraft.trim()) {
+      setRabbiSetupMsg(t('admin.rabbiNameRequired'))
+      return
+    }
     if (rabbiPasswordDraft && rabbiPasswordDraft.trim().length < 4) {
       setRabbiSetupMsg(t('admin.rabbiPasswordRule'))
       return
     }
     try {
-      await api('/api/admin/settings', {
-        method: 'PATCH',
-        token,
-        body: JSON.stringify({
-          rabbiName: rabbiNameDraft.trim() || null,
-          rabbiAddress: rabbiAddressDraft.trim() || null,
-          rabbiPhone: rabbiPhoneDraft.trim() || null,
-          rabbiEmail: rabbiEmailDraft.trim() || null,
-          rabbiPassword: rabbiPasswordDraft.trim() || null,
-        }),
+      const body = JSON.stringify({
+        name: rabbiNameDraft.trim(),
+        address: rabbiAddressDraft.trim() || null,
+        city: rabbiCityDraft.trim() || null,
+        stateRegion: rabbiStateDraft.trim() || null,
+        postalCode: rabbiZipDraft.trim() || null,
+        phone: rabbiPhoneDraft.trim() || null,
+        email: rabbiEmailDraft.trim() || null,
       })
+      await api(rabbiEditId ? `/api/admin/rabbis/${rabbiEditId}` : '/api/admin/rabbis', {
+        method: rabbiEditId ? 'PATCH' : 'POST',
+        token,
+        body,
+      })
+      if (rabbiPasswordDraft.trim()) {
+        await api('/api/admin/settings', {
+          method: 'PATCH',
+          token,
+          body: JSON.stringify({
+            rabbiPassword: rabbiPasswordDraft.trim(),
+          }),
+        })
+      }
       setRabbiPasswordDraft('')
+      resetRabbiForm()
       setRabbiSetupMsg(t('admin.rabbiSetupSaved'))
       await load()
     } catch (e: unknown) {
@@ -527,46 +581,17 @@ export function AdminDashboard() {
     }
   }
 
-  async function clearRabbiSetup() {
+  async function deleteRabbi(id: string) {
     if (!token) return
+    if (!window.confirm(t('admin.deleteRabbiConfirm'))) return
     setRabbiSetupMsg(null)
     try {
-      await api('/api/admin/settings', {
-        method: 'PATCH',
-        token,
-        body: JSON.stringify({
-          rabbiName: null,
-          rabbiAddress: null,
-          rabbiPhone: null,
-          rabbiEmail: null,
-          rabbiPassword: null,
-        }),
-      })
+      await api(`/api/admin/rabbis/${id}`, { method: 'DELETE', token })
+      if (rabbiEditId === id) resetRabbiForm()
       setRabbiSetupMsg(t('admin.rabbiDeleted'))
       await load()
     } catch (e: unknown) {
       setRabbiSetupMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
-    }
-  }
-
-  async function downloadWeekPayoutCsv() {
-    if (!token) return
-    setExportMsg(null)
-    try {
-      const blob = await fetchBlob(
-        `/api/admin/export/week/${weekExportDate}.csv`,
-        { token }
-      )
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `minyan-payouts-${weekExportDate}.csv`
-      a.rel = 'noopener'
-      a.click()
-      URL.revokeObjectURL(url)
-      setExportMsg(t('admin.downloadStarted'))
-    } catch (e: unknown) {
-      setExportMsg(e instanceof Error ? e.message : t('admin.exportFailed'))
     }
   }
 
@@ -670,97 +695,66 @@ export function AdminDashboard() {
         <>
       {settings && (
         <div className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm">
-          <h2 className="mb-2 font-medium text-slate-800">
-            {t('admin.locationSetupTitle')}
-          </h2>
-          <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.locationSetupHelp')}
-          </p>
-          <form className="grid gap-2" onSubmit={saveLocationSetup}>
-            <label className="text-xs text-slate-600">
-              {t('admin.locationDisplayName')}
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={locationNameDraft}
-                onChange={(e) => setLocationNameDraft(e.target.value)}
-                placeholder={t('admin.locationDisplayName')}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.address')}
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={locationAddressDraft}
-                onChange={(e) => setLocationAddressDraft(e.target.value)}
-                placeholder={t('admin.address')}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.phone')}
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={locationPhoneDraft}
-                onChange={(e) => setLocationPhoneDraft(e.target.value)}
-                placeholder={t('admin.phone')}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.labelEmail')}
-              <input
-                type="email"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={locationEmailDraft}
-                onChange={(e) => setLocationEmailDraft(e.target.value)}
-                placeholder={t('admin.labelEmail')}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.website')}
-              <input
-                type="url"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={locationWebsiteDraft}
-                onChange={(e) => setLocationWebsiteDraft(e.target.value)}
-                placeholder="https://example.org"
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.locationDefaultLanguage')}
-              <select
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={locationLocaleDraft}
-                onChange={(e) =>
-                  setLocationLocaleDraft(
-                    e.target.value as 'en' | 'he' | 'es' | 'ru' | 'fr'
-                  )
-                }
-              >
-                <option value="he">{t('lang.he')}</option>
-                <option value="en">{t('lang.en')}</option>
-                <option value="es">{t('lang.es')}</option>
-                <option value="ru">{t('lang.ru')}</option>
-                <option value="fr">{t('lang.fr')}</option>
-              </select>
-            </label>
-            <p className="text-[11px] text-slate-500">
-              {t('admin.locationInternalSlug')}: <strong>{settings.slug}</strong>
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="submit"
-                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-              >
-                {t('admin.saveLocationSetup')}
-              </button>
-              <button
-                type="button"
-                className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100"
-                onClick={() => void clearLocationSetup()}
-              >
-                {t('common.delete')}
-              </button>
-            </div>
-          </form>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="font-medium text-slate-800">{t('admin.locationSetupTitle')}</h2>
+            <button
+              type="button"
+              className="text-xs text-blue-700 underline decoration-blue-400"
+              onClick={() => setIsLocationEditing((v) => !v)}
+            >
+              {isLocationEditing ? t('common.view') : t('admin.editSave')}
+            </button>
+          </div>
+          {!isLocationEditing ? (
+            <dl className="grid gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
+              <div><dt className="font-medium">{t('admin.locationDisplayName')}</dt><dd>{settings.synagogueName || '—'}</dd></div>
+              <div><dt className="font-medium">{t('admin.phone')}</dt><dd>{settings.locationPhone || '—'}</dd></div>
+              <div><dt className="font-medium">{t('admin.labelEmail')}</dt><dd>{settings.locationEmail || '—'}</dd></div>
+              <div><dt className="font-medium">{t('admin.website')}</dt><dd>{settings.locationWebsite || '—'}</dd></div>
+              <div className="sm:col-span-2"><dt className="font-medium">{t('admin.address')}</dt><dd>{settings.locationAddress || '—'}</dd></div>
+            </dl>
+          ) : (
+            <form className="grid gap-2" onSubmit={saveLocationSetup}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="text-xs text-slate-600">
+                  {t('admin.locationDisplayName')}
+                  <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationNameDraft} onChange={(e) => setLocationNameDraft(e.target.value)} />
+                </label>
+                <label className="text-xs text-slate-600">
+                  {t('admin.phone')}
+                  <PhoneInput className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={phoneDigitsFromE164(locationPhoneDraft)} onChange={setLocationPhoneDraft} />
+                </label>
+              </div>
+              <label className="text-xs text-slate-600">
+                {t('admin.address')}
+                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationAddressDraft} onChange={(e) => setLocationAddressDraft(e.target.value)} />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="text-xs text-slate-600">
+                  {t('admin.labelEmail')}
+                  <input type="email" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationEmailDraft} onChange={(e) => setLocationEmailDraft(e.target.value)} />
+                </label>
+                <label className="text-xs text-slate-600">
+                  {t('admin.website')}
+                  <input type="url" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationWebsiteDraft} onChange={(e) => setLocationWebsiteDraft(e.target.value)} />
+                </label>
+              </div>
+              <label className="text-xs text-slate-600">
+                {t('admin.locationDefaultLanguage')}
+                <select className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationLocaleDraft} onChange={(e) => setLocationLocaleDraft(e.target.value as 'en' | 'he' | 'es' | 'ru' | 'fr')}>
+                  <option value="he">{t('lang.he')}</option>
+                  <option value="en">{t('lang.en')}</option>
+                  <option value="es">{t('lang.es')}</option>
+                  <option value="ru">{t('lang.ru')}</option>
+                  <option value="fr">{t('lang.fr')}</option>
+                </select>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">{t('admin.saveLocationSetup')}</button>
+                <button type="button" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100" onClick={() => void clearLocationSetup()}>{t('common.delete')}</button>
+              </div>
+            </form>
+          )}
           {locationSetupMsg && (
             <p className="mt-2 text-[11px] text-slate-500">{locationSetupMsg}</p>
           )}
@@ -769,74 +763,76 @@ export function AdminDashboard() {
 
       {settings && (
         <div className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm">
-          <h2 className="mb-2 font-medium text-slate-800">
-            {t('admin.rabbiSetupTitle')}
-          </h2>
-          <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.rabbiSetupHelp')}
-          </p>
+          <h2 className="mb-2 font-medium text-slate-800">{t('admin.rabbiSetupTitle')}</h2>
+          <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">{t('admin.rabbiSetupLinkHint')}</p>
+          <ul className="mb-3 grid gap-2">
+            {rabbis.map((r) => (
+              <li key={r.id} className="flex items-start justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <div className="min-w-0 text-[11px]">
+                  <p className="truncate font-medium text-slate-800">{r.name}</p>
+                  <p className="truncate text-slate-600">{r.phone || '—'} · {r.email || '—'}</p>
+                  <p className="truncate text-slate-500">{[r.city, r.stateRegion, r.postalCode].filter(Boolean).join(', ') || '—'}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 text-[11px]">
+                  <button type="button" className="text-blue-700 underline decoration-blue-400" onClick={() => beginEditRabbi(r)}>{t('admin.editSave')}</button>
+                  <button type="button" className="text-red-700 underline decoration-red-400" onClick={() => void deleteRabbi(r.id)}>{t('common.delete')}</button>
+                </div>
+              </li>
+            ))}
+            {rabbis.length === 0 && <li className="text-[11px] text-slate-500">{t('admin.noRabbisYet')}</li>}
+          </ul>
           <form className="grid gap-2" onSubmit={saveRabbiSetup}>
-            <label className="text-xs text-slate-600">
-              {t('admin.rabbiName')}
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={rabbiNameDraft}
-                onChange={(e) => setRabbiNameDraft(e.target.value)}
-                placeholder={t('admin.rabbiName')}
-              />
-            </label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="text-xs text-slate-600">
+                {t('admin.rabbiName')}
+                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiNameDraft} onChange={(e) => setRabbiNameDraft(e.target.value)} />
+              </label>
+              <label className="text-xs text-slate-600">
+                {t('admin.phone')}
+                <PhoneInput className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiPhoneDraft} onChange={setRabbiPhoneDraft} />
+              </label>
+            </div>
             <label className="text-xs text-slate-600">
               {t('admin.address')}
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={rabbiAddressDraft}
-                onChange={(e) => setRabbiAddressDraft(e.target.value)}
-                placeholder={t('admin.address')}
-              />
+              <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiAddressDraft} onChange={(e) => setRabbiAddressDraft(e.target.value)} />
             </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.phone')}
-              <input
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={rabbiPhoneDraft}
-                onChange={(e) => setRabbiPhoneDraft(e.target.value)}
-                placeholder={t('admin.phone')}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.labelEmail')}
-              <input
-                type="email"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={rabbiEmailDraft}
-                onChange={(e) => setRabbiEmailDraft(e.target.value)}
-                placeholder={t('admin.labelEmail')}
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.rabbiPasswordLabel')}
-              <input
-                type="password"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={rabbiPasswordDraft}
-                onChange={(e) => setRabbiPasswordDraft(e.target.value)}
-                placeholder={t('admin.rabbiPasswordPlaceholder')}
-                autoComplete="new-password"
-              />
-            </label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="text-xs text-slate-600">
+                {t('signup.city')}
+                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiCityDraft} onChange={(e) => setRabbiCityDraft(e.target.value)} />
+              </label>
+              <label className="text-xs text-slate-600">
+                {t('signup.state')}
+                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiStateDraft} onChange={(e) => setRabbiStateDraft(e.target.value)} />
+              </label>
+              <label className="text-xs text-slate-600">
+                {t('signup.zip')}
+                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiZipDraft} onChange={(e) => setRabbiZipDraft(e.target.value)} />
+              </label>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="text-xs text-slate-600">
+                {t('admin.labelEmail')}
+                <input type="email" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiEmailDraft} onChange={(e) => setRabbiEmailDraft(e.target.value)} />
+              </label>
+              <label className="text-xs text-slate-600">
+                {t('admin.rabbiPasswordLabel')}
+                <input type="password" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiPasswordDraft} onChange={(e) => setRabbiPasswordDraft(e.target.value)} autoComplete="new-password" />
+              </label>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="submit"
                 className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
               >
-                {t('admin.saveRabbiSetup')}
+                {rabbiEditId ? t('admin.saveRabbiSetup') : t('admin.addRabbi')}
               </button>
               <button
                 type="button"
-                className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100"
-                onClick={() => void clearRabbiSetup()}
+                className="rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                onClick={resetRabbiForm}
               >
-                {t('common.delete')}
+                {t('common.cancel')}
               </button>
             </div>
           </form>
@@ -845,56 +841,6 @@ export function AdminDashboard() {
           )}
         </div>
       )}
-
-      {settings && (
-        <p className="text-xs text-slate-500">
-          {t('admin.firstNineLine', {
-            slots: settings.firstNineSlots,
-            daily: (settings.firstNineCents / 100).toFixed(2),
-            weekly: (settings.weeklyBonusCents / 100).toFixed(2),
-          })}
-        </p>
-      )}
-
-      <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-        <h2 className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">
-          {t('admin.weeklyExport')}
-        </h2>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
-            {t('admin.weekAnyDay')}
-            <input
-              type="date"
-              className="rounded border border-slate-200 bg-white px-2 py-1 text-slate-200"
-              value={weekExportDate}
-              onChange={(e) => setWeekExportDate(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            className="rounded bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-100"
-            onClick={() => void downloadWeekPayoutCsv()}
-          >
-            {t('admin.downloadCsv')}
-          </button>
-        </div>
-        {exportMsg && (
-          <p className="mt-2 text-xs text-slate-400">{exportMsg}</p>
-        )}
-      </div>
-
-          <div className="rounded-md border border-slate-200 bg-white p-2.5 text-[11px] text-slate-600 sm:text-xs">
-            <span className="font-medium text-slate-800">
-              {t('admin.todayCheckIns', { count: checkedInCount })}{' '}
-            </span>
-            <button
-              type="button"
-              className="text-blue-600 underline decoration-blue-600/30"
-              onClick={() => setAdminTab('today')}
-            >
-              {t('admin.openDashboard')}
-            </button>
-          </div>
         </>
       )}
 

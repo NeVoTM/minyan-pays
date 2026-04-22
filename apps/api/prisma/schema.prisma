@@ -58,8 +58,26 @@ model Organization {
   rabbiPasswordHash String?
 
   users          User[]
+  rabbis         Rabbi[]
   minyanSessions MinyanSession[]
   treasury       Treasury?
+}
+
+model Rabbi {
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  address        String?
+  city           String?
+  stateRegion    String?
+  postalCode     String?
+  phone          String?
+  email          String?
+
+  @@index([organizationId, name])
 }
 
 model User {

@@ -4,6 +4,20 @@ Date: 2026-04-20
 
 ## Latest Session Updates (2026-04-22)
 
+### Punch location linking (new)
+- Added location dropdown on check-in and check-out forms using location name + address.
+- Dropdown options come from organization list (`synagogueName` + `locationAddress`).
+- Check-out now auto-defaults to the member's active check-in location via:
+  - `POST /api/punch/out-location-default`
+- Check-out submit now includes linked location and can resolve location automatically when needed.
+- API now supports optional explicit org override per request from web client.
+
+### Database/setup status
+- Ran Prisma sync and seed path:
+  - `npx prisma db push`
+  - `npm run db:seed`
+- Current seed status message: organizations already exist (no reseed needed).
+
 ### Auth and role access
 - Rabbi login no longer falls back to admin password.
 - Rabbi menu access now requires Rabbi setup (`rabbiPasswordHash`) per location.
@@ -169,6 +183,7 @@ Proposed scope for next session:
    - per-rabbi attendance
    - per-rabbi payout status.
 4. Add targeted tests for new setup flows and role permissions.
+5. Add full locale parity for newly added punch location strings.
 
 ## Next Chat Discussion List
 - [ ] Event menu scope (roles, lifecycle, and attendee workflow).

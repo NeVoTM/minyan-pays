@@ -15,7 +15,11 @@ import {
   requireApprovedMember,
   type JwtPayload,
 } from "../middleware/auth.js";
-import { requireOrganizationFromRequest } from "../lib/organizationService.js";
+import {
+  getOrganizationBySlug,
+  requireOrganizationFromRequest,
+  normalizeOrgSlug,
+} from "../lib/organizationService.js";
 
 export const punchRouter = Router();
 
@@ -73,6 +77,25 @@ const punchIdentityBody = z
     }
   });
 
+const punchOutBody = z
+  .object({
+    phone: z.string().optional(),
+    pin: z.string().length(4).optional(),
+    organizationSlug: z.string().optional(),
+  })
+  .superRefine((d, ctx) => {
+    const hasPhonePin =
+      (d.phone?.replace(/\D/g, "").length ?? 0) >= 10 &&
+      (d.pin?.length ?? 0) >= 4;
+    const modes = [hasPhonePin].filter(Boolean).length;
+    if (modes !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Use phone + PIN.",
+      });
+    }
+  });
+
 async function resolveMemberByPunchIdentity(
   orgId: string,
   data: z.infer<typeof punchIdentityBody>
@@ -82,6 +105,46 @@ async function resolveMemberByPunchIdentity(
     return resolveVerifiedMember(orgId, phone, data.pin);
   }
   return { ok: false, status: 400, error: "Invalid request." };
+}
+
+async function resolveVerifiedMemberAnyOrganization(
+  phone: string,
+  pin: string
+): Promise<ResolveMemberResult[]> {
+  const users = await prisma.user.findMany({
+    where: { phone, role: "MEMBER", isApproved: true },
+  });
+  const matches: ResolveMemberResult[] = [];
+  for (const user of users) {
+    const pinOk = await bcrypt.compare(pin, user.pinHash);
+    if (pinOk) matches.push({ ok: true, user });
+  }
+  return matches;
+}
+
+async function findLatestOpenAttendanceForUsers(userIds: string[]) {
+  if (userIds.length === 0) return null;
+  return prisma.attendance.findFirst({
+    where: {
+      userId: { in: userIds },
+      punchOutAt: null,
+    },
+    include: {
+      session: {
+        include: {
+          organization: {
+            select: {
+              id: true,
+              slug: true,
+              synagogueName: true,
+              locationAddress: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ punchInAt: "desc" }],
+  });
 }
 
 punchRouter.post("/in", async (req, res) => {
@@ -164,24 +227,87 @@ punchRouter.post("/in", async (req, res) => {
 });
 
 /** Public punch-out: same identity options as punch-in (code, phone+PIN, smart QR). */
-punchRouter.post("/out-public", async (req, res) => {
-  const orgRes = await requireOrganizationFromRequest(req);
-  if ("error" in orgRes) {
-    res.status(orgRes.status).json({ error: orgRes.error });
-    return;
-  }
-  const { org } = orgRes;
-
-  const parsed = punchIdentityBody.safeParse(req.body);
+punchRouter.post("/out-location-default", async (req, res) => {
+  const bodySchema = z.object({
+    phone: z.string(),
+    pin: z.string().length(4),
+  });
+  const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
 
-  const resolved = await resolveMemberByPunchIdentity(org.id, parsed.data);
-  if (!resolved.ok) {
-    res.status(resolved.status).json({ error: resolved.error });
+  const phone = normalizePhone(parsed.data.phone);
+  const matches = await resolveVerifiedMemberAnyOrganization(phone, parsed.data.pin);
+  const matchedUsers = matches.flatMap((m) => (m.ok ? [m.user] : []));
+  const openAttendance = await findLatestOpenAttendanceForUsers(
+    matchedUsers.map((u) => u.id)
+  );
+  if (!openAttendance?.session.organization) {
+    res.status(404).json({
+      error: "No active check-in found to link for check-out.",
+    });
     return;
+  }
+  const org = openAttendance.session.organization;
+  res.json({
+    organizationSlug: org.slug,
+    synagogueName: org.synagogueName,
+    locationAddress: org.locationAddress ?? null,
+    attendanceId: openAttendance.id,
+  });
+});
+
+punchRouter.post("/out-public", async (req, res) => {
+  const parsed = punchOutBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  let org = null as Awaited<ReturnType<typeof getOrganizationBySlug>>;
+  const bodyOrgSlug = normalizeOrgSlug(parsed.data.organizationSlug);
+  if (bodyOrgSlug) {
+    org = await getOrganizationBySlug(bodyOrgSlug);
+  } else {
+    const orgRes = await requireOrganizationFromRequest(req);
+    if (!("error" in orgRes)) {
+      org = orgRes.org;
+    }
+  }
+
+  let resolved = null as ResolveMemberResult | null;
+  if (org) {
+    resolved = await resolveMemberByPunchIdentity(org.id, parsed.data);
+    if (!resolved.ok) {
+      res.status(resolved.status).json({ error: resolved.error });
+      return;
+    }
+  } else {
+    const phone = normalizePhone(parsed.data.phone ?? "");
+    const matches = await resolveVerifiedMemberAnyOrganization(
+      phone,
+      parsed.data.pin ?? ""
+    );
+    const matchedUsers = matches.flatMap((m) => (m.ok ? [m.user] : []));
+    const openAttendance = await findLatestOpenAttendanceForUsers(
+      matchedUsers.map((u) => u.id)
+    );
+    if (!openAttendance?.session.organization) {
+      res.status(404).json({ error: "No linked check-in location found." });
+      return;
+    }
+    org = await getOrganizationBySlug(openAttendance.session.organization.slug);
+    if (!org) {
+      res.status(404).json({ error: "Unknown organization." });
+      return;
+    }
+    resolved = await resolveMemberByPunchIdentity(org.id, parsed.data);
+    if (!resolved.ok) {
+      res.status(resolved.status).json({ error: resolved.error });
+      return;
+    }
   }
 
   const dateKey = todayDateKeyInZone(org.timezone);
