@@ -5,11 +5,8 @@ export function MobileNav() {
   const { t } = useTranslation()
   const items: { to: string; labelKey: string; end?: boolean }[] = [
     { to: '/punch', labelKey: 'nav.punch', end: true },
-    { to: '/punch/out', labelKey: 'nav.leave', end: true },
-    { to: '/', labelKey: 'nav.member', end: true },
-    { to: '/member', labelKey: 'nav.memberBalance', end: true },
+    { to: '/member', labelKey: 'nav.member', end: true },
     { to: '/rabbi', labelKey: 'nav.rabbi', end: true },
-    { to: '/admin', labelKey: 'nav.admin', end: true },
   ]
 
   return (
@@ -30,15 +27,8 @@ export function MobileNav() {
                 if (to === '/punch') {
                   return `${base} ${
                     isActive
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'text-emerald-700/90 active:bg-emerald-50 active:text-emerald-800'
-                  }`
-                }
-                if (to === '/punch/out') {
-                  return `${base} ${
-                    isActive
-                      ? 'bg-rose-50 text-rose-700'
-                      : 'text-rose-700/90 active:bg-rose-50 active:text-rose-800'
+                      ? 'bg-gradient-to-r from-emerald-50 to-rose-50 text-slate-900'
+                      : 'bg-gradient-to-r from-emerald-50/60 to-rose-50/60 text-slate-700 active:from-emerald-100 active:to-rose-100'
                   }`
                 }
                 return `${base} ${

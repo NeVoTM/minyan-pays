@@ -5,6 +5,7 @@ import { ClockBar } from './components/ClockBar'
 import { MobileNav } from './components/MobileNav'
 import { RabbiBanner } from './components/RabbiBanner'
 import { Home } from './pages/Home'
+import { PunchMenu } from './pages/PunchMenu'
 import { PunchIn } from './pages/PunchIn'
 import { PunchOut } from './pages/PunchOut'
 import { AdminLogin } from './pages/AdminLogin'
@@ -15,6 +16,8 @@ import { MemberLogin } from './pages/MemberLogin'
 import { MemberDashboard } from './pages/MemberDashboard'
 import { MemberSignup } from './pages/MemberSignup'
 import { MemberBilling } from './pages/MemberBilling'
+import { MemberMenu } from './pages/MemberMenu'
+import { MemberProfile } from './pages/MemberProfile'
 import { useOrg } from './context/OrgContext'
 import {
   applyOrgDefaultLocale,
@@ -174,15 +177,18 @@ export default function App() {
         <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-y-auto px-4 py-5 text-sm sm:text-[15px] pb-[calc(5rem+env(safe-area-inset-bottom))]">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/punch" element={<PunchIn />} />
+            <Route path="/punch" element={<PunchMenu />} />
+            <Route path="/punch/in" element={<PunchIn />} />
             <Route path="/punch/out" element={<PunchOut />} />
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/app" element={<AdminDashboard />} />
             <Route path="/rabbi" element={<RabbiLogin />} />
             <Route path="/rabbi/app" element={<RabbiDashboard />} />
-            <Route path="/member" element={<MemberLogin />} />
+            <Route path="/member" element={<MemberMenu />} />
+            <Route path="/member/login" element={<MemberLogin />} />
             <Route path="/member/signup" element={<MemberSignup />} />
             <Route path="/member/app" element={<MemberDashboard />} />
+            <Route path="/member/profile" element={<MemberProfile />} />
             <Route path="/member/billing" element={<MemberBilling />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

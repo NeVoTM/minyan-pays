@@ -31,6 +31,26 @@ async function main() {
     },
   });
 
+  await prisma.charity.createMany({
+    data: [
+      {
+        organizationId: org.id,
+        name: "Local Chesed Fund",
+        description: "Support families in need in the local community.",
+      },
+      {
+        organizationId: org.id,
+        name: "Community Torah Learning",
+        description: "Sponsor learning programs and study materials.",
+      },
+      {
+        organizationId: org.id,
+        name: "General Tzedakah",
+        description: "General charity distribution by approved gabbaim.",
+      },
+    ],
+  });
+
   console.log("Created default organization:", org.slug, org.id);
 }
 

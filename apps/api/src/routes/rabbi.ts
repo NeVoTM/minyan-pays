@@ -296,16 +296,23 @@ rabbiRouter.patch("/reports/week/:weekKey/payouts", async (req, res) => {
   const rowByUser = new Map(rows.map((r) => [r.userId, r]));
   const marks = parsedBody.data.marks;
 
-  await prisma.$transaction(
-    Object.entries(marks).map(([uid, paid]) => {
-      const row = rowByUser.get(uid);
-      if (!row) {
-        return prisma.weeklyPayout.deleteMany({
+  const ops: any[] = [];
+  for (const [uid, paid] of Object.entries(marks)) {
+    const row = rowByUser.get(uid);
+    if (!row) {
+      ops.push(
+        prisma.weeklyPayout.deleteMany({
           where: { userId: uid, weekKey: weekSundayKey },
-        });
-      }
-      const amountCents = row.breakdown.totalCents;
-      return prisma.weeklyPayout.upsert({
+        }),
+        prisma.memberLedgerEntry.deleteMany({
+          where: { userId: uid, weekKey: weekSundayKey, type: { in: ["EARNED", "PAID"] } },
+        })
+      );
+      continue;
+    }
+    const amountCents = row.breakdown.totalCents;
+    ops.push(
+      prisma.weeklyPayout.upsert({
         where: {
           userId_weekKey: { userId: uid, weekKey: weekSundayKey },
         },
@@ -319,9 +326,46 @@ rabbiRouter.patch("/reports/week/:weekKey/payouts", async (req, res) => {
           amountCents,
           paidAt: paid ? new Date() : null,
         },
-      });
-    })
-  );
+      }),
+      prisma.memberLedgerEntry.upsert({
+        where: {
+          userId_weekKey_type: { userId: uid, weekKey: weekSundayKey, type: "EARNED" },
+        },
+        create: {
+          organizationId: oid,
+          userId: uid,
+          weekKey: weekSundayKey,
+          type: "EARNED",
+          amountCents,
+          createdByRole: "RABBI",
+        },
+        update: {
+          amountCents,
+        },
+      }),
+      paid
+        ? prisma.memberLedgerEntry.upsert({
+            where: {
+              userId_weekKey_type: { userId: uid, weekKey: weekSundayKey, type: "PAID" },
+            },
+            create: {
+              organizationId: oid,
+              userId: uid,
+              weekKey: weekSundayKey,
+              type: "PAID",
+              amountCents,
+              createdByRole: "RABBI",
+            },
+            update: {
+              amountCents,
+            },
+          })
+        : prisma.memberLedgerEntry.deleteMany({
+            where: { userId: uid, weekKey: weekSundayKey, type: "PAID" },
+          })
+    );
+  }
+  await prisma.$transaction(ops);
 
   res.json({ ok: true, weekSundayKey, updated: Object.keys(marks).length });
 });

@@ -12,21 +12,31 @@ import {
 const KEY = 'minyan_member_token'
 
 type Balance = {
-  settings: { synagogueName: string; firstNineCents: number; weeklyBonusCents: number }
-  attendanceLog: {
-    dateKey: string
-    punchInAt: string
-    punchOutAt: string | null
-    punchInConfirmedAt: string | null
-  }[]
-  earningsByWeek: Record<
-    string,
-    {
-      dailyLines: { dateKey: string; amountCents: number; firstNine: boolean }[]
-      weeklyBonusCents: number
-      totalCents: number
-    }
-  >
+  totals: {
+    earnedCents: number
+    paidCents: number
+    donatedCents: number
+    owedCents: number
+    eligibleCashoutCents: number
+  }
+  donations: { amountCents: number; charityName: string | null; createdAt: string }[]
+  detail: {
+    settings: { synagogueName: string; firstNineCents: number; weeklyBonusCents: number }
+    attendanceLog: {
+      dateKey: string
+      punchInAt: string
+      punchOutAt: string | null
+      punchInConfirmedAt: string | null
+    }[]
+    earningsByWeek: Record<
+      string,
+      {
+        dailyLines: { dateKey: string; amountCents: number; firstNine: boolean }[]
+        weeklyBonusCents: number
+        totalCents: number
+      }
+    >
+  }
 }
 
 export function MemberDashboard() {
@@ -36,15 +46,21 @@ export function MemberDashboard() {
   const [err, setErr] = useState<string | null>(null)
   const [punchOutLoading, setPunchOutLoading] = useState(false)
   const [punchMsg, setPunchMsg] = useState<string | null>(null)
+  const [actionAmount, setActionAmount] = useState('')
+  const [charities, setCharities] = useState<{ id: string; name: string }[]>([])
+  const [charityId, setCharityId] = useState('')
 
   const load = useCallback(async () => {
     if (!token) {
-      nav('/member')
+      nav('/member/login')
       return
     }
     try {
       const b = await api<Balance>('/api/me/balance', { token })
+      const c = await api<{ items: { id: string; name: string }[] }>('/api/me/charities', { token })
       setData(b)
+      setCharities(c.items)
+      if (!charityId && c.items[0]) setCharityId(c.items[0].id)
       setErr(null)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : 'Load failed')
@@ -84,7 +100,7 @@ export function MemberDashboard() {
           <div>
             <h1 className={pageTitle}>Your balance</h1>
             <p className={pageSubtitle}>
-              {data?.settings.synagogueName ?? '…'}
+              {data?.detail.settings.synagogueName ?? '…'}
             </p>
           </div>
         </div>
@@ -93,7 +109,7 @@ export function MemberDashboard() {
           className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50"
           onClick={() => {
             localStorage.removeItem(KEY)
-            nav('/member')
+            nav('/member/login')
           }}
         >
           Log out
@@ -105,6 +121,22 @@ export function MemberDashboard() {
           {err}
         </p>
       )}
+
+      <Link
+        to="/member/profile"
+        className={`${cardShell} flex items-center justify-between gap-3 no-underline transition hover:ring-2 hover:ring-blue-200`}
+      >
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Member profile
+          </p>
+          <p className="font-semibold text-slate-900">View / edit details</p>
+          <p className="text-xs text-slate-500">PIN, address, and Zelle numbers</p>
+        </div>
+        <span className="text-slate-300" aria-hidden>
+          ›
+        </span>
+      </Link>
 
       <Link
         to="/member/billing"
@@ -123,6 +155,15 @@ export function MemberDashboard() {
       </Link>
 
       <div className={cardShell}>
+        {data && (
+          <div className="mb-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+            <div>Earned: <strong>${(data.totals.earnedCents / 100).toFixed(2)}</strong></div>
+            <div>Paid: <strong>${(data.totals.paidCents / 100).toFixed(2)}</strong></div>
+            <div>Donated: <strong>${(data.totals.donatedCents / 100).toFixed(2)}</strong></div>
+            <div>Amount owed: <strong>${(data.totals.owedCents / 100).toFixed(2)}</strong></div>
+            <div>Cash-out eligible (7+ days): <strong>${(data.totals.eligibleCashoutCents / 100).toFixed(2)}</strong></div>
+          </div>
+        )}
         <button
           type="button"
           disabled={punchOutLoading}
@@ -134,12 +175,77 @@ export function MemberDashboard() {
         {punchMsg && (
           <p className="mt-3 text-sm text-slate-600">{punchMsg}</p>
         )}
+
+        <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+          <h3 className="text-sm font-semibold text-slate-900">Cash out or donate</h3>
+          <input
+            className="w-full rounded-full border border-slate-200 px-4 py-2 text-sm"
+            placeholder="Amount in dollars (e.g. 25.00)"
+            value={actionAmount}
+            onChange={(e) => setActionAmount(e.target.value)}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+              onClick={async () => {
+                if (!token) return
+                const amountCents = Math.round(Number(actionAmount || '0') * 100)
+                try {
+                  await api('/api/me/balance/cashout-request', {
+                    method: 'POST',
+                    token,
+                    body: JSON.stringify({ amountCents }),
+                  })
+                  setPunchMsg('Cash-out request submitted.')
+                  await load()
+                } catch (e: unknown) {
+                  setPunchMsg(e instanceof Error ? e.message : 'Request failed')
+                }
+              }}
+            >
+              Request cash out
+            </button>
+            <div className="flex gap-2">
+              <select
+                className="min-w-0 flex-1 rounded-full border border-slate-200 px-3 py-2 text-sm"
+                value={charityId}
+                onChange={(e) => setCharityId(e.target.value)}
+              >
+                {charities.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+                onClick={async () => {
+                  if (!token || !charityId) return
+                  const amountCents = Math.round(Number(actionAmount || '0') * 100)
+                  try {
+                    await api('/api/me/balance/donate', {
+                      method: 'POST',
+                      token,
+                      body: JSON.stringify({ amountCents, charityId }),
+                    })
+                    setPunchMsg('Donation recorded.')
+                    await load()
+                  } catch (e: unknown) {
+                    setPunchMsg(e instanceof Error ? e.message : 'Donation failed')
+                  }
+                }}
+              >
+                Donate
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {data && (
         <div className="space-y-4">
           <h2 className="text-sm font-bold text-slate-900">Earnings by week</h2>
-          {Object.entries(data.earningsByWeek).map(([week, e]) => (
+          {Object.entries(data.detail.earningsByWeek).map(([week, e]) => (
             <div
               key={week}
               className="rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(15,23,42,0.06)] ring-1 ring-slate-100"
@@ -174,13 +280,13 @@ export function MemberDashboard() {
         </div>
       )}
 
-      {data && data.attendanceLog.length > 0 && (
+      {data && data.detail.attendanceLog.length > 0 && (
         <div className={cardShell}>
           <h2 className="text-sm font-bold text-slate-900">
             Confirmed punch-ins
           </h2>
           <ul className="mt-3 space-y-2 text-xs text-slate-600">
-            {data.attendanceLog.map((row) => (
+            {data.detail.attendanceLog.map((row) => (
               <li key={row.dateKey + row.punchInAt}>
                 <span className="font-medium text-slate-800">{row.dateKey}</span> — in{' '}
                 {new Date(row.punchInAt).toLocaleString()}

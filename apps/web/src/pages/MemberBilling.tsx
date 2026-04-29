@@ -34,7 +34,7 @@ export function MemberBilling() {
 
   const load = useCallback(async () => {
     if (!token) {
-      nav('/member')
+      nav('/member/login')
       return
     }
     try {

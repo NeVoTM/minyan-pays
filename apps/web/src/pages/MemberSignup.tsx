@@ -457,7 +457,7 @@ export function MemberSignup() {
       <p className="text-center text-sm text-slate-500">
         {t('signup.already')}{' '}
         <Link
-          to="/member"
+          to="/member/login"
           className="font-semibold text-blue-600 hover:underline"
         >
           {t('signup.signIn')}

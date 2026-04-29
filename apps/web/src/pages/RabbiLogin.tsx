@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
@@ -72,6 +72,11 @@ export function RabbiLogin() {
             {t('rabbiLogin.submit')}
           </button>
         </form>
+        <div className="mt-4 text-center">
+          <Link to="/admin" className="text-xs text-slate-500 underline decoration-slate-300">
+            Admin access
+          </Link>
+        </div>
       </div>
     </div>
   )

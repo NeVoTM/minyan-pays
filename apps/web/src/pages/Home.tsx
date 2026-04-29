@@ -9,10 +9,10 @@ export function Home() {
       <div className={`${cardShell} p-4`}>
         <div className="grid grid-cols-1 gap-2">
         <Link
-          to="/member/signup"
+          to="/member"
             className={`${primaryBtn} !py-3 inline-flex justify-center text-center no-underline`}
         >
-          {t('home.signupCta')}
+          {t('nav.member')}
         </Link>
         </div>
       </div>

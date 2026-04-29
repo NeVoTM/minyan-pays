@@ -7,9 +7,9 @@
   },
   "nav": {
     "home": "Home",
-    "punch": "Check-in",
+    "punch": "Check-in/out",
     "leave": "Check-out",
-    "member": "JOIN / REGISTER",
+    "member": "JOIN / VIEW MEMBER",
     "memberBalance": "Member Balance",
     "rabbi": "Rabbi",
     "admin": "Admin"

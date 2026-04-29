@@ -30,6 +30,19 @@ enum OrganizationKind {
   STUDY_HALL
 }
 
+enum MemberLedgerType {
+  EARNED
+  PAID
+  DONATED
+}
+
+enum CashoutRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
 model Organization {
   id               String           @id @default(cuid())
   createdAt        DateTime         @default(now())
@@ -61,6 +74,9 @@ model Organization {
   rabbis         Rabbi[]
   minyanSessions MinyanSession[]
   treasury       Treasury?
+  charities      Charity[]
+  cashoutRequests CashoutRequest[]
+  ledgerEntries  MemberLedgerEntry[]
 }
 
 model Rabbi {
@@ -110,9 +126,76 @@ model User {
   isApproved       Boolean          @default(true)
   attendances      Attendance[]
   weeklyPayouts    WeeklyPayout[]
+  ledgerEntries    MemberLedgerEntry[]
+  changeCodes      MemberChangeCode[]
+  cashoutRequests  CashoutRequest[]
 
   @@unique([organizationId, phone])
   @@unique([organizationId, attendanceCode])
+}
+
+model Charity {
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  website        String?
+  description    String?
+  isActive       Boolean       @default(true)
+  donations      MemberLedgerEntry[]
+
+  @@index([organizationId, isActive])
+  @@unique([organizationId, name])
+}
+
+model MemberLedgerEntry {
+  id             String           @id @default(cuid())
+  createdAt      DateTime         @default(now())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           MemberLedgerType
+  amountCents    Int
+  weekKey        String?
+  note           String?
+  charityId      String?
+  charity        Charity?         @relation(fields: [charityId], references: [id], onDelete: SetNull)
+  createdByRole  String?
+
+  @@index([organizationId, userId, type, createdAt])
+  @@unique([userId, weekKey, type])
+}
+
+model CashoutRequest {
+  id             String              @id @default(cuid())
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCents    Int
+  status         CashoutRequestStatus @default(PENDING)
+  paidAt         DateTime?
+  note           String?
+
+  @@index([organizationId, userId, status, createdAt])
+}
+
+model MemberChangeCode {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     String
+  codeHash    String
+  expiresAt   DateTime
+  consumedAt  DateTime?
+
+  @@index([userId, purpose, expiresAt])
 }
 
 model Treasury {
