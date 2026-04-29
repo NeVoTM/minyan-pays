@@ -4,6 +4,32 @@ Date: 2026-04-20
 
 ## Latest Session Updates (2026-04-22)
 
+## Architecture and Infrastructure Decisions (2026-04-29)
+
+These decisions are now documented in `docs/REWRITE_BLUEPRINT.md` and should be treated as active rewrite guidance:
+
+- Added target stack and systems plan (React + TS + Vite, Node + TS API, Prisma, PostgreSQL target).
+- Confirmed timing: complete near-feature-parity Alpha rewrite first, then implement production infrastructure/security rollout.
+- Added offline/online multi-location strategy:
+  - local-first write path
+  - append-only sync queue events
+  - idempotent server ingest by client event ID
+  - location-scoped partitioning
+  - visible sync status + retry flow
+- Added low-cost DB strategy for small data volume:
+  - free/small tier during alpha/pilot
+  - low-cost managed Postgres for beta
+  - upgrade only on measured thresholds
+- Added source-protection/copy-limiting strategy:
+  - keep core business rules server-side
+  - private repo and controlled access
+  - API hardening/rate limits/WAF
+  - legal/license/terms enforcement path
+
+### Deferred Legal Deliverables
+
+- `LICENSE` file and `TERMS` document are intentionally deferred and will be created later as a dedicated legal/doc step before broad rollout.
+
 ### Punch location linking (new)
 - Added location dropdown on check-in and check-out forms using location name + address.
 - Dropdown options come from organization list (`synagogueName` + `locationAddress`).
