@@ -13,6 +13,10 @@
 
 **Why did my members disappear?** See [docs/DATA_AND_BACKUPS.md](./docs/DATA_AND_BACKUPS.md) (resets, new clones, wrong `DATABASE_URL`, backups).
 
+## Production (Render)
+
+Deployed infrastructure names, GitHub remotes, Postgres service ID, free-tier expiry, and go-live checklist live in **[docs/RENDER_DEPLOYMENT.md](./docs/RENDER_DEPLOYMENT.md)**. Update that doc when Render URLs or service names change.
+
 ## One-time setup
 
 ```powershell

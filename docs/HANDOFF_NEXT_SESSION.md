@@ -2,6 +2,10 @@
 
 Date: 2026-04-20
 
+## Production / Render / GitHub (2026-04-29)
+
+**Canonical reference:** [`docs/RENDER_DEPLOYMENT.md`](./RENDER_DEPLOYMENT.md) — GitHub remotes (`origin` = `NeVoTM/minyan-pays`, branch `main`), Render Postgres **`minyan-pays-db`** (Service ID `dpg-d7p9c23rjlhs73et01g0-a`, Free tier, **expires May 29, 2026** unless upgraded), region **Oregon**, PostgreSQL **18**, domain **`minyanpays.com`**, API/web checklist and env vars. Update that file when you add Render web services or change URLs.
+
 ## Latest Session Updates (2026-04-22)
 
 ## Architecture and Infrastructure Decisions (2026-04-29)
