@@ -71,7 +71,9 @@ export function AdminDashboard() {
   }, [token, nav])
 
   useEffect(() => {
-    void load()
+    queueMicrotask(() => {
+      void load()
+    })
   }, [load])
 
   async function confirm(id: string) {
