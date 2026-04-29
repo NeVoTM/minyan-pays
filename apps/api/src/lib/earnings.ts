@@ -9,21 +9,19 @@ export type EarningsBreakdown = {
 };
 
 async function getSettings() {
-  let s = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
-  if (!s) {
-    s = await prisma.appSettings.create({
-      data: { id: "singleton" },
-    });
-  }
-  return s;
+  return prisma.appSettings.upsert({
+    where: { id: "singleton" },
+    create: { id: "singleton" },
+    update: {},
+  });
 }
 
 async function getTreasury() {
-  let t = await prisma.treasury.findUnique({ where: { id: "singleton" } });
-  if (!t) {
-    t = await prisma.treasury.create({ data: { id: "singleton" } });
-  }
-  return t;
+  return prisma.treasury.upsert({
+    where: { id: "singleton" },
+    create: { id: "singleton" },
+    update: {},
+  });
 }
 
 /** Confirmed attendances for a session, ordered by punch-in time; first `slots` get daily pay. */
