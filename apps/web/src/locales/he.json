@@ -67,9 +67,12 @@
   },
   "adminLogin": {
     "title": "ניהול",
-    "subtitle": "גישה לרב / גזבר",
+    "subtitle": "גזבר / גבאי — בחרו מיקום והתחברו.",
+    "locationLabel": "מיקום",
+    "locationHelp": "סיסמת הניהול רק למיקום שנבחר.",
     "password": "סיסמה",
     "passwordPh": "סיסמת מנהל",
+    "passwordRequired": "יש להזין סיסמה.",
     "submit": "כניסה",
     "chooseOrgFirst": "יש לבחור מקום תחילה.",
     "loginFailed": "הכניסה נכשלה"

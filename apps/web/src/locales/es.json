@@ -67,9 +67,12 @@
   },
   "adminLogin": {
     "title": "Administración",
-    "subtitle": "Acceso rabino / tesorero",
+    "subtitle": "Tesorero / gabbai — elija lugar e inicie sesión.",
+    "locationLabel": "Lugar",
+    "locationHelp": "La contraseña de admin es solo para ese lugar.",
     "password": "Contraseña",
     "passwordPh": "Contraseña de admin",
+    "passwordRequired": "Introduzca la contraseña.",
     "submit": "Entrar",
     "chooseOrgFirst": "Elija primero un lugar.",
     "loginFailed": "Error al iniciar sesión"

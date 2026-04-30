@@ -67,9 +67,12 @@
   },
   "adminLogin": {
     "title": "Administration",
-    "subtitle": "Accès rabbin / trésorier",
+    "subtitle": "Trésorier / gabbai — choisissez le lieu, puis connectez-vous.",
+    "locationLabel": "Lieu",
+    "locationHelp": "Le mot de passe admin vaut pour ce lieu seulement.",
     "password": "Mot de passe",
     "passwordPh": "Mot de passe admin",
+    "passwordRequired": "Saisissez le mot de passe.",
     "submit": "Connexion",
     "chooseOrgFirst": "Choisissez d’abord un lieu.",
     "loginFailed": "Échec de la connexion"

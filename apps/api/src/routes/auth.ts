@@ -58,7 +58,11 @@ authRouter.post("/admin", async (req, res) => {
   }
 
   if (!ok) {
-    res.status(401).json({ error: "Invalid password" });
+    res.status(401).json({
+      error: org.adminPasswordHash
+        ? "Invalid password. This location already has an admin password saved in the database (from Change admin password in the dashboard). That value is used, not ADMIN_PASSWORD on the server. Use that password, or clear adminPasswordHash (deployment docs: db:clear-admin-hash or bootstrap)."
+        : "Invalid password. Check that ADMIN_PASSWORD on the API service matches exactly (no extra spaces).",
+    });
     return;
   }
   res.json({ token: signAdminToken(org.id) });

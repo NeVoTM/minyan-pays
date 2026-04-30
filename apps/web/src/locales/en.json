@@ -58,9 +58,12 @@
   },
   "adminLogin": {
     "title": "Admin",
-    "subtitle": "Rabbi / treasurer access",
+    "subtitle": "Treasurer / gabbai — select location, then sign in.",
+    "locationLabel": "Location",
+    "locationHelp": "Admin password applies to this location only.",
     "password": "Password",
     "passwordPh": "Admin password",
+    "passwordRequired": "Enter a password.",
     "submit": "Sign in",
     "chooseOrgFirst": "Choose a location first.",
     "loginFailed": "Login failed"
