@@ -8,7 +8,10 @@ import {
   signMemberToken,
   signRabbiToken,
 } from "../middleware/auth.js";
-import { getEnvAdminPassword } from "../lib/envAdminPassword.js";
+import {
+  getEnvAdminPassword,
+  normalizeAdminPasswordInput,
+} from "../lib/envAdminPassword.js";
 import {
   getOrganizationBySlug,
   normalizeOrgSlug,
@@ -44,7 +47,7 @@ authRouter.post("/admin", async (req, res) => {
     return;
   }
 
-  const password = parsed.data.password.trim();
+  const password = normalizeAdminPasswordInput(parsed.data.password);
   const expected = getEnvAdminPassword();
   if (!expected) {
     res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
@@ -53,7 +56,7 @@ authRouter.post("/admin", async (req, res) => {
   if (password !== expected) {
     res.status(401).json({
       error:
-        "Invalid password. Admin login uses ADMIN_PASSWORD on the API server only (set in Render env for production).",
+        "Invalid password. On production: Render → API web service → Environment → ADMIN_PASSWORD must match what you type here; save and wait for redeploy/restart.",
     });
     return;
   }
