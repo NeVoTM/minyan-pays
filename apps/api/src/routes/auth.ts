@@ -8,6 +8,7 @@ import {
   signMemberToken,
   signRabbiToken,
 } from "../middleware/auth.js";
+import { getEnvAdminPassword } from "../lib/envAdminPassword.js";
 import {
   getOrganizationBySlug,
   normalizeOrgSlug,
@@ -48,7 +49,7 @@ authRouter.post("/admin", async (req, res) => {
   if (org.adminPasswordHash) {
     ok = await bcrypt.compare(password, org.adminPasswordHash);
   } else {
-    const expected = process.env.ADMIN_PASSWORD?.trim();
+    const expected = getEnvAdminPassword();
     if (!expected) {
       res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
       return;

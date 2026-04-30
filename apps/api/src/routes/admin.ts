@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { getEnvAdminPassword } from "../lib/envAdminPassword.js";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireAdmin, type JwtPayload } from "../middleware/auth.js";
 import { todayDateKeyInZone } from "../lib/dates.js";
@@ -805,7 +806,7 @@ adminRouter.post("/change-admin-password", async (req, res) => {
   if (org.adminPasswordHash) {
     ok = await bcrypt.compare(cur, org.adminPasswordHash);
   } else {
-    const expected = process.env.ADMIN_PASSWORD?.trim();
+    const expected = getEnvAdminPassword();
     if (!expected) {
       res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
       return;
