@@ -26,7 +26,7 @@ function parseStoredLang(): AppLang | null {
 }
 
 function initialLng(): AppLang {
-  return parseStoredLang() ?? 'he'
+  return parseStoredLang() ?? 'en'
 }
 
 export function initI18n() {

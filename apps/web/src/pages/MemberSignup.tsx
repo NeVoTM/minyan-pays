@@ -9,7 +9,6 @@ import { formatPhoneDigits } from '../lib/phoneDisplay'
 import {
   cardShell,
   fieldLabel,
-  pageSubtitle,
   pageTitle,
   pillInput,
   pillTextarea,
@@ -22,7 +21,6 @@ const empty = () => ({
   lastName: '',
   phoneDigits: '',
   pin: '',
-  attendanceCode: '',
   email: '',
   isMarried: false,
   zelleDigits: '',
@@ -43,9 +41,7 @@ function scrollFieldIntoView(el: EventTarget | null) {
 
 export function MemberSignup() {
   const { t } = useTranslation()
-  const { organizationSlug, organizations } = useOrg()
-  const selectedOrgName =
-    organizations.find((o) => o.slug === organizationSlug)?.synagogueName ?? ''
+  const { organizationSlug } = useOrg()
   const [f, setF] = useState(() => empty())
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -114,11 +110,6 @@ export function MemberSignup() {
       setErr(t('signup.addressRequired'))
       return
     }
-    const ac = f.attendanceCode.trim()
-    if (ac.length > 0 && ac.length < 4) {
-      setErr(t('signup.codeRule'))
-      return
-    }
     if (!organizationSlug) {
       setErr(t('signup.chooseOrgFirst'))
       return
@@ -137,9 +128,6 @@ export function MemberSignup() {
           lastName: f.lastName.trim(),
           phone: f.phoneDigits,
           pin: f.pin,
-          ...(f.attendanceCode.trim().length >= 4
-            ? { attendanceCode: f.attendanceCode.trim() }
-            : {}),
           isMarried: f.isMarried,
           email: f.email.trim() || undefined,
           zellePhone: f.zelleDigits || undefined,
@@ -167,16 +155,11 @@ export function MemberSignup() {
   }
 
   return (
-    <div className="space-y-5 pb-8">
+    <div className="space-y-4 pb-6">
       <div className="flex items-start gap-3">
         <BackLink to="/" />
         <div>
-          <h1 className={pageTitle}>{t('signup.title')}</h1>
-          <p className={pageSubtitle}>
-            {t('signup.subtitle', {
-              synagogueName: selectedOrgName,
-            })}
-          </p>
+          <h1 className={`${pageTitle} !text-2xl`}>{t('signup.title')}</h1>
         </div>
       </div>
 
@@ -194,7 +177,7 @@ export function MemberSignup() {
       <div className={cardShell}>
         <form
           onSubmit={submit}
-          className="space-y-4 text-sm"
+          className="grid grid-cols-2 gap-3 text-sm"
           autoComplete="off"
         >
           <input
@@ -212,8 +195,7 @@ export function MemberSignup() {
             aria-hidden
           />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
+          <label className="block">
               <span className={fieldLabel}>{t('signup.firstName')}</span>
               <input
                 className={pillInput}
@@ -226,8 +208,8 @@ export function MemberSignup() {
                 autoComplete="off"
                 placeholder={t('signup.firstName')}
               />
-            </label>
-            <label className="block">
+          </label>
+          <label className="block">
               <span className={fieldLabel}>{t('signup.lastName')}</span>
               <input
                 className={pillInput}
@@ -240,10 +222,9 @@ export function MemberSignup() {
                 autoComplete="off"
                 placeholder={t('signup.lastName')}
               />
-            </label>
-          </div>
+          </label>
 
-          <label className="block">
+          <label className="block md:col-span-2">
             <span className={fieldLabel}>{t('signup.mobilePhone')}</span>
             <PhoneInput
               className={pillInput}
@@ -255,7 +236,7 @@ export function MemberSignup() {
             />
           </label>
 
-          <label className="block">
+          <label className="block md:col-span-2">
             <span className={fieldLabel}>{t('signup.pinLabel')}</span>
             <input
               type="text"
@@ -276,24 +257,6 @@ export function MemberSignup() {
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>{t('signup.punchCodeOpt')}</span>
-            <input
-              className={pillInput}
-              value={f.attendanceCode}
-              onChange={(e) =>
-                setF((x) => ({ ...x, attendanceCode: e.target.value }))
-              }
-              onFocus={(e) => scrollFieldIntoView(e.target)}
-              maxLength={32}
-              autoComplete="off"
-              placeholder={t('signup.punchCodePlaceholder')}
-            />
-            <span className="mt-1 block text-[11px] text-slate-500">
-              {t('signup.punchCodeHint')}
-            </span>
-          </label>
-
-          <label className="block">
             <span className={fieldLabel}>{t('signup.emailOpt')}</span>
             <input
               type="email"
@@ -306,7 +269,7 @@ export function MemberSignup() {
             />
           </label>
 
-          <div>
+          <div className="md:col-span-2">
             <p className={fieldLabel}>{t('signup.addrTitle')}</p>
             <textarea
               className={pillTextarea}
@@ -341,7 +304,7 @@ export function MemberSignup() {
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-3 md:col-span-2">
             <input
               className={pillInput}
               placeholder={t('signup.city')}
@@ -389,7 +352,7 @@ export function MemberSignup() {
             <p className="text-[11px] text-amber-700">{zipErr}</p>
           )}
 
-          <label className="flex items-center gap-3 text-sm text-slate-600">
+          <label className="flex items-center gap-3 text-sm text-slate-600 md:col-span-2">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
@@ -401,7 +364,7 @@ export function MemberSignup() {
             {t('signup.married')}
           </label>
 
-          <label className="block">
+          <label className="block md:col-span-2">
             <span className={fieldLabel}>{t('signup.zelleYou')}</span>
             <PhoneInput
               className={pillInput}
@@ -416,7 +379,7 @@ export function MemberSignup() {
               autoComplete="off"
             />
           </label>
-          <label className="block">
+          <label className="block md:col-span-2">
             <span className={fieldLabel}>{t('signup.zelleSpouse')}</span>
             <PhoneInput
               className={pillInput}
@@ -432,7 +395,7 @@ export function MemberSignup() {
             />
           </label>
 
-          <label className="flex items-start gap-3 text-sm leading-snug text-slate-600">
+          <label className="flex items-start gap-3 text-sm leading-snug text-slate-600 md:col-span-2">
             <input
               type="checkbox"
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
@@ -448,7 +411,11 @@ export function MemberSignup() {
             </span>
           </label>
 
-          <button type="submit" disabled={loading} className={primaryBtn}>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`${primaryBtn} md:col-span-2`}
+          >
             {loading ? t('signup.submitting') : t('signup.submit')}
           </button>
         </form>

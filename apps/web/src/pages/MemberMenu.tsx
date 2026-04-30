@@ -5,7 +5,6 @@ export function MemberMenu() {
   return (
     <div className="space-y-4">
       <div className={cardShell}>
-        <p className="text-sm text-slate-600">Login to Member account</p>
         <div className="mt-4 grid grid-cols-1 gap-2">
           <Link
             to="/member/signup"
@@ -15,7 +14,7 @@ export function MemberMenu() {
           </Link>
           <Link
             to="/member/login"
-            className="inline-flex justify-center rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 no-underline transition hover:bg-slate-50"
+            className="inline-flex justify-center rounded-full border border-emerald-700 bg-emerald-600 px-4 py-3 text-sm font-semibold text-white no-underline transition hover:bg-emerald-700"
           >
             Login to Member account
           </Link>
