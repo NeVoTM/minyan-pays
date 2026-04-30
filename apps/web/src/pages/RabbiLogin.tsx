@@ -125,8 +125,11 @@ export function RabbiLogin() {
           </button>
         </form>
         <div className="mt-4 text-center">
-          <Link to="/admin" className="text-xs text-slate-500 underline decoration-slate-300">
-            Admin access
+          <Link
+            to="/admin"
+            className="text-xs text-slate-500 underline decoration-slate-300"
+          >
+            {t('home.staffAdmin')}
           </Link>
         </div>
       </div>
