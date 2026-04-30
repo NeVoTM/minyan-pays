@@ -1,22 +1,24 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cardShell, primaryBtn } from '../lib/uiClasses'
 
 export function MemberMenu() {
+  const { t } = useTranslation()
   return (
-    <div className="space-y-4">
-      <div className={cardShell}>
-        <div className="mt-4 grid grid-cols-1 gap-2">
+    <div className="space-y-3">
+      <div className={`${cardShell} !p-3`}>
+        <div className="grid grid-cols-2 gap-2">
           <Link
             to="/member/signup"
-            className={`${primaryBtn} !py-3 inline-flex justify-center text-center no-underline`}
+            className={`${primaryBtn} !py-2.5 !text-sm inline-flex items-center justify-center text-center no-underline sm:!text-[15px]`}
           >
-            Join / Register
+            {t('home.joinRegister')}
           </Link>
           <Link
             to="/member/login"
-            className="inline-flex justify-center rounded-full border border-emerald-700 bg-emerald-600 px-4 py-3 text-sm font-semibold text-white no-underline transition hover:bg-emerald-700"
+            className="inline-flex items-center justify-center rounded-full border border-emerald-700 bg-emerald-600 px-2 py-2.5 text-center text-sm font-semibold text-white no-underline transition hover:bg-emerald-700 sm:text-[15px]"
           >
-            Login to Member account
+            {t('home.viewMember')}
           </Link>
         </div>
       </div>

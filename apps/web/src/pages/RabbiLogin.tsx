@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
@@ -17,23 +17,44 @@ export const RABBI_KEY = 'minyan_rabbi_token'
 
 export function RabbiLogin() {
   const { t } = useTranslation()
-  const { organizationSlug } = useOrg()
+  const { organizationSlug, organizations, setOrganizationSlug } = useOrg()
+  const [locationSlug, setLocationSlug] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
+  useEffect(() => {
+    if (organizations.length === 0) return
+    const next =
+      locationSlug && organizations.some((o) => o.slug === locationSlug)
+        ? locationSlug
+        : organizationSlug &&
+            organizations.some((o) => o.slug === organizationSlug)
+          ? organizationSlug
+          : organizations[0]!.slug
+    if (locationSlug !== next) setLocationSlug(next)
+    if (organizationSlug !== next) setOrganizationSlug(next)
+  }, [
+    organizations,
+    organizationSlug,
+    locationSlug,
+    setOrganizationSlug,
+  ])
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
-    if (!organizationSlug) {
+    const slug = locationSlug.trim()
+    if (!slug) {
       setErr(t('rabbiLogin.chooseOrgFirst'))
       return
     }
     try {
       const r = await api<{ token: string }>('/api/auth/rabbi', {
         method: 'POST',
-        body: JSON.stringify({ password, organizationSlug }),
+        body: JSON.stringify({ password, organizationSlug: slug }),
       })
+      setOrganizationSlug(slug)
       localStorage.setItem(RABBI_KEY, r.token)
       nav('/rabbi/app')
     } catch (e: unknown) {
@@ -54,6 +75,33 @@ export function RabbiLogin() {
       <div className={cardShell}>
         <form onSubmit={submit} className="space-y-4">
           <label className="block">
+            <span className={fieldLabel}>{t('rabbiLogin.locationLabel')}</span>
+            <select
+              className={pillInput}
+              value={locationSlug}
+              onChange={(e) => {
+                const v = e.target.value
+                setLocationSlug(v)
+                setOrganizationSlug(v || null)
+              }}
+              required
+            >
+              {organizations.length === 0 ? (
+                <option value="">{t('common.loading')}</option>
+              ) : (
+                organizations.map((o) => (
+                  <option key={o.slug} value={o.slug}>
+                    {o.synagogueName}
+                    {o.locationAddress ? ` — ${o.locationAddress}` : ''}
+                  </option>
+                ))
+              )}
+            </select>
+            <span className="mt-1 block text-[11px] text-slate-500">
+              {t('rabbiLogin.locationHelp')}
+            </span>
+          </label>
+          <label className="block">
             <span className={fieldLabel}>{t('rabbiLogin.password')}</span>
             <input
               type="password"
@@ -68,7 +116,11 @@ export function RabbiLogin() {
               {err}
             </p>
           )}
-          <button type="submit" className={primaryBtn}>
+          <button
+            type="submit"
+            disabled={organizations.length === 0}
+            className={primaryBtn}
+          >
             {t('rabbiLogin.submit')}
           </button>
         </form>

@@ -52,7 +52,9 @@
     "signupCta": "Create an account",
     "footerHint": "Home · Punch · Leave · Member · Rabbi · Admin — bottom menu",
     "staffAdmin": "Admin login",
-    "staffRabbi": "Rabbi menu"
+    "staffRabbi": "Rabbi menu",
+    "joinRegister": "Join / Register",
+    "viewMember": "View member"
   },
   "adminLogin": {
     "title": "Admin",
@@ -353,7 +355,9 @@
   },
   "rabbiLogin": {
     "title": "Rabbi menu",
-    "subtitle": "Approvals, check-ins, and payouts for this location.",
+    "subtitle": "Select your location, then sign in. Approvals and payouts apply only to that location.",
+    "locationLabel": "Location",
+    "locationHelp": "Each rabbi signs in to one location. Switch location here if you serve more than one site.",
     "password": "Rabbi password",
     "submit": "Sign in",
     "chooseOrgFirst": "Choose a location first.",

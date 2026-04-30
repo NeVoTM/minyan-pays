@@ -26,13 +26,21 @@ export function PunchMenu() {
         </div>
       </div>
 
-      <div className={`${cardShell} space-y-4`}>
-        <Link to="/punch/in" className={`${punchInCheckInBtn} block text-center`}>
-          {t('punchIn.submit')}
-        </Link>
-        <Link to="/punch/out" className={`${punchOutDepartureBtn} block text-center`}>
-          {t('punchOut.submit')}
-        </Link>
+      <div className={`${cardShell} !p-3`}>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            to="/punch/in"
+            className={`${punchInCheckInBtn} !py-4 !text-base block text-center`}
+          >
+            {t('punchIn.submit')}
+          </Link>
+          <Link
+            to="/punch/out"
+            className={`${punchOutDepartureBtn} !py-4 !text-base block text-center`}
+          >
+            {t('punchOut.submit')}
+          </Link>
+        </div>
       </div>
     </div>
   )

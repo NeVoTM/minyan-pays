@@ -61,7 +61,9 @@
     "signupCta": "יצירת חשבון",
     "footerHint": "בית · כניסה · יציאה · חשבון · ניהול — תפריט תחתון",
     "staffAdmin": "כניסת מנהל",
-    "staffRabbi": "תפריט רב"
+    "staffRabbi": "תפריט רב",
+    "joinRegister": "הרשמה",
+    "viewMember": "כניסת חבר"
   },
   "adminLogin": {
     "title": "ניהול",
@@ -319,7 +321,9 @@
   },
   "rabbiLogin": {
     "title": "תפריט רב",
-    "subtitle": "אישורים, כניסות ותשלומים למיקום זה.",
+    "subtitle": "בחרו מיקום והתחברו. האישורים והתשלומים רק למיקום שנבחר.",
+    "locationLabel": "מיקום",
+    "locationHelp": "כל רב מתחבר למיקום אחד. להחלפת מקום — בחרו ברשימה.",
     "password": "סיסמת רב",
     "submit": "כניסה",
     "chooseOrgFirst": "יש לבחור מקום תחילה.",

@@ -61,7 +61,9 @@
     "signupCta": "Créer un compte",
     "footerHint": "Accueil · Entrée · Sortie · Membre · Admin — menu bas",
     "staffAdmin": "Connexion admin",
-    "staffRabbi": "Menu rabbin"
+    "staffRabbi": "Menu rabbin",
+    "joinRegister": "Rejoindre / S’inscrire",
+    "viewMember": "Voir le membre"
   },
   "adminLogin": {
     "title": "Administration",
@@ -318,7 +320,9 @@
   },
   "rabbiLogin": {
     "title": "Menu rabbin",
-    "subtitle": "Approbations, présences et paiements pour ce lieu.",
+    "subtitle": "Choisissez le lieu, puis connectez-vous. Les actions ne concernent que ce lieu.",
+    "locationLabel": "Lieu",
+    "locationHelp": "Chaque rabbin se connecte à un lieu. Changez ici si vous en gérez plusieurs.",
     "password": "Mot de passe rabbin",
     "submit": "Connexion",
     "chooseOrgFirst": "Choisissez d’abord un lieu.",

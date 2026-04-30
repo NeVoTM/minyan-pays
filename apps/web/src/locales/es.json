@@ -61,7 +61,9 @@
     "signupCta": "Crear cuenta",
     "footerHint": "Inicio · Entrada · Salida · Miembro · Admin — menú inferior",
     "staffAdmin": "Entrada admin",
-    "staffRabbi": "Menú rabino"
+    "staffRabbi": "Menú rabino",
+    "joinRegister": "Unirse / Registro",
+    "viewMember": "Ver miembro"
   },
   "adminLogin": {
     "title": "Administración",
@@ -318,7 +320,9 @@
   },
   "rabbiLogin": {
     "title": "Menú rabino",
-    "subtitle": "Aprobaciones, asistencia y pagos para este lugar.",
+    "subtitle": "Elija su lugar e inicie sesión. Las aprobaciones y pagos son solo para ese lugar.",
+    "locationLabel": "Lugar",
+    "locationHelp": "Cada rabino inicia sesión en un lugar. Cambie aquí si atiende varios sitios.",
     "password": "Contraseña del rabino",
     "submit": "Entrar",
     "chooseOrgFirst": "Elija primero un lugar.",
