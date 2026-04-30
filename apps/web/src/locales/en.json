@@ -144,7 +144,7 @@
     "submitting": "Creating account…",
     "already": "Already registered?",
     "signIn": "Sign in",
-    "successMsg": "{{message}} Your punch-in code: {{code}}. Save it — the rabbi will confirm when your account is approved."
+    "successMsg": "{{message}} The rabbi will confirm when your account is approved."
   },
   "member": {
     "balanceTitle": "Your balance",

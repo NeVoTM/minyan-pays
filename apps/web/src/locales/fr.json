@@ -142,7 +142,7 @@
     "submitting": "Création…",
     "already": "Déjà inscrit ?",
     "signIn": "Connexion",
-    "successMsg": "{{message}} Votre code d’entrée : {{code}}. Conservez-le — le rabbin confirmera après approbation."
+    "successMsg": "{{message}} Le rabbin confirmera lorsque votre compte sera approuvé."
   },
   "member": {
     "balanceTitle": "Votre solde",

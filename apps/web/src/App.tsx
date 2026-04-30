@@ -19,6 +19,7 @@ import { MemberBilling } from './pages/MemberBilling'
 import { MemberMenu } from './pages/MemberMenu'
 import { MemberProfile } from './pages/MemberProfile'
 import { useOrg } from './context/OrgContext'
+import { usePunchHeader } from './context/PunchHeaderContext'
 import {
   applyOrgDefaultLocale,
   SUPPORTED_LANGS,
@@ -75,6 +76,7 @@ function OrgPicker() {
 export default function App() {
   const { t, i18n } = useTranslation()
   const { organizationSlug, organizations, loading } = useOrg()
+  const { punchInHeaderTitle } = usePunchHeader()
   const [pub, setPub] = useState<PublicConfig | null>(null)
   const isRtl = i18n.language === 'he'
 
@@ -162,10 +164,10 @@ export default function App() {
                 to="/"
                 className="block truncate text-lg font-bold tracking-tight text-blue-600"
               >
-                {t('app.title')}
+                {punchInHeaderTitle ?? t('app.title')}
               </Link>
               <span className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
-                {pub?.synagogueName ?? '…'}
+                {t('app.subtitle')}
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-2">

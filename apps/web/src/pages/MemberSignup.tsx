@@ -119,7 +119,6 @@ export function MemberSignup() {
       const r = await api<{
         message: string
         displayName: string
-        attendanceCode: string
       }>('/api/register', {
         method: 'POST',
         body: JSON.stringify({
@@ -139,12 +138,7 @@ export function MemberSignup() {
           postalCode: zip5,
         }),
       })
-      setMsg(
-        t('signup.successMsg', {
-          message: r.message,
-          code: r.attendanceCode,
-        })
-      )
+      setMsg(t('signup.successMsg', { message: r.message }))
       setF(empty())
       setAgreeTerms(false)
     } catch (e: unknown) {
@@ -155,11 +149,11 @@ export function MemberSignup() {
   }
 
   return (
-    <div className="space-y-4 pb-6">
-      <div className="flex items-start gap-3">
+    <div className="space-y-3 pb-5">
+      <div className="flex items-start gap-2">
         <BackLink to="/" />
         <div>
-          <h1 className={`${pageTitle} !text-2xl`}>{t('signup.title')}</h1>
+          <h1 className={`${pageTitle} !text-xl`}>{t('signup.title')}</h1>
         </div>
       </div>
 
@@ -174,10 +168,10 @@ export function MemberSignup() {
         </p>
       )}
 
-      <div className={cardShell}>
+      <div className={`${cardShell} !p-4 sm:!p-5`}>
         <form
           onSubmit={submit}
-          className="grid grid-cols-2 gap-3 text-sm"
+          className="grid grid-cols-2 gap-2 text-xs sm:text-sm"
           autoComplete="off"
         >
           <input
@@ -196,9 +190,11 @@ export function MemberSignup() {
           />
 
           <label className="block">
-              <span className={fieldLabel}>{t('signup.firstName')}</span>
+              <span className={`${fieldLabel} !text-[11px]`}>
+                {t('signup.firstName')}
+              </span>
               <input
-                className={pillInput}
+                className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
                 value={f.firstName}
                 onChange={(e) =>
                   setF((x) => ({ ...x, firstName: e.target.value }))
@@ -210,9 +206,11 @@ export function MemberSignup() {
               />
           </label>
           <label className="block">
-              <span className={fieldLabel}>{t('signup.lastName')}</span>
+              <span className={`${fieldLabel} !text-[11px]`}>
+                {t('signup.lastName')}
+              </span>
               <input
-                className={pillInput}
+                className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
                 value={f.lastName}
                 onChange={(e) =>
                   setF((x) => ({ ...x, lastName: e.target.value }))
@@ -224,10 +222,12 @@ export function MemberSignup() {
               />
           </label>
 
-          <label className="block md:col-span-2">
-            <span className={fieldLabel}>{t('signup.mobilePhone')}</span>
+          <label className="col-span-2 block">
+            <span className={`${fieldLabel} !text-[11px]`}>
+              {t('signup.mobilePhone')}
+            </span>
             <PhoneInput
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               value={f.phoneDigits}
               onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
               onBlur={applyPhoneDefaults}
@@ -236,12 +236,14 @@ export function MemberSignup() {
             />
           </label>
 
-          <label className="block md:col-span-2">
-            <span className={fieldLabel}>{t('signup.pinLabel')}</span>
+          <label className="col-span-2 block">
+            <span className={`${fieldLabel} !text-[11px]`}>
+              {t('signup.pinLabel')}
+            </span>
             <input
               type="text"
               inputMode="numeric"
-              className={pinInput}
+              className={`${pinInput} !py-2.5 !text-xs sm:!text-sm`}
               value={f.pin}
               onChange={(e) =>
                 setF((x) => ({
@@ -257,11 +259,13 @@ export function MemberSignup() {
           </label>
 
           <label className="block">
-            <span className={fieldLabel}>{t('signup.emailOpt')}</span>
+            <span className={`${fieldLabel} !text-[11px]`}>
+              {t('signup.emailOpt')}
+            </span>
             <input
               type="email"
               autoComplete="email"
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               value={f.email}
               onChange={(e) => setF((x) => ({ ...x, email: e.target.value }))}
               onFocus={(e) => scrollFieldIntoView(e.target)}
@@ -269,13 +273,13 @@ export function MemberSignup() {
             />
           </label>
 
-          <div className="md:col-span-2">
-            <p className={fieldLabel}>{t('signup.addrTitle')}</p>
+          <div className="col-span-2">
+            <p className={`${fieldLabel} !text-[11px]`}>{t('signup.addrTitle')}</p>
             <textarea
-              className={pillTextarea}
+              className={`${pillTextarea} !py-2.5 !text-xs sm:!text-sm`}
               placeholder={t('signup.line1')}
               maxLength={100}
-              rows={2}
+              rows={1}
               value={f.addressLine1}
               onChange={(e) =>
                 setF((x) => ({
@@ -288,10 +292,10 @@ export function MemberSignup() {
               autoComplete="street-address"
             />
             <textarea
-              className={`${pillTextarea} mt-2`}
+              className={`${pillTextarea} mt-1.5 !py-2.5 !text-xs sm:!text-sm`}
               placeholder={t('signup.line2')}
               maxLength={100}
-              rows={2}
+              rows={1}
               value={f.addressLine2}
               onChange={(e) =>
                 setF((x) => ({
@@ -304,9 +308,9 @@ export function MemberSignup() {
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 md:col-span-2">
+          <div className="col-span-2 grid gap-2 sm:grid-cols-3">
             <input
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               placeholder={t('signup.city')}
               maxLength={80}
               value={f.city}
@@ -316,7 +320,7 @@ export function MemberSignup() {
               autoComplete="address-level2"
             />
             <input
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               placeholder={t('signup.state')}
               maxLength={32}
               value={f.stateRegion}
@@ -328,7 +332,7 @@ export function MemberSignup() {
               autoComplete="address-level1"
             />
             <input
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               placeholder={t('signup.zip')}
               inputMode="numeric"
               maxLength={5}
@@ -346,13 +350,15 @@ export function MemberSignup() {
             />
           </div>
           {zipLoading && (
-            <p className="text-[11px] text-slate-500">{t('signup.zipLookup')}</p>
+            <p className="col-span-2 text-[10px] text-slate-500">
+              {t('signup.zipLookup')}
+            </p>
           )}
           {zipErr && (
-            <p className="text-[11px] text-amber-700">{zipErr}</p>
+            <p className="col-span-2 text-[10px] text-amber-700">{zipErr}</p>
           )}
 
-          <label className="flex items-center gap-3 text-sm text-slate-600 md:col-span-2">
+          <label className="col-span-2 flex items-center gap-2 text-[11px] text-slate-600 sm:text-xs">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
@@ -364,10 +370,12 @@ export function MemberSignup() {
             {t('signup.married')}
           </label>
 
-          <label className="block md:col-span-2">
-            <span className={fieldLabel}>{t('signup.zelleYou')}</span>
+          <label className="col-span-2 block">
+            <span className={`${fieldLabel} !text-[11px]`}>
+              {t('signup.zelleYou')}
+            </span>
             <PhoneInput
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               placeholder={
                 f.phoneDigits.length === 10
                   ? formatPhoneDigits(f.phoneDigits)
@@ -379,10 +387,12 @@ export function MemberSignup() {
               autoComplete="off"
             />
           </label>
-          <label className="block md:col-span-2">
-            <span className={fieldLabel}>{t('signup.zelleSpouse')}</span>
+          <label className="col-span-2 block">
+            <span className={`${fieldLabel} !text-[11px]`}>
+              {t('signup.zelleSpouse')}
+            </span>
             <PhoneInput
-              className={pillInput}
+              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
               placeholder={
                 f.phoneDigits.length === 10
                   ? formatPhoneDigits(f.phoneDigits)
@@ -395,7 +405,7 @@ export function MemberSignup() {
             />
           </label>
 
-          <label className="flex items-start gap-3 text-sm leading-snug text-slate-600 md:col-span-2">
+          <label className="col-span-2 flex items-start gap-2 text-[11px] leading-snug text-slate-600 sm:text-xs">
             <input
               type="checkbox"
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
@@ -414,7 +424,7 @@ export function MemberSignup() {
           <button
             type="submit"
             disabled={loading}
-            className={`${primaryBtn} md:col-span-2`}
+            className={`${primaryBtn} col-span-2 !py-3.5 !text-sm sm:!text-[15px]`}
           >
             {loading ? t('signup.submitting') : t('signup.submit')}
           </button>

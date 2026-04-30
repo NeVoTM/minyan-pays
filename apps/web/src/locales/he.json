@@ -143,7 +143,7 @@
     "submitting": "יוצר חשבון…",
     "already": "כבר רשומים?",
     "signIn": "כניסה",
-    "successMsg": "{{message}} קוד הכניסה שלכם: {{code}}. שמרו — הרב יאשר כשהחשבון יאושר."
+    "successMsg": "{{message}} הרב יאשר כשהחשבון יאושר."
   },
   "member": {
     "balanceTitle": "היתרה שלכם",

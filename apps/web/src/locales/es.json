@@ -142,7 +142,7 @@
     "submitting": "Creando cuenta…",
     "already": "¿Ya registrado?",
     "signIn": "Entrar",
-    "successMsg": "{{message}} Su código de entrada: {{code}}. Guárdelo — el rabino confirmará al aprobar."
+    "successMsg": "{{message}} El rabino confirmará cuando se apruebe su cuenta."
   },
   "member": {
     "balanceTitle": "Su saldo",

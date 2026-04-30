@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { PhoneInput } from './PhoneInput'
 import { useOrg } from '../context/OrgContext'
+import { usePunchHeader } from '../context/PunchHeaderContext'
 import {
   fieldLabel,
   pillInput,
@@ -32,6 +33,7 @@ type Props = {
 export function PunchIdentityForm({ mode }: Props) {
   const { t } = useTranslation()
   const { organizations, organizationSlug } = useOrg()
+  const { setPunchInHeaderTitle } = usePunchHeader()
   const [phoneDigits, setPhoneDigits] = useState('')
   const [pin, setPin] = useState('')
   const [locationSlug, setLocationSlug] = useState<string>('')
@@ -46,6 +48,15 @@ export function PunchIdentityForm({ mode }: Props) {
       )
     }
   }, [organizationSlug, organizations, locationSlug])
+
+  useEffect(() => {
+    if (mode !== 'in') return
+    const org = organizations.find((o) => o.slug === locationSlug)
+    setPunchInHeaderTitle(org?.synagogueName?.trim() || null)
+    return () => {
+      setPunchInHeaderTitle(null)
+    }
+  }, [mode, locationSlug, organizations, setPunchInHeaderTitle])
 
   useEffect(() => {
     if (mode !== 'out') return
@@ -110,6 +121,7 @@ export function PunchIdentityForm({ mode }: Props) {
           orgSlug: locationSlug || null,
         })
         const when = new Date(r.punchOutAt).toLocaleString()
+        setPunchInHeaderTitle(null)
         setMsg(t('punchOut.success', { name: r.displayName, when }))
       }
       setPhoneDigits('')
