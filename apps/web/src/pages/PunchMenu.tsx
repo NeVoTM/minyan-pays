@@ -17,11 +17,8 @@ export function PunchMenu() {
       <div className="flex items-start gap-3">
         <BackLink to="/" />
         <div>
-          <h1 className={pageTitle}>
-            {t('nav.punch')} / {t('nav.leave')}
-          </h1>
+          <h1 className={pageTitle}>{t('nav.punch')}</h1>
           <div className={`${pageSubtitle} space-y-1`}>
-            <p>Punch in, rabbi confirms, punch out when you leave. Check earnings under Member.</p>
             <p>* Check-in, Rabbi will confirm</p>
             <p>* Check-out when you leave</p>
             <p>* Check Earning under Member menu</p>
