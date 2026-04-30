@@ -22,7 +22,20 @@ npm run build --workspace apps/api
 
 ## Step 2 — Local PostgreSQL
 
-**Option A — Docker (recommended for dev)**  
+**Option A — Embedded Postgres (no Docker — Windows-friendly)**  
+
+From repo root, terminal 1:
+
+```powershell
+cd C:\Users\17274\minyan-pays
+npm run db:local
+```
+
+Wait for `Embedded Postgres listening on 127.0.0.1:5433`. In `apps/api/.env` set:
+
+`DATABASE_URL="postgresql://minyan:minyan@127.0.0.1:5433/minyan_pays"`
+
+**Option B — Docker**
 
 From repo root:
 
@@ -30,9 +43,11 @@ From repo root:
 docker compose up -d
 ```
 
+Use `DATABASE_URL` with port **5432** (see `apps/api/.env.example`).
+
 **Verify:** `docker ps` shows `postgres` on port `5432`.
 
-**Option B — Cloud**  
+**Option C — Cloud**  
 
 Use Neon or Render’s **External** `DATABASE_URL` in `apps/api/.env` (see `docs/FREE_DATABASE_NEON.md` / `docs/RENDER_DEPLOYMENT.md`).
 

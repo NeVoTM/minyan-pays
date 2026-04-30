@@ -2,6 +2,7 @@
 Thumbs.db
 *.log
 node_modules/
+.embedded-pg/
 dist/
 apps/*/dist/
 .env

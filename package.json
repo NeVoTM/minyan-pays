@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "Dovrey Evrit — minyan attendance, first-9 payouts, treasury lock",
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "embedded-postgres": "^18.3.0-beta.17"
   },
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/web\"",
@@ -15,6 +16,7 @@
     "db:migrate": "npm run db:migrate --workspace apps/api",
     "db:push": "npm run db:push --workspace apps/api",
     "db:seed": "npm run db:seed --workspace apps/api",
+    "db:local": "node scripts/embedded-pg-serve.mjs",
     "tunnel": "npx --yes localtunnel --port 5173"
   },
   "workspaces": [

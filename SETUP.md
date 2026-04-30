@@ -8,6 +8,7 @@
 
 Prisma uses **PostgreSQL** (matches Render production).
 
+- **Local (embedded — no Docker):** From repo root run `npm run db:local`, then set `DATABASE_URL` to the **5433** URL in `apps/api/.env.example`. Run `npx prisma db push` and `npm run db:seed` in `apps/api`.
 - **Local (Docker):** `docker compose up -d` from repo root, then in `apps/api/.env` set `DATABASE_URL` from `apps/api/.env.example`. Run `npx prisma db push` and `npm run db:seed` in `apps/api`.
 - **Free cloud:** **Neon** — [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md).
 
