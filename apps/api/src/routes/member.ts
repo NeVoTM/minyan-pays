@@ -21,8 +21,14 @@ const verificationSendSchema = z.object({
 });
 
 const profileUpdateSchema = memberSelfUpdateSchema.extend({
-  pin: z.string().min(4).max(12).optional(),
-  verificationCode: z.string().regex(/^\d{6}$/),
+  pin: z.preprocess(
+    (v) => (v == null || v === "" ? undefined : String(v).trim()),
+    z.union([z.undefined(), z.string().min(4).max(12)])
+  ),
+  verificationCode: z.preprocess((v) => {
+    if (v == null || v === "") return "";
+    return String(v).replace(/\D/g, "").slice(0, 6);
+  }, z.string().length(6, { message: "Enter the 6-digit code (tap Send code first)." })),
 });
 
 const cashoutSchema = z
@@ -208,10 +214,15 @@ memberRouter.post("/profile/verification/send", async (req, res) => {
   // Placeholder SMS transport (configure provider later).
   console.log(`[SMS-VERIFY] send to ${user.phone}: ${code}`);
 
+  const echoCode =
+    process.env.NODE_ENV !== "production" ||
+    process.env.MEMBER_VERIFICATION_ECHO_CODE === "1" ||
+    process.env.MEMBER_VERIFICATION_ECHO_CODE === "true";
+
   res.json({
     ok: true,
     expiresAt: expiresAt.toISOString(),
-    ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}),
+    ...(echoCode ? { devCode: code } : {}),
   });
 });
 

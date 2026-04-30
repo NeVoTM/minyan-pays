@@ -75,6 +75,15 @@ export function MemberProfile() {
     e.preventDefault()
     if (!form) return
     setMsg(null)
+    const digits = code.replace(/\D/g, '').slice(0, 6)
+    if (digits.length !== 6) {
+      setMsg('Enter the full 6-digit code. Tap Send code first if you have not received one.')
+      return
+    }
+    if (newPin.trim() && newPin.trim().length < 4) {
+      setMsg('New PIN must be at least 4 digits, or leave blank.')
+      return
+    }
     try {
       await api('/api/me/profile', {
         method: 'PATCH',
@@ -87,15 +96,32 @@ export function MemberProfile() {
           city: form.city || null,
           stateRegion: form.stateRegion || null,
           postalCode: form.postalCode || null,
-          pin: newPin || undefined,
-          verificationCode: code,
+          pin: newPin.trim() || undefined,
+          verificationCode: digits,
         }),
       })
       setMsg('Profile updated.')
       setNewPin('')
       setCode('')
     } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : 'Save failed')
+      const raw = e instanceof Error ? e.message : 'Save failed'
+      try {
+        const o = JSON.parse(raw) as {
+          fieldErrors?: Record<string, string[]>
+          formErrors?: string[]
+        }
+        const parts = [
+          ...(o.formErrors ?? []),
+          ...Object.values(o.fieldErrors ?? {}).flat(),
+        ]
+        if (parts.length) {
+          setMsg(parts.join(' '))
+          return
+        }
+      } catch {
+        /* plain string */
+      }
+      setMsg(raw)
     }
   }
 
