@@ -58,11 +58,11 @@ Use Neon or Render’s **External** `DATABASE_URL` in `apps/api/.env` (see `docs
 **Do:**
 
 1. Copy `apps\api\.env.example` → `apps\api\.env` if needed.
-2. Set `DATABASE_URL` (Docker example):
-
-   `postgresql://minyan:minyan@localhost:5432/minyan_pays`
-
-3. Set `ADMIN_PASSWORD`, `JWT_SECRET`, `WEB_ORIGIN=http://localhost:5173` (or list multiple origins separated by commas for prod later).
+2. Set `DATABASE_URL` to match Step 2:
+   - **Embedded (`npm run db:local`):** `postgresql://minyan:minyan@127.0.0.1:5433/minyan_pays`
+   - **Docker:** `postgresql://minyan:minyan@localhost:5432/minyan_pays`
+   - **Cloud:** your Neon/Render URL
+3. Set `ADMIN_PASSWORD`, `JWT_SECRET`, `WEB_ORIGIN=http://localhost:5173` (comma-separate multiple origins for prod if needed).
 
 **Apply schema + seed:**
 
@@ -73,7 +73,7 @@ npx prisma db push
 npm run db:seed
 ```
 
-**Pass:** No Prisma errors; seed may print “Organizations already exist” if re-run.
+**Pass:** `db push` reports in sync (or applies changes); seed may print “Organizations already exist” if re-run. If `db push` shows **EPERM** on a second `generate`, ignore when **`npx prisma generate`** already succeeded alone, or stop other Node processes and re-run `generate`.
 
 ---
 
