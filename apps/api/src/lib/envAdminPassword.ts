@@ -1,6 +1,5 @@
 /**
- * ADMIN_PASSWORD for admin login when Organization.adminPasswordHash is null.
- * Strips whitespace and optional surrounding quotes (common when copying from env UIs).
+ * ADMIN_PASSWORD for /api/auth/admin. Strips whitespace and optional surrounding quotes.
  */
 export function getEnvAdminPassword(): string | undefined {
   const raw = process.env.ADMIN_PASSWORD;

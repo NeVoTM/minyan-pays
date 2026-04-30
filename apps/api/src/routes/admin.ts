@@ -2,7 +2,6 @@ import { Router, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { getEnvAdminPassword } from "../lib/envAdminPassword.js";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireAdmin, type JwtPayload } from "../middleware/auth.js";
 import { todayDateKeyInZone } from "../lib/dates.js";
@@ -777,56 +776,6 @@ adminRouter.get("/settings", async (req, res) => {
     return;
   }
   res.json(s);
-});
-
-const changeAdminPasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().trim().min(4).max(128),
-});
-
-/** Set per-location admin password (bcrypt). Replaces env-based ADMIN_PASSWORD for this org once set. */
-adminRouter.post("/change-admin-password", async (req, res) => {
-  const oid = orgId(req);
-  const parsed = changeAdminPasswordSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
-  const org = await prisma.organization.findUnique({
-    where: { id: oid },
-    select: { id: true, adminPasswordHash: true },
-  });
-  if (!org) {
-    res.status(404).json({ error: "Organization not found" });
-    return;
-  }
-  const cur = parsed.data.currentPassword.trim();
-  const neu = parsed.data.newPassword;
-  let ok = false;
-  if (org.adminPasswordHash) {
-    ok = await bcrypt.compare(cur, org.adminPasswordHash);
-  } else {
-    const expected = getEnvAdminPassword();
-    if (!expected) {
-      res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
-      return;
-    }
-    ok = cur === expected;
-  }
-  if (!ok) {
-    res.status(401).json({ error: "Current password is incorrect" });
-    return;
-  }
-  if (cur === neu) {
-    res.status(400).json({ error: "New password must differ from current" });
-    return;
-  }
-  const hash = await bcrypt.hash(neu, 10);
-  await prisma.organization.update({
-    where: { id: oid },
-    data: { adminPasswordHash: hash },
-  });
-  res.json({ ok: true });
 });
 
 adminRouter.post("/treasury/fund", async (req, res) => {

@@ -190,13 +190,6 @@ export function AdminDashboard() {
   const [rabbiEmailDraft, setRabbiEmailDraft] = useState('')
   const [rabbiPasswordDraft, setRabbiPasswordDraft] = useState('')
   const [rabbiSetupMsg, setRabbiSetupMsg] = useState<string | null>(null)
-  const [adminPwdCurrent, setAdminPwdCurrent] = useState('')
-  const [adminPwdNew, setAdminPwdNew] = useState('')
-  const [adminPwdConfirm, setAdminPwdConfirm] = useState('')
-  const [adminPwdNotice, setAdminPwdNotice] = useState<{
-    kind: 'ok' | 'err'
-    text: string
-  } | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
   const [viewMember, setViewMember] = useState<MemberRow | null>(null)
@@ -521,48 +514,6 @@ export function AdminDashboard() {
     }
   }
 
-  async function submitAdminPasswordChange(e: React.FormEvent) {
-    e.preventDefault()
-    if (!token) return
-    setAdminPwdNotice(null)
-    if (adminPwdNew.length < 4) {
-      setAdminPwdNotice({
-        kind: 'err',
-        text: t('admin.adminPasswordTooShort'),
-      })
-      return
-    }
-    if (adminPwdNew !== adminPwdConfirm) {
-      setAdminPwdNotice({
-        kind: 'err',
-        text: t('admin.adminPasswordMismatch'),
-      })
-      return
-    }
-    try {
-      await api('/api/admin/change-admin-password', {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          currentPassword: adminPwdCurrent,
-          newPassword: adminPwdNew,
-        }),
-      })
-      setAdminPwdCurrent('')
-      setAdminPwdNew('')
-      setAdminPwdConfirm('')
-      setAdminPwdNotice({
-        kind: 'ok',
-        text: t('admin.adminPasswordUpdated'),
-      })
-    } catch (e: unknown) {
-      setAdminPwdNotice({
-        kind: 'err',
-        text: e instanceof Error ? e.message : t('admin.saveFailed'),
-      })
-    }
-  }
-
   function resetRabbiForm() {
     setRabbiEditId(null)
     setRabbiNameDraft('')
@@ -806,66 +757,6 @@ export function AdminDashboard() {
           )}
           {locationSetupMsg && (
             <p className="mt-2 text-[11px] text-slate-500">{locationSetupMsg}</p>
-          )}
-        </div>
-      )}
-
-      {settings && (
-        <div className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm">
-          <h2 className="mb-2 font-medium text-slate-800">
-            {t('admin.changeAdminPasswordTitle')}
-          </h2>
-          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.changeAdminPasswordHelp')}
-          </p>
-          <form className="grid max-w-md gap-2" onSubmit={submitAdminPasswordChange}>
-            <label className="text-xs text-slate-600">
-              {t('admin.adminCurrentPassword')}
-              <input
-                type="password"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={adminPwdCurrent}
-                onChange={(e) => setAdminPwdCurrent(e.target.value)}
-                autoComplete="current-password"
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.adminNewPassword')}
-              <input
-                type="password"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={adminPwdNew}
-                onChange={(e) => setAdminPwdNew(e.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="text-xs text-slate-600">
-              {t('admin.adminConfirmPassword')}
-              <input
-                type="password"
-                className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                value={adminPwdConfirm}
-                onChange={(e) => setAdminPwdConfirm(e.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
-            <button
-              type="submit"
-              className="mt-1 w-fit rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-900"
-            >
-              {t('admin.adminPasswordSubmit')}
-            </button>
-          </form>
-          {adminPwdNotice && (
-            <p
-              className={`mt-2 text-[11px] ${
-                adminPwdNotice.kind === 'ok'
-                  ? 'text-emerald-700'
-                  : 'text-red-600'
-              }`}
-            >
-              {adminPwdNotice.text}
-            </p>
           )}
         </div>
       )}

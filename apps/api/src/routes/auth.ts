@@ -45,23 +45,15 @@ authRouter.post("/admin", async (req, res) => {
   }
 
   const password = parsed.data.password.trim();
-  let ok = false;
-  if (org.adminPasswordHash) {
-    ok = await bcrypt.compare(password, org.adminPasswordHash);
-  } else {
-    const expected = getEnvAdminPassword();
-    if (!expected) {
-      res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
-      return;
-    }
-    ok = password === expected;
+  const expected = getEnvAdminPassword();
+  if (!expected) {
+    res.status(500).json({ error: "ADMIN_PASSWORD not configured" });
+    return;
   }
-
-  if (!ok) {
+  if (password !== expected) {
     res.status(401).json({
-      error: org.adminPasswordHash
-        ? "Invalid password. This location already has an admin password saved in the database (from Change admin password in the dashboard). That value is used, not ADMIN_PASSWORD on the server. Use that password, or clear adminPasswordHash (deployment docs: db:clear-admin-hash or bootstrap)."
-        : "Invalid password. Check that ADMIN_PASSWORD on the API service matches exactly (no extra spaces).",
+      error:
+        "Invalid password. Admin login uses ADMIN_PASSWORD on the API server only (set in Render env for production).",
     });
     return;
   }

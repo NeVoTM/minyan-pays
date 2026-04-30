@@ -8,7 +8,6 @@ import { rabbiRouter } from "./routes/rabbi.js";
 import { memberRouter } from "./routes/member.js";
 import { registerRouter } from "./routes/register.js";
 import { publicRouter } from "./routes/public.js";
-import { bootstrapRouter } from "./routes/bootstrap.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -37,7 +36,6 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "minyan-pays-api" });
 });
 
-app.use("/api/bootstrap", bootstrapRouter);
 app.use("/api/public", publicRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/register", registerRouter);
