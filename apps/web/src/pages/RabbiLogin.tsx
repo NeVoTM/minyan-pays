@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
@@ -19,7 +19,6 @@ export function RabbiLogin() {
   const { t } = useTranslation()
   const { organizationSlug, organizations, setOrganizationSlug } = useOrg()
   const [locationSlug, setLocationSlug] = useState('')
-  const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
@@ -52,7 +51,7 @@ export function RabbiLogin() {
     try {
       const r = await api<{ token: string }>('/api/auth/rabbi', {
         method: 'POST',
-        body: JSON.stringify({ password, organizationSlug: slug }),
+        body: JSON.stringify({ organizationSlug: slug }),
       })
       setOrganizationSlug(slug)
       localStorage.setItem(RABBI_KEY, r.token)
@@ -101,16 +100,6 @@ export function RabbiLogin() {
               {t('rabbiLogin.locationHelp')}
             </span>
           </label>
-          <label className="block">
-            <span className={fieldLabel}>{t('rabbiLogin.password')}</span>
-            <input
-              type="password"
-              className={pillInput}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">
               {err}
@@ -124,14 +113,6 @@ export function RabbiLogin() {
             {t('rabbiLogin.submit')}
           </button>
         </form>
-        <div className="mt-4 text-center">
-          <Link
-            to="/admin"
-            className="text-xs text-slate-500 underline decoration-slate-300"
-          >
-            {t('home.staffAdmin')}
-          </Link>
-        </div>
       </div>
     </div>
   )

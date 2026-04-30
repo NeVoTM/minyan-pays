@@ -1,5 +1,6 @@
 import { Router, type Request } from "express";
 import bcrypt from "bcryptjs";
+import { pinHashFromOptionalPin } from "../lib/pinHash.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
@@ -147,7 +148,7 @@ adminRouter.post("/members", async (req, res) => {
     return;
   }
 
-  const pinHash = await bcrypt.hash(d.pin, 10);
+  const pinHash = await pinHashFromOptionalPin(d.pin);
   try {
     const user = await prisma.user.create({
       data: {
@@ -392,8 +393,8 @@ adminRouter.patch("/members/:id", async (req, res) => {
     }
     updateData.attendanceCode = nextCode;
   }
-  if (p.pin !== undefined) {
-    updateData.pinHash = await bcrypt.hash(p.pin, 10);
+  if (p.pin !== undefined && p.pin.trim().length >= 4) {
+    updateData.pinHash = await bcrypt.hash(p.pin.trim(), 10);
   }
 
   try {

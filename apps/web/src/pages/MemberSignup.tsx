@@ -12,7 +12,6 @@ import {
   pageTitle,
   pillInput,
   pillTextarea,
-  pinInput,
   primaryBtn,
 } from '../lib/uiClasses'
 
@@ -20,7 +19,6 @@ const empty = () => ({
   firstName: '',
   lastName: '',
   phoneDigits: '',
-  pin: '',
   email: '',
   isMarried: false,
   zelleDigits: '',
@@ -96,10 +94,6 @@ export function MemberSignup() {
       setErr(t('signup.phoneInvalid'))
       return
     }
-    if (f.pin.length < 4) {
-      setErr(t('signup.pinTooShort'))
-      return
-    }
     const zip5 = f.postalCode.replace(/\D/g, '').slice(0, 5)
     if (
       !f.addressLine1.trim() ||
@@ -126,7 +120,6 @@ export function MemberSignup() {
           firstName: f.firstName.trim(),
           lastName: f.lastName.trim(),
           phone: f.phoneDigits,
-          pin: f.pin,
           isMarried: f.isMarried,
           email: f.email.trim() || undefined,
           zellePhone: f.zelleDigits || undefined,
@@ -232,28 +225,6 @@ export function MemberSignup() {
               onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
               onBlur={applyPhoneDefaults}
               required
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="col-span-2 block">
-            <span className={`${fieldLabel} !text-[11px]`}>
-              {t('signup.pinLabel')}
-            </span>
-            <input
-              type="text"
-              inputMode="numeric"
-              className={`${pinInput} !py-2.5 !text-xs sm:!text-sm`}
-              value={f.pin}
-              onChange={(e) =>
-                setF((x) => ({
-                  ...x,
-                  pin: e.target.value.replace(/\D/g, '').slice(0, 12),
-                }))
-              }
-              onFocus={(e) => scrollFieldIntoView(e.target)}
-              required
-              minLength={4}
               autoComplete="off"
             />
           </label>

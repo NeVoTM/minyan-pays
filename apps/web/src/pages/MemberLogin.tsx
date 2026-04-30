@@ -10,7 +10,6 @@ import {
   pageSubtitle,
   pageTitle,
   pillInput,
-  pinInput,
   primaryBtn,
   cardShell,
 } from '../lib/uiClasses'
@@ -21,7 +20,6 @@ export function MemberLogin() {
   const { t } = useTranslation()
   const { organizationSlug } = useOrg()
   const [phoneDigits, setPhoneDigits] = useState('')
-  const [pin, setPin] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
@@ -29,11 +27,11 @@ export function MemberLogin() {
     e.preventDefault()
     setErr(null)
     if (!organizationSlug) {
-      setErr('Choose a location first.')
+      setErr(t('memberLogin.chooseOrgFirst'))
       return
     }
     if (phoneDigits.length !== 10) {
-      setErr('Enter a valid 10-digit phone number.')
+      setErr(t('memberLogin.phoneInvalid'))
       return
     }
     try {
@@ -41,14 +39,13 @@ export function MemberLogin() {
         method: 'POST',
         body: JSON.stringify({
           phone: phoneDigits,
-          pin,
           organizationSlug,
         }),
       })
       localStorage.setItem(KEY, r.token)
       nav('/member/app')
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : 'Login failed')
+      setErr(e instanceof Error ? e.message : t('memberLogin.loginFailed'))
     }
   }
 
@@ -71,40 +68,16 @@ export function MemberLogin() {
             autoComplete="off"
             aria-hidden
           />
-          <input
-            type="password"
-            className="hidden"
-            tabIndex={-1}
-            autoComplete="off"
-            aria-hidden
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className={fieldLabel}>{t('memberLogin.phone')}</span>
-              <PhoneInput
-                className={pillInput}
-                value={phoneDigits}
-                onChange={setPhoneDigits}
-                required
-                autoComplete="off"
-              />
-            </label>
-            <label className="block">
-              <span className={fieldLabel}>{t('memberLogin.pin')}</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                className={pinInput}
-                value={pin}
-                onChange={(e) =>
-                  setPin(e.target.value.replace(/\D/g, '').slice(0, 12))
-                }
-                required
-                minLength={4}
-                autoComplete="off"
-              />
-            </label>
-          </div>
+          <label className="block">
+            <span className={fieldLabel}>{t('memberLogin.phone')}</span>
+            <PhoneInput
+              className={pillInput}
+              value={phoneDigits}
+              onChange={setPhoneDigits}
+              required
+              autoComplete="off"
+            />
+          </label>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">
               {err}

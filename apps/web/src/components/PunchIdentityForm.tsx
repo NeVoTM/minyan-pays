@@ -7,7 +7,6 @@ import { usePunchHeader } from '../context/PunchHeaderContext'
 import {
   fieldLabel,
   pillInput,
-  pinInput,
   punchInCheckInBtn,
   punchOutDepartureBtn,
 } from '../lib/uiClasses'
@@ -35,7 +34,6 @@ export function PunchIdentityForm({ mode }: Props) {
   const { organizations, organizationSlug } = useOrg()
   const { setPunchInHeaderTitle } = usePunchHeader()
   const [phoneDigits, setPhoneDigits] = useState('')
-  const [pin, setPin] = useState('')
   const [locationSlug, setLocationSlug] = useState<string>('')
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -60,7 +58,7 @@ export function PunchIdentityForm({ mode }: Props) {
 
   useEffect(() => {
     if (mode !== 'out') return
-    if (phoneDigits.length < 10 || pin.length !== 4) return
+    if (phoneDigits.length < 10) return
     void (async () => {
       try {
         const r = await api<{
@@ -69,7 +67,7 @@ export function PunchIdentityForm({ mode }: Props) {
           locationAddress: string | null
         }>('/api/punch/out-location-default', {
           method: 'POST',
-          body: JSON.stringify({ phone: phoneDigits, pin }),
+          body: JSON.stringify({ phone: phoneDigits }),
           orgSlug: null,
         })
         setLocationSlug(r.organizationSlug)
@@ -77,25 +75,20 @@ export function PunchIdentityForm({ mode }: Props) {
         /* keep manual selection */
       }
     })()
-  }, [mode, phoneDigits, pin])
+  }, [mode, phoneDigits])
 
-  const canSubmit = (() => {
-    if (phoneDigits.length >= 10 && pin.length === 4) return true
-    return false
-  })()
+  const canSubmit = phoneDigits.length >= 10
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
     setMsg(null)
-    const modes = [phoneDigits.length >= 10 && pin.length === 4].filter(Boolean).length
-    if (modes !== 1) {
-      setErr(t('punchCommon.needOne'))
+    if (phoneDigits.length < 10) {
+      setErr(t('punchCommon.phoneRequired'))
       return
     }
     const body: Record<string, string> = {
       phone: phoneDigits,
-      pin,
       organizationSlug: locationSlug,
     }
 
@@ -125,7 +118,6 @@ export function PunchIdentityForm({ mode }: Props) {
         setMsg(t('punchOut.success', { name: r.displayName, when }))
       }
       setPhoneDigits('')
-      setPin('')
     } catch (e: unknown) {
       setMsg(null)
       setErr(e instanceof Error ? e.message : t('punchOut.error'))
@@ -148,13 +140,6 @@ export function PunchIdentityForm({ mode }: Props) {
           autoComplete="off"
           aria-hidden
         />
-        <input
-          type="password"
-          className="hidden"
-          tabIndex={-1}
-          autoComplete="off"
-          aria-hidden
-        />
 
         <div className="space-y-3">
           <label className="block">
@@ -172,9 +157,8 @@ export function PunchIdentityForm({ mode }: Props) {
               ))}
             </select>
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <span className={fieldLabel}>{t('memberLogin.phone')}</span>
+          <label className="block">
+            <span className={fieldLabel}>{t('memberLogin.phone')}</span>
             <PhoneInput
               className={pillInput}
               value={phoneDigits}
@@ -192,23 +176,6 @@ export function PunchIdentityForm({ mode }: Props) {
               </p>
             )}
           </label>
-            <label className="block">
-              <span className={fieldLabel}>{t('memberLogin.pin')}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              className={pinInput}
-              value={pin}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, '').slice(0, 4)
-                setPin(v)
-              }}
-              autoComplete="off"
-              minLength={4}
-              maxLength={4}
-            />
-          </label>
-          </div>
         </div>
 
         {err && (

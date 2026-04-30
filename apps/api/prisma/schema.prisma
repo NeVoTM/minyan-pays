@@ -65,7 +65,7 @@ model Organization {
   minReserveCents  Int              @default(0)
   timezone         String           @default("America/New_York")
   defaultLocale    String           @default("he")
-  /** Legacy; admin login uses ADMIN_PASSWORD env only. */
+  /** Legacy; unused while password auth is disabled in API. */
   adminPasswordHash String?
   /** Per-org rabbi menu password (bcrypt). */
   rabbiPasswordHash String?

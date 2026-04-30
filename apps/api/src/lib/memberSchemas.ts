@@ -22,7 +22,10 @@ export const memberFieldsSchema = z.object({
   firstName: z.string().min(1).max(80),
   lastName: z.string().min(1).max(80),
   phone: z.string().min(10),
-  pin: z.string().min(4).max(12),
+  pin: z.preprocess(
+    (v) => (v == null || v === "" ? undefined : String(v).trim()),
+    z.union([z.undefined(), z.string().min(4).max(12)])
+  ),
   attendanceCode: z.string().min(4).max(32),
   isMarried: z.boolean().optional(),
   zellePhone: z.string().optional().nullable(),

@@ -18,7 +18,6 @@ export function AdminLogin() {
   const { t } = useTranslation()
   const { organizationSlug, organizations, setOrganizationSlug } = useOrg()
   const [locationSlug, setLocationSlug] = useState('')
-  const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
@@ -43,15 +42,10 @@ export function AdminLogin() {
       setErr(t('adminLogin.chooseOrgFirst'))
       return
     }
-    const pwd = password.trim()
-    if (!pwd) {
-      setErr(t('adminLogin.passwordRequired'))
-      return
-    }
     try {
       const r = await api<{ token: string }>('/api/auth/admin', {
         method: 'POST',
-        body: JSON.stringify({ password: pwd, organizationSlug: slug }),
+        body: JSON.stringify({ organizationSlug: slug }),
       })
       setOrganizationSlug(slug)
       localStorage.setItem(KEY, r.token)
@@ -99,17 +93,6 @@ export function AdminLogin() {
             <span className="mt-1 block text-[11px] text-slate-500">
               {t('adminLogin.locationHelp')}
             </span>
-          </label>
-          <label className="block">
-            <span className={fieldLabel}>{t('adminLogin.password')}</span>
-            <input
-              type="password"
-              className={pillInput}
-              placeholder={t('adminLogin.passwordPh')}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
           </label>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">

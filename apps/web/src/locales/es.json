@@ -42,6 +42,8 @@
     "dash": "—"
   },
   "punchCommon": {
+    "locationLabel": "Lugar",
+    "phoneRequired": "Introduzca un número de teléfono válido.",
     "phonePinTitle": "Teléfono móvil + PIN",
     "smartCodeLabel": "Código inteligente (QR)",
     "smartCodePh": "Pegue el código escaneado o use Escanear QR.",
@@ -67,9 +69,9 @@
   },
   "adminLogin": {
     "title": "Administración",
-    "subtitle": "Tesorero / gabbai — la misma contraseña en todo el sistema. Elija qué sede gestiona.",
+    "subtitle": "Tesorero / gabbai — elija la sede que gestiona y continúe.",
     "locationLabel": "Lugar",
-    "locationHelp": "Abre el panel de esta sede. La contraseña no es distinta por lugar.",
+    "locationHelp": "Abre el panel de esta sede.",
     "password": "Contraseña",
     "passwordPh": "Contraseña de admin",
     "passwordRequired": "Introduzca la contraseña.",
@@ -79,7 +81,7 @@
   },
   "memberLogin": {
     "title": "Bienvenido",
-    "subtitle": "Inicie con teléfono y PIN.",
+    "subtitle": "Inicie con el teléfono con el que se registró.",
     "phone": "Teléfono",
     "pin": "PIN",
     "submit": "Ver saldo",
@@ -91,7 +93,7 @@
   },
   "punchIn": {
     "title": "Entrada",
-    "subtitle": "Código de entrada, teléfono+PIN o QR inteligente desde el teléfono.",
+    "subtitle": "Use el teléfono con el que está registrado.",
     "code": "Código de entrada",
     "submit": "Marcar llegada",
     "sending": "Enviando…",
@@ -323,7 +325,7 @@
   },
   "rabbiLogin": {
     "title": "Menú rabino",
-    "subtitle": "Elija su lugar e inicie sesión. Las aprobaciones y pagos son solo para ese lugar.",
+    "subtitle": "Elija su lugar y continúe. Las aprobaciones y pagos son solo para ese lugar.",
     "locationLabel": "Lugar",
     "locationHelp": "Cada rabino inicia sesión en un lugar. Cambie aquí si atiende varios sitios.",
     "password": "Contraseña del rabino",

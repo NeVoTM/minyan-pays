@@ -1,6 +1,5 @@
 import { Router, type Request } from "express";
 import type { User } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { todayDateKeyInZone } from "../lib/dates.js";
@@ -30,10 +29,10 @@ type ResolveMemberResult =
 const pendingMsg =
   "This account is pending rabbi approval. You cannot use punch until approved.";
 
+/** INSECURE — PIN not verified; phone + approved member only. */
 async function resolveVerifiedMember(
   organizationId: string,
-  phone: string,
-  pin: string
+  phone: string
 ): Promise<ResolveMemberResult> {
   const user = await prisma.user.findFirst({
     where: { phone, role: "MEMBER", organizationId },
@@ -42,15 +41,7 @@ async function resolveVerifiedMember(
     return {
       ok: false,
       status: 401,
-      error: "Invalid phone or PIN.",
-    };
-  }
-  const pinOk = await bcrypt.compare(pin, user.pinHash);
-  if (!pinOk) {
-    return {
-      ok: false,
-      status: 401,
-      error: "Invalid phone or PIN.",
+      error: "No member found with this phone for this location.",
     };
   }
   if (!user.isApproved) {
@@ -62,17 +53,14 @@ async function resolveVerifiedMember(
 const punchIdentityBody = z
   .object({
     phone: z.string().optional(),
-    pin: z.string().length(4).optional(),
+    pin: z.string().optional(),
   })
   .superRefine((d, ctx) => {
-    const hasPhonePin =
-      (d.phone?.replace(/\D/g, "").length ?? 0) >= 10 &&
-      (d.pin?.length ?? 0) >= 4;
-    const modes = [hasPhonePin].filter(Boolean).length;
-    if (modes !== 1) {
+    const phoneOk = (d.phone?.replace(/\D/g, "").length ?? 0) >= 10;
+    if (!phoneOk) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Use phone + PIN.",
+        message: "Enter a valid phone number.",
       });
     }
   });
@@ -80,18 +68,15 @@ const punchIdentityBody = z
 const punchOutBody = z
   .object({
     phone: z.string().optional(),
-    pin: z.string().length(4).optional(),
+    pin: z.string().optional(),
     organizationSlug: z.string().optional(),
   })
   .superRefine((d, ctx) => {
-    const hasPhonePin =
-      (d.phone?.replace(/\D/g, "").length ?? 0) >= 10 &&
-      (d.pin?.length ?? 0) >= 4;
-    const modes = [hasPhonePin].filter(Boolean).length;
-    if (modes !== 1) {
+    const phoneOk = (d.phone?.replace(/\D/g, "").length ?? 0) >= 10;
+    if (!phoneOk) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Use phone + PIN.",
+        message: "Enter a valid phone number.",
       });
     }
   });
@@ -100,26 +85,20 @@ async function resolveMemberByPunchIdentity(
   orgId: string,
   data: z.infer<typeof punchIdentityBody>
 ): Promise<ResolveMemberResult> {
-  if (data.phone && data.pin) {
+  if (data.phone) {
     const phone = normalizePhone(data.phone);
-    return resolveVerifiedMember(orgId, phone, data.pin);
+    return resolveVerifiedMember(orgId, phone);
   }
   return { ok: false, status: 400, error: "Invalid request." };
 }
 
 async function resolveVerifiedMemberAnyOrganization(
-  phone: string,
-  pin: string
+  phone: string
 ): Promise<ResolveMemberResult[]> {
   const users = await prisma.user.findMany({
     where: { phone, role: "MEMBER", isApproved: true },
   });
-  const matches: ResolveMemberResult[] = [];
-  for (const user of users) {
-    const pinOk = await bcrypt.compare(pin, user.pinHash);
-    if (pinOk) matches.push({ ok: true, user });
-  }
-  return matches;
+  return users.map((user) => ({ ok: true as const, user }));
 }
 
 async function findLatestOpenAttendanceForUsers(userIds: string[]) {
@@ -226,11 +205,11 @@ punchRouter.post("/in", async (req, res) => {
   });
 });
 
-/** Public punch-out: same identity options as punch-in (code, phone+PIN, smart QR). */
+/** Public punch-out: phone identifies member (PIN checks disabled). */
 punchRouter.post("/out-location-default", async (req, res) => {
   const bodySchema = z.object({
     phone: z.string(),
-    pin: z.string().length(4),
+    pin: z.string().optional(),
   });
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -239,7 +218,7 @@ punchRouter.post("/out-location-default", async (req, res) => {
   }
 
   const phone = normalizePhone(parsed.data.phone);
-  const matches = await resolveVerifiedMemberAnyOrganization(phone, parsed.data.pin);
+  const matches = await resolveVerifiedMemberAnyOrganization(phone);
   const matchedUsers = matches.flatMap((m) => (m.ok ? [m.user] : []));
   const openAttendance = await findLatestOpenAttendanceForUsers(
     matchedUsers.map((u) => u.id)
@@ -286,10 +265,7 @@ punchRouter.post("/out-public", async (req, res) => {
     }
   } else {
     const phone = normalizePhone(parsed.data.phone ?? "");
-    const matches = await resolveVerifiedMemberAnyOrganization(
-      phone,
-      parsed.data.pin ?? ""
-    );
+    const matches = await resolveVerifiedMemberAnyOrganization(phone);
     const matchedUsers = matches.flatMap((m) => (m.ok ? [m.user] : []));
     const openAttendance = await findLatestOpenAttendanceForUsers(
       matchedUsers.map((u) => u.id)

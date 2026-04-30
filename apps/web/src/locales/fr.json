@@ -42,6 +42,8 @@
     "dash": "—"
   },
   "punchCommon": {
+    "locationLabel": "Lieu",
+    "phoneRequired": "Entrez un numéro de téléphone valide.",
     "phonePinTitle": "Mobile + PIN",
     "smartCodeLabel": "Code intelligent (QR)",
     "smartCodePh": "Collez le code scanné ou utilisez Scanner QR.",
@@ -67,9 +69,9 @@
   },
   "adminLogin": {
     "title": "Administration",
-    "subtitle": "Trésorier / gabbai — un seul mot de passe pour toute l’appli. Choisissez le lieu que vous gérez.",
+    "subtitle": "Trésorier / gabbai — choisissez le lieu que vous gérez, puis continuez.",
     "locationLabel": "Lieu",
-    "locationHelp": "Ouvre le tableau de bord de ce lieu. Le mot de passe n’est pas propre à chaque lieu.",
+    "locationHelp": "Ouvre le tableau de bord de ce lieu.",
     "password": "Mot de passe",
     "passwordPh": "Mot de passe admin",
     "passwordRequired": "Saisissez le mot de passe.",
@@ -79,7 +81,7 @@
   },
   "memberLogin": {
     "title": "Bon retour",
-    "subtitle": "Connexion avec téléphone et PIN.",
+    "subtitle": "Connexion avec le téléphone utilisé à l’inscription.",
     "phone": "Téléphone",
     "pin": "PIN",
     "submit": "Voir le solde",
@@ -91,7 +93,7 @@
   },
   "punchIn": {
     "title": "Entrée",
-    "subtitle": "Saisissez votre code d’entrée à l’arrivée (rabbin / admin).",
+    "subtitle": "Utilisez le téléphone enregistré sur votre compte.",
     "code": "Code d’entrée",
     "submit": "Marquer l’arrivée",
     "sending": "Envoi…",
@@ -323,7 +325,7 @@
   },
   "rabbiLogin": {
     "title": "Menu rabbin",
-    "subtitle": "Choisissez le lieu, puis connectez-vous. Les actions ne concernent que ce lieu.",
+    "subtitle": "Choisissez le lieu, puis continuez. Les actions ne concernent que ce lieu.",
     "locationLabel": "Lieu",
     "locationHelp": "Chaque rabbin se connecte à un lieu. Changez ici si vous en gérez plusieurs.",
     "password": "Mot de passe rabbin",

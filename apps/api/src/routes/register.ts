@@ -1,6 +1,6 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma.js";
+import { pinHashFromOptionalPin } from "../lib/pinHash.js";
 import { normalizePhone } from "../lib/phone.js";
 import { fullName } from "../lib/memberDisplay.js";
 import {
@@ -84,7 +84,7 @@ registerRouter.post("/", async (req, res) => {
     attendanceCode = await generateUniqueAttendanceCode(prisma, org.id);
   }
 
-  const pinHash = await bcrypt.hash(d.pin, 10);
+  const pinHash = await pinHashFromOptionalPin(d.pin);
   try {
     const user = await prisma.user.create({
       data: {
