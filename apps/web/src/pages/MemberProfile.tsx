@@ -20,6 +20,7 @@ type Profile = {
   lastName: string
   phone: string
   hasPin: boolean
+  attendanceCode: string
   zellePhone: string | null
   wifeZellePhone: string | null
   addressLine1: string | null
@@ -34,6 +35,8 @@ export function MemberProfile() {
   const token = localStorage.getItem(KEY)
   const [form, setForm] = useState<Profile | null>(null)
   const [newPin, setNewPin] = useState('')
+  const [showNewPin, setShowNewPin] = useState(false)
+  const [showPunchCode, setShowPunchCode] = useState(false)
   const [code, setCode] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [devCode, setDevCode] = useState<string | null>(null)
@@ -96,6 +99,11 @@ export function MemberProfile() {
     }
   }
 
+  const maskedPunch =
+    form.attendanceCode.length > 0
+      ? '•'.repeat(Math.min(form.attendanceCode.length, 12))
+      : '—'
+
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
@@ -105,8 +113,11 @@ export function MemberProfile() {
           <p className={pageSubtitle}>View and update PIN, address, and Zelle details.</p>
         </div>
       </div>
-      <form className={`${cardShell} space-y-4`} onSubmit={save}>
-        <div className="grid grid-cols-2 gap-2">
+      <form
+        className={`${cardShell} space-y-4 md:grid md:grid-cols-2 md:gap-x-3 md:gap-y-3 md:space-y-0`}
+        onSubmit={save}
+      >
+        <div className="grid grid-cols-2 gap-2 md:col-span-2">
           <label>
             <span className={fieldLabel}>First name</span>
             <input className={pillInput} value={form.firstName} readOnly />
@@ -116,20 +127,51 @@ export function MemberProfile() {
             <input className={pillInput} value={form.lastName} readOnly />
           </label>
         </div>
-        <label className="block">
+        <label className="md:col-span-2 block">
           <span className={fieldLabel}>Phone</span>
           <input className={pillInput} value={form.phone} readOnly />
         </label>
-        <label className="block">
-          <span className={fieldLabel}>New PIN (optional)</span>
-          <input
-            className={pinInput}
-            value={newPin}
-            onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 12))}
-            placeholder={form.hasPin ? 'Set new PIN' : 'Set PIN'}
-          />
+        <label className="block min-w-0">
+          <span className={fieldLabel}>New login PIN (optional)</span>
+          <div className="relative mt-0.5">
+            <input
+              className={`${pinInput} w-full pr-12`}
+              type={showNewPin ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 12))}
+              placeholder={form.hasPin ? 'Change PIN' : 'Set PIN'}
+            />
+            <button
+              type="button"
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+              onClick={() => setShowNewPin((v) => !v)}
+            >
+              {showNewPin ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          <p className="mt-1 text-[10px] text-slate-500">
+            {form.hasPin
+              ? 'Your current PIN cannot be shown (stored securely). Enter a new one to replace it.'
+              : 'Choose a PIN for member login. Tap Show to check what you type.'}
+          </p>
         </label>
-        <label className="block">
+        <div className="block min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
+          <span className={fieldLabel}>Punch-in code (kiosk)</span>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="font-mono text-sm tracking-wide text-slate-800">
+              {showPunchCode ? form.attendanceCode : maskedPunch}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+              onClick={() => setShowPunchCode((v) => !v)}
+            >
+              {showPunchCode ? 'Hide' : 'Show'}
+            </button>
+          </div>
+        </div>
+        <label className="block min-w-0">
           <span className={fieldLabel}>Zelle (you)</span>
           <PhoneInput
             className={pillInput}
@@ -137,7 +179,7 @@ export function MemberProfile() {
             onChange={(v) => setForm((p) => (p ? { ...p, zellePhone: v || null } : p))}
           />
         </label>
-        <label className="block">
+        <label className="block min-w-0">
           <span className={fieldLabel}>Zelle (spouse)</span>
           <PhoneInput
             className={pillInput}
@@ -145,7 +187,7 @@ export function MemberProfile() {
             onChange={(v) => setForm((p) => (p ? { ...p, wifeZellePhone: v || null } : p))}
           />
         </label>
-        <label className="block">
+        <label className="md:col-span-2 block">
           <span className={fieldLabel}>Address line 1</span>
           <input
             className={pillInput}
@@ -153,7 +195,7 @@ export function MemberProfile() {
             onChange={(e) => setForm((p) => (p ? { ...p, addressLine1: e.target.value } : p))}
           />
         </label>
-        <label className="block">
+        <label className="md:col-span-2 block">
           <span className={fieldLabel}>Address line 2</span>
           <input
             className={pillInput}
@@ -161,16 +203,16 @@ export function MemberProfile() {
             onChange={(e) => setForm((p) => (p ? { ...p, addressLine2: e.target.value } : p))}
           />
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          <label>
-            <span className={fieldLabel}>City</span>
-            <input
-              className={pillInput}
-              value={form.city ?? ''}
-              onChange={(e) => setForm((p) => (p ? { ...p, city: e.target.value } : p))}
-            />
-          </label>
-          <label>
+        <label className="block min-w-0">
+          <span className={fieldLabel}>City</span>
+          <input
+            className={pillInput}
+            value={form.city ?? ''}
+            onChange={(e) => setForm((p) => (p ? { ...p, city: e.target.value } : p))}
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block min-w-0">
             <span className={fieldLabel}>State</span>
             <input
               className={pillInput}
@@ -180,18 +222,20 @@ export function MemberProfile() {
               }
             />
           </label>
-          <label>
+          <label className="block min-w-0">
             <span className={fieldLabel}>ZIP</span>
             <input
               className={pillInput}
               value={form.postalCode ?? ''}
               onChange={(e) =>
-                setForm((p) => (p ? { ...p, postalCode: e.target.value.replace(/\D/g, '').slice(0, 10) } : p))
+                setForm((p) =>
+                  p ? { ...p, postalCode: e.target.value.replace(/\D/g, '').slice(0, 10) } : p
+                )
               }
             />
           </label>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs text-slate-600">
             Security verification is required before saving profile changes.
           </p>
@@ -214,8 +258,10 @@ export function MemberProfile() {
             <p className="mt-2 text-xs text-slate-500">Dev code: {devCode}</p>
           )}
         </div>
-        {msg && <p className="text-sm text-slate-600">{msg}</p>}
-        <button className={primaryBtn} type="submit">
+        {msg && (
+          <p className="md:col-span-2 text-sm text-slate-600">{msg}</p>
+        )}
+        <button className={`${primaryBtn} md:col-span-2`} type="submit">
           Save profile changes
         </button>
       </form>

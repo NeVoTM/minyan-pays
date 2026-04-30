@@ -127,6 +127,7 @@ memberRouter.get("/profile", async (req: Request, res) => {
       wifeZellePhone: true,
       bonusRecipient: true,
       pinHash: true,
+      attendanceCode: true,
       addressLine1: true,
       addressLine2: true,
       city: true,
@@ -146,9 +147,10 @@ memberRouter.get("/profile", async (req: Request, res) => {
     res.status(403).json({ error: "Invalid session" });
     return;
   }
+  const { pinHash, ...safe } = user;
   res.json({
-    ...user,
-    hasPin: Boolean(user.pinHash),
+    ...safe,
+    hasPin: Boolean(pinHash),
     displayName: fullName(user.firstName, user.lastName),
   });
 });
