@@ -21,6 +21,14 @@ export function Home() {
             {t('home.viewMember')}
           </Link>
         </div>
+        <p className="mt-3 border-t border-slate-100 pt-3 text-center">
+          <Link
+            to="/admin"
+            className="text-[11px] font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700"
+          >
+            {t('home.staffAdmin')}
+          </Link>
+        </p>
       </div>
     </div>
   )
