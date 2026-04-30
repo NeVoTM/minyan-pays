@@ -58,9 +58,9 @@
   },
   "adminLogin": {
     "title": "Admin",
-    "subtitle": "Treasurer / gabbai — select location, then sign in.",
+    "subtitle": "Treasurer / gabbai — same password everywhere. Choose which location you are managing.",
     "locationLabel": "Location",
-    "locationHelp": "Admin password applies to this location only.",
+    "locationHelp": "Opens the dashboard for this site. The password is not per location.",
     "password": "Password",
     "passwordPh": "Admin password",
     "passwordRequired": "Enter a password.",

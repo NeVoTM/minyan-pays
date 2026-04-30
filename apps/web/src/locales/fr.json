@@ -67,9 +67,9 @@
   },
   "adminLogin": {
     "title": "Administration",
-    "subtitle": "Trésorier / gabbai — choisissez le lieu, puis connectez-vous.",
+    "subtitle": "Trésorier / gabbai — un seul mot de passe pour toute l’appli. Choisissez le lieu que vous gérez.",
     "locationLabel": "Lieu",
-    "locationHelp": "Le mot de passe admin vaut pour ce lieu seulement.",
+    "locationHelp": "Ouvre le tableau de bord de ce lieu. Le mot de passe n’est pas propre à chaque lieu.",
     "password": "Mot de passe",
     "passwordPh": "Mot de passe admin",
     "passwordRequired": "Saisissez le mot de passe.",

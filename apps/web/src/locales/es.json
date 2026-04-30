@@ -67,9 +67,9 @@
   },
   "adminLogin": {
     "title": "Administración",
-    "subtitle": "Tesorero / gabbai — elija lugar e inicie sesión.",
+    "subtitle": "Tesorero / gabbai — la misma contraseña en todo el sistema. Elija qué sede gestiona.",
     "locationLabel": "Lugar",
-    "locationHelp": "La contraseña de admin es solo para ese lugar.",
+    "locationHelp": "Abre el panel de esta sede. La contraseña no es distinta por lugar.",
     "password": "Contraseña",
     "passwordPh": "Contraseña de admin",
     "passwordRequired": "Introduzca la contraseña.",

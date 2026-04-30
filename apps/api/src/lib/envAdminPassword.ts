@@ -3,7 +3,11 @@
  * copy/paste (BOM, nested quotes from some hosting UIs, trim).
  */
 export function normalizeAdminPasswordInput(raw: string): string {
-  let s = raw.trim().replace(/^\uFEFF/, "").trim();
+  let s = raw
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .trim();
   while (
     s.length >= 2 &&
     ((s.startsWith('"') && s.endsWith('"')) ||

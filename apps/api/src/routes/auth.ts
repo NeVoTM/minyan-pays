@@ -56,7 +56,7 @@ authRouter.post("/admin", async (req, res) => {
   if (password !== expected) {
     res.status(401).json({
       error:
-        "Invalid password. On production: Render → API web service → Environment → ADMIN_PASSWORD must match what you type here; save and wait for redeploy/restart.",
+        "Invalid password. The treasurer password is one value for the whole app (ADMIN_PASSWORD). On Render, open the Node API service (the one that runs the server — not the static site) → Environment → set or edit ADMIN_PASSWORD to exactly match what you type → Save, then wait until that service restarts.",
     });
     return;
   }
