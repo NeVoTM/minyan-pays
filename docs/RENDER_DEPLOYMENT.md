@@ -99,6 +99,10 @@ After you create these in the Render dashboard, add rows here so nothing is lost
 
 ---
 
+## Render Blueprint (optional)
+
+Repo root [`render.yaml`](../render.yaml) defines a **Web Service** (`apps/api`) and **Static Site** (`apps/web`) in **Oregon**. In Render: **New → Blueprint** → connect **`NeVoTM/minyan-pays`**, then set **sync: false** secrets (`DATABASE_URL`, `ADMIN_PASSWORD`, `JWT_SECRET`, `WEB_ORIGIN`, `VITE_API_BASE_URL`). Link your existing **`minyan-pays-db`** or paste **External** `DATABASE_URL`. Deploy **API first**, then set **`VITE_API_BASE_URL`** to the API’s public **https** URL and redeploy the static site.
+
 ## Related docs
 
 - Local setup: [`../SETUP.md`](../SETUP.md)

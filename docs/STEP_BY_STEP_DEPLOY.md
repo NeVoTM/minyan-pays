@@ -133,6 +133,10 @@ npm run build
 
 ## Step 7 — Render (your dashboard)
 
+**Option A — Blueprint:** Repo root **`render.yaml`**. Render → **New** → **Blueprint** → connect **`NeVoTM/minyan-pays`**, fill env vars (see `docs/RENDER_DEPLOYMENT.md`).
+
+**Option B — Manual:**
+
 1. **Web Service** — root `apps/api`, build/start per `docs/RENDER_DEPLOYMENT.md`, env `DATABASE_URL`, `ADMIN_PASSWORD`, `JWT_SECRET`, `WEB_ORIGIN` = your static site URL (comma-separate preview + production if needed).
 2. After API deploys, copy its public URL → set **`VITE_API_BASE_URL`** on the **static site** build env.
 3. **Static site** — root `apps/web`, publish `dist`.
@@ -141,4 +145,4 @@ npm run build
 
 ---
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-04-30*
