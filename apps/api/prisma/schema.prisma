@@ -2,10 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// SQLite by default for zero-setup local dev.
-// For free cloud Postgres (Neon): set provider to "postgresql" and DATABASE_URL — see docs/FREE_DATABASE_NEON.md
+// PostgreSQL everywhere (local Docker/Neon/Render). See SETUP.md and docs/FREE_DATABASE_NEON.md.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -243,6 +242,7 @@ model Attendance {
 
 model WeeklyPayout {
   id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   weekKey     String

@@ -70,6 +70,7 @@ export function MemberProfile() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
+    if (!form) return
     setMsg(null)
     try {
       await api('/api/me/profile', {

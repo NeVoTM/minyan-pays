@@ -6,10 +6,14 @@
 
 ## Database
 
-- **Local (fastest):** **SQLite** — `DATABASE_URL="file:./dev.db"` in `apps/api/.env` (see `apps/api/.env.example`). The file is created under `apps/api/prisma/dev.db`. Prisma schema uses `provider = "sqlite"`.
-- **Free cloud (recommended for real data):** **Neon PostgreSQL** — step-by-step: [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md). After switching the Prisma `provider` to `postgresql` and setting `DATABASE_URL`, run `npx prisma db push` in `apps/api`.
+Prisma uses **PostgreSQL** (matches Render production).
 
-**Does `npm run dev` or a code update wipe the database?** No. SQLite data stays on disk until you delete the `.db` file, run `prisma migrate reset`, or point `DATABASE_URL` somewhere else. `*.db` is gitignored, so a **fresh git clone** starts with an empty DB until you add members again.
+- **Local (Docker):** `docker compose up -d` from repo root, then in `apps/api/.env` set `DATABASE_URL` from `apps/api/.env.example`. Run `npx prisma db push` and `npm run db:seed` in `apps/api`.
+- **Free cloud:** **Neon** — [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md).
+
+**Does `npm run dev` wipe the database?** No — data lives in Postgres until you reset the DB or change `DATABASE_URL`.
+
+**Step-by-step checks:** [docs/STEP_BY_STEP_DEPLOY.md](./docs/STEP_BY_STEP_DEPLOY.md).
 
 **Why did my members disappear?** See [docs/DATA_AND_BACKUPS.md](./docs/DATA_AND_BACKUPS.md) (resets, new clones, wrong `DATABASE_URL`, backups).
 
@@ -22,7 +26,7 @@ Deployed infrastructure names, GitHub remotes, Postgres service ID, free-tier ex
 ```powershell
 cd C:\Users\17274\minyan-pays
 copy apps\api\.env.example apps\api\.env
-# Edit apps\api\.env — ADMIN_PASSWORD, JWT_SECRET (SQLite URL is preset)
+# Edit apps\api\.env — DATABASE_URL (Postgres), ADMIN_PASSWORD, JWT_SECRET
 npm install
 cd apps\api
 npx prisma db push

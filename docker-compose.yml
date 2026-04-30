@@ -1,15 +1,12 @@
+# Optional local PostgreSQL for development (Prisma uses PostgreSQL).
+# Start: docker compose up -d
+# DATABASE_URL=postgresql://minyan:minyan@localhost:5432/minyan_pays
 services:
   postgres:
     image: postgres:16-alpine
-    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
       POSTGRES_USER: minyan
-      POSTGRES_PASSWORD: minyan_dev
+      POSTGRES_PASSWORD: minyan
       POSTGRES_DB: minyan_pays
-    volumes:
-      - minyan_pg:/var/lib/postgresql/data
-
-volumes:
-  minyan_pg:

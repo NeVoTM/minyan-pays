@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { setOrgSlugGetter } from '../lib/orgSlugGetter'
+import { apiUrl } from '../lib/apiBase'
 
 const STORAGE_KEY = 'minyan_org_slug'
 
@@ -60,7 +61,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/public/organizations')
+    fetch(apiUrl('/api/public/organizations'))
       .then((r) => (r.ok ? r.json() : []))
       .then((rows: OrganizationRow[]) => {
         if (cancelled) return

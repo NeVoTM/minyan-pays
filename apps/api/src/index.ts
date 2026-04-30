@@ -12,10 +12,15 @@ import { publicRouter } from "./routes/public.js";
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:5173";
+const webOriginRaw = process.env.WEB_ORIGIN ?? "http://localhost:5173";
+const webOrigins = webOriginRaw
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 app.use(
   cors({
-    origin: webOrigin,
+    origin:
+      webOrigins.length <= 1 ? webOrigins[0] ?? "http://localhost:5173" : webOrigins,
     credentials: true,
     allowedHeaders: [
       "Content-Type",

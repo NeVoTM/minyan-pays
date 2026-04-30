@@ -1,4 +1,5 @@
 import { getOrgSlugForApi } from './lib/orgSlugGetter'
+import { apiUrl } from './lib/apiBase'
 
 const API_HINT =
   'Start the servers: double-click "Start minyan-pays dev.bat" on the Desktop, or run "cd C:\\Users\\17274\\minyan-pays" then "npm run dev" (needs API on port 3001 and web on 5173).'
@@ -16,7 +17,7 @@ export async function api<T>(
   if (effectiveOrgSlug) h.set('X-Organization-Slug', effectiveOrgSlug)
   let res: Response
   try {
-    res = await fetch(path, { ...rest, headers: h })
+    res = await fetch(apiUrl(path), { ...rest, headers: h })
   } catch {
     throw new Error(`Cannot reach the server. ${API_HINT}`)
   }
@@ -51,7 +52,7 @@ export async function fetchBlob(
   if (orgSlug) h.set('X-Organization-Slug', orgSlug)
   let res: Response
   try {
-    res = await fetch(path, { headers: h })
+    res = await fetch(apiUrl(path), { headers: h })
   } catch {
     throw new Error(`Cannot reach the server. ${API_HINT}`)
   }

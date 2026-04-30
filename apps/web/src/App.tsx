@@ -26,6 +26,7 @@ import {
   setLanguageOverride,
 } from './i18n'
 import { cardShell } from './lib/uiClasses'
+import { apiUrl } from './lib/apiBase'
 
 type PublicConfig = {
   organizationSlug: string
@@ -89,7 +90,7 @@ export default function App() {
     }
     let cancelled = false
     const q = new URLSearchParams({ organizationSlug })
-    fetch(`/api/public/config?${q.toString()}`)
+    fetch(apiUrl(`/api/public/config?${q.toString()}`))
       .then((r) => (r.ok ? r.json() : null))
       .then((j: PublicConfig | null) => {
         if (!cancelled && j) {
