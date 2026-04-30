@@ -258,13 +258,21 @@ export function RabbiDashboard() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <Link
-          to="/"
-          className="text-[11px] text-slate-500 hover:text-slate-700 sm:text-xs"
-        >
-          {t('admin.home')}
-        </Link>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Link
+            to="/"
+            className="text-[11px] text-slate-500 hover:text-slate-700 sm:text-xs"
+          >
+            {t('admin.home')}
+          </Link>
+          <Link
+            to="/admin"
+            className="text-[11px] font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 sm:text-xs"
+          >
+            {t('home.staffAdmin')}
+          </Link>
+        </div>
         <button
           type="button"
           className="text-[11px] text-slate-500 sm:text-xs"

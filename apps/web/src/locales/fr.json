@@ -65,7 +65,8 @@
     "staffAdmin": "Connexion admin",
     "staffRabbi": "Menu rabbin",
     "joinRegister": "Rejoindre / S’inscrire",
-    "viewMember": "Voir le membre"
+    "viewMember": "Voir le membre",
+    "treasurerAdminHint": "Trésorier ou gabbai : ouvrez Rabbin dans la barre du bas, puis Connexion admin."
   },
   "adminLogin": {
     "title": "Administration",

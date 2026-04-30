@@ -65,7 +65,8 @@
     "staffAdmin": "Entrada admin",
     "staffRabbi": "Menú rabino",
     "joinRegister": "Unirse / Registro",
-    "viewMember": "Ver miembro"
+    "viewMember": "Ver miembro",
+    "treasurerAdminHint": "Tesorero o gabbai: abra Rabino en la barra inferior y luego Entrada admin."
   },
   "adminLogin": {
     "title": "Administración",

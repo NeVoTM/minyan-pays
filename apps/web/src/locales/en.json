@@ -54,7 +54,8 @@
     "staffAdmin": "Admin login",
     "staffRabbi": "Rabbi menu",
     "joinRegister": "Join / Register",
-    "viewMember": "View member"
+    "viewMember": "View member",
+    "treasurerAdminHint": "Treasurer or gabbai: open Rabbi in the bar below, then Admin login."
   },
   "adminLogin": {
     "title": "Admin",

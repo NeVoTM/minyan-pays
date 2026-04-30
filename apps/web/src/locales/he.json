@@ -65,7 +65,8 @@
     "staffAdmin": "כניסת מנהל",
     "staffRabbi": "תפריט רב",
     "joinRegister": "הרשמה",
-    "viewMember": "כניסת חבר"
+    "viewMember": "כניסת חבר",
+    "treasurerAdminHint": "גזבר/גבאי: פתחו «רב» בשורת התפריט למטה, ואז כניסת מנהל."
   },
   "adminLogin": {
     "title": "ניהול",
