@@ -213,34 +213,37 @@ export function MemberSignup() {
               />
           </label>
 
-          <label className="col-span-2 block">
-            <span className={`${fieldLabel} !text-[11px]`}>
-              {t('signup.mobilePhone')}
-            </span>
-            <PhoneInput
-              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
-              value={f.phoneDigits}
-              onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
-              onBlur={applyPhoneDefaults}
-              required
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="block">
-            <span className={`${fieldLabel} !text-[11px]`}>
-              {t('signup.emailOpt')}
-            </span>
-            <input
-              type="email"
-              autoComplete="email"
-              className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
-              value={f.email}
-              onChange={(e) => setF((x) => ({ ...x, email: e.target.value }))}
-              onFocus={(e) => scrollFieldIntoView(e.target)}
-              placeholder="you@example.com"
-            />
-          </label>
+          <div className="col-span-2 grid grid-cols-1 gap-2 min-[380px]:grid-cols-[minmax(12.25rem,1.15fr)_1fr]">
+            <label className="min-w-0 block">
+              <span className={`${fieldLabel} !text-[11px]`}>
+                {t('signup.mobilePhone')}
+              </span>
+              <PhoneInput
+                className={`${pillInput} !w-full !min-w-0 !py-2.5 !text-xs tabular-nums sm:!text-sm`}
+                value={f.phoneDigits}
+                onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
+                onBlur={applyPhoneDefaults}
+                required
+                autoComplete="off"
+              />
+            </label>
+            <label className="min-w-0 block">
+              <span className={`${fieldLabel} !text-[11px]`}>
+                {t('signup.emailOpt')}
+              </span>
+              <input
+                type="email"
+                autoComplete="email"
+                className={`${pillInput} !w-full !min-w-0 !py-2.5 !text-xs sm:!text-sm`}
+                value={f.email}
+                onChange={(e) =>
+                  setF((x) => ({ ...x, email: e.target.value }))
+                }
+                onFocus={(e) => scrollFieldIntoView(e.target)}
+                placeholder="you@example.com"
+              />
+            </label>
+          </div>
 
           <div className="col-span-2">
             <p className={`${fieldLabel} !text-[11px]`}>{t('signup.addrTitle')}</p>
