@@ -129,7 +129,7 @@
     "firstName": "Nombre",
     "lastName": "Apellido",
     "mobilePhone": "Teléfono móvil",
-    "pinLabel": "PIN#",
+    "pinLabel": "PIN 4 dígitos",
     "punchCodeOpt": "Código de entrada (opcional)",
     "punchCodeHint": "4+ caracteres si elige el suyo; debe ser único.",
     "emailOpt": "Correo (opcional)",

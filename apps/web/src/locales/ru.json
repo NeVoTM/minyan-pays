@@ -129,7 +129,7 @@
     "firstName": "Имя",
     "lastName": "Фамилия",
     "mobilePhone": "Мобильный",
-    "pinLabel": "PIN#",
+    "pinLabel": "PIN, 4 цифры",
     "punchCodeOpt": "Код входа (необяз.)",
     "punchCodeHint": "4+ символа; должен быть уникальным.",
     "emailOpt": "Email (необяз.)",

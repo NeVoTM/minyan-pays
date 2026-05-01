@@ -206,7 +206,7 @@ export function MemberSignup() {
                 {t('signup.lastName')}
               </span>
               <input
-                className={`${pillInput} !py-2.5 !text-xs sm:!text-sm`}
+                className={`${pillInput} !mt-1 !py-2 !text-xs sm:!text-sm`}
                 value={f.lastName}
                 onChange={(e) =>
                   setF((x) => ({ ...x, lastName: e.target.value }))
@@ -218,60 +218,61 @@ export function MemberSignup() {
               />
           </label>
 
-          <div className="col-span-2 flex flex-col gap-1 min-[400px]:flex-row min-[400px]:items-end min-[400px]:gap-1.5">
-            <div className="flex min-w-0 flex-1 gap-1 min-[400px]:gap-1.5">
-              <label className="min-w-0 flex-1">
-                <span className={`${fieldLabel} !text-[11px]`}>
-                  {t('signup.mobilePhone')}
-                </span>
-                <PhoneInput
-                  className={`${pillInput} !mt-1 !w-full !min-w-0 !py-2 !text-xs tabular-nums sm:!text-sm`}
-                  value={f.phoneDigits}
-                  onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
-                  onBlur={applyPhoneDefaults}
-                  required
-                  autoComplete="off"
-                />
-              </label>
-              <label className="w-[4.75rem] shrink-0">
-                <span className={`${fieldLabel} !text-[11px]`}>
-                  {t('signup.pinLabel')}
-                </span>
-                <input
-                  className={`${pinInput} !mt-1 !py-2 !px-2 !text-center !text-xs tracking-widest sm:!text-sm`}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  maxLength={4}
-                  value={f.pinDigits}
-                  onChange={(e) =>
-                    setF((x) => ({
-                      ...x,
-                      pinDigits: e.target.value.replace(/\D/g, '').slice(0, 4),
-                    }))
-                  }
-                  onFocus={(e) => scrollFieldIntoView(e.target)}
-                  required
-                  aria-label={t('signup.pinLabel')}
-                />
-              </label>
-            </div>
-            <label className="min-w-0 min-[400px]:min-w-[10rem] min-[400px]:flex-1">
+          <div className="col-span-2 flex min-w-0 items-end gap-2">
+            <label className="min-w-0 flex-1 basis-0">
               <span className={`${fieldLabel} !text-[11px]`}>
-                {t('signup.emailOpt')}
+                {t('signup.mobilePhone')}
+              </span>
+              <PhoneInput
+                className={`${pillInput} !mt-1 !w-full !min-w-0 !py-2 !text-xs tabular-nums sm:!text-sm`}
+                value={f.phoneDigits}
+                onChange={(d) => setF((x) => ({ ...x, phoneDigits: d }))}
+                onBlur={applyPhoneDefaults}
+                required
+                autoComplete="off"
+              />
+            </label>
+            <label className="w-[6rem] shrink-0 sm:w-[5.75rem]">
+              <span
+                className={`${fieldLabel} block !text-[10px] whitespace-nowrap sm:!text-[11px]`}
+              >
+                {t('signup.pinLabel')}
               </span>
               <input
-                type="email"
-                autoComplete="email"
-                className={`${pillInput} !mt-1 !w-full !min-w-0 !py-2 !text-xs sm:!text-sm`}
-                value={f.email}
+                className={`${pinInput} !mt-1 !w-full !py-2 !px-2 !text-center !text-xs tracking-widest sm:!text-sm`}
+                inputMode="numeric"
+                autoComplete="off"
+                maxLength={4}
+                value={f.pinDigits}
                 onChange={(e) =>
-                  setF((x) => ({ ...x, email: e.target.value }))
+                  setF((x) => ({
+                    ...x,
+                    pinDigits: e.target.value.replace(/\D/g, '').slice(0, 4),
+                  }))
                 }
                 onFocus={(e) => scrollFieldIntoView(e.target)}
-                placeholder="you@example.com"
+                required
+                aria-label={t('signup.pinLabel')}
               />
             </label>
           </div>
+
+          <label className="col-span-2 block min-w-0">
+            <span className={`${fieldLabel} !text-[11px]`}>
+              {t('signup.emailOpt')}
+            </span>
+            <input
+              type="email"
+              autoComplete="email"
+              className={`${pillInput} !mt-1 !w-full !py-2 !text-xs sm:!text-sm`}
+              value={f.email}
+              onChange={(e) =>
+                setF((x) => ({ ...x, email: e.target.value }))
+              }
+              onFocus={(e) => scrollFieldIntoView(e.target)}
+              placeholder="you@example.com"
+            />
+          </label>
 
           <div className="col-span-2">
             <p className={`${fieldLabel} !text-[11px]`}>{t('signup.addrTitle')}</p>
@@ -293,9 +294,9 @@ export function MemberSignup() {
             />
           </div>
 
-          <div className="col-span-2 grid gap-1 sm:grid-cols-3">
+          <div className="col-span-2 grid min-w-0 grid-cols-3 gap-1">
             <input
-              className={`${pillInput} !py-2 !text-xs sm:!text-sm`}
+              className={`${pillInput} !min-w-0 !py-2 !text-xs sm:!text-sm`}
               placeholder={t('signup.city')}
               maxLength={80}
               value={f.city}
@@ -305,7 +306,7 @@ export function MemberSignup() {
               autoComplete="address-level2"
             />
             <input
-              className={`${pillInput} !py-2 !text-xs sm:!text-sm`}
+              className={`${pillInput} !min-w-0 !py-2 !text-xs sm:!text-sm`}
               placeholder={t('signup.state')}
               maxLength={32}
               value={f.stateRegion}
@@ -317,7 +318,7 @@ export function MemberSignup() {
               autoComplete="address-level1"
             />
             <input
-              className={`${pillInput} !py-2 !text-xs sm:!text-sm`}
+              className={`${pillInput} !min-w-0 !py-2 !text-xs sm:!text-sm`}
               placeholder={t('signup.zip')}
               inputMode="numeric"
               maxLength={5}
@@ -343,7 +344,7 @@ export function MemberSignup() {
             <p className="col-span-2 text-[10px] text-amber-700">{zipErr}</p>
           )}
 
-          <div className="col-span-2 grid grid-cols-1 gap-1 sm:grid-cols-2 sm:gap-1.5">
+          <div className="col-span-2 grid min-w-0 grid-cols-2 gap-1 sm:gap-1.5">
             <label className="min-w-0 block">
               <span className={`${fieldLabel} !text-[11px]`}>
                 {t('signup.zelleYou')}

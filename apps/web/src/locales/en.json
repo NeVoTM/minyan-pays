@@ -129,7 +129,7 @@
     "firstName": "First name",
     "lastName": "Last name",
     "mobilePhone": "Mobile phone",
-    "pinLabel": "PIN (4+ digits)",
+    "pinLabel": "PIN 4 Digits",
     "punchCodeOpt": "Punch-in code (optional)",
     "punchCodeHint": "4+ characters if you choose your own; must be unique.",
     "emailOpt": "Email (optional)",
