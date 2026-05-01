@@ -24,4 +24,5 @@ Ship the 13-item minyan-pays product update: routing defaults, admin/rabbi/membe
 ## Notes / Context
 
 - Local `prisma migrate dev` was not run (DB unreachable); `prisma generate` and `tsc`/`web build` succeeded.
-- **2026-04-30:** Pushed `main` to **origin** (`github.com/NeVoTM/minyan-pays`) and **cur** (`github.com/NeVoTM/minyan-pays-cur`) at commit `e917685`.
+- **2026-04-30:** Pushed `main` to **origin** and **cur** through `43cf1b3`.
+- **SPA on Render:** Direct URLs like `/admin` returned plain “Not Found” because the static host had no `404.html`. The web **build** now copies `index.html` → `dist/404.html` (`apps/web/scripts/spa-render-404.mjs`). Redeploy the static site so production picks this up.

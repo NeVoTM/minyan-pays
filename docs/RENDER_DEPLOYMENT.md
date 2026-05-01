@@ -111,8 +111,9 @@ After you create these in the Render dashboard, add rows here so nothing is lost
 2. [ ] API deploy succeeds; health route responds (e.g. `/api/health`).
 3. [ ] Web deploy succeeds; points API to production URL.
 4. [ ] Custom domain `minyanpays.com` + `www` attached per Render; HTTPS enabled.
-5. [ ] Calendar reminder before **2026-05-29** for DB upgrade / backup / migration.
-6. [ ] Security: Since it was exposed in chat, rotate DB credentials after deploy.
+5. [ ] **SPA deep links:** The web build copies `index.html` → `404.html` so paths like `/admin` and `/punch` work on Render static (see `apps/web/scripts/spa-render-404.mjs`). Alternatively add a dashboard **Rewrite**: Source `/*` → Destination `/index.html` ([docs](https://render.com/docs/redirects-rewrites)).
+6. [ ] Calendar reminder before **2026-05-29** for DB upgrade / backup / migration.
+7. [ ] Security: Since it was exposed in chat, rotate DB credentials after deploy.
 
 ---
 
