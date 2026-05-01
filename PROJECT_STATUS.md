@@ -1,10 +1,10 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-04-30* (iPhone-first rabbi + shell)
+*Last updated: 2026-05-01* (admin menu revamp + mobile fit)
 
 ## Current Task / Goal
 
-Ship the 13-item minyan-pays product update: routing defaults, admin/rabbi/member workflows, preferred check-in policy, locations admin UX, schema migration for Render Postgres.
+Ship the 13-item minyan-pays product update: routing defaults, admin/rabbi/member workflows, preferred check-in policy, schema migration for Render Postgres. **Admin:** iPhone-friendly hub now includes **Today's check-ins / Member / Rabbi / Location**, condensed controls, one-line lists + double-click to open, no Overview/Locations/legacy shortcuts block.
 
 ## What's Done
 
@@ -19,11 +19,15 @@ Ship the 13-item minyan-pays product update: routing defaults, admin/rabbi/membe
 - **iPhone-first shell:** `App` root + main use `overflow-x-hidden`, tighter horizontal padding, `min-w-0` where needed. Bottom **MobileNav**: distinct colors per tab (punch emerald/teal, member violet, rabbi amber). **Punch / Member menu:** single-column CTAs below 360px width, then two columns.
 - **Rabbi dashboard:** Header stacks on narrow screens; full-width rose **Log out**; tab buttons each have their own color (emerald / violet / amber / sky). Today’s check-ins show **address** + **check-in time** (org timezone); **View / edit member** opens a modal; **Confirm** / **Reject** full-width with distinct colors. Payouts use a **scrollable card list** instead of a wide table. **API:** `GET/PATCH /api/rabbi/members/:id` (approved members only; no `isApproved` change); `session/today` includes `timezone` and member address fields; `rabbiMemberUpdateSchema` in `memberSchemas`.
 - **Admin dashboard:** Home + logout row stacks on small screens (matches rabbi). **`phoneDigitsFromE164`** moved to `lib/phoneDisplay.ts` (shared with admin + rabbi).
+- **Admin hub refactor (`AdminDashboard.tsx`):** Four hub buttons (**Today's check-ins / Member / Rabbi / Location**) with compact labels that wrap on small screens; per-hub Add / View / Edit where applicable; removed Overview / Locations tabs and “Add people & sites” shortcut strip. Added today's check-ins panel with refresh and one-line rows from `/api/admin/session/today`. Member/Rabbi/Location one-line rows with horizontal scroll; double-click opens view/edit or panels. Add-member and edit-member modals use shared **`inp` / `lbl`** condensed grids (2+ fields per row); **`bonusRecipient`** on add + edit + save payloads.
+- **Mobile fit tweaks:** increased app main bottom safe-area padding to avoid content being cut off by bottom nav (`pb-[calc(6.5rem+env(safe-area-inset-bottom))]`), and tightened admin tab/button text sizing so labels stay inside their boxes.
+- **Copy updates:** `memberLogin.submit` in English changed from **View balance** to **View Member**. Added new admin i18n keys (`hubToday`, `actionRefresh`, updated `subHub`) across `en/he/es/fr/ru`.
 
 ## What's Next / Blockers
 
 - **Render:** run `npx prisma migrate deploy` (or `db push`) against production `DATABASE_URL` so new columns exist.
-- **i18n:** es/fr/ru `rabbi` blocks expanded to match current UI strings; Hebrew rabbi banner/export keys added.
+- **i18n:** es/fr/ru `rabbi` blocks expanded to match current UI strings; Hebrew rabbi banner/export keys added. Admin hub keys now present in all five locale files.
+- **Manual QA:** Exercise admin Member add/edit/delete, Rabbi add/edit/delete, Location save and double-click on non-current slug (switch message).
 - **Home page:** `/` no longer renders `Home.tsx` (only `/punch`); join/register still reachable via bottom nav and `/member`.
 - **Deploy:** Redeploy static site after build so production signup picks up UI changes.
 

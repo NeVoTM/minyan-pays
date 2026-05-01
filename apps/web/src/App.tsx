@@ -176,7 +176,7 @@ export default function App() {
           </div>
         </header>
         <RabbiBanner text={pub?.rabbiBanner} />
-        <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
           <Routes>
             <Route path="/" element={<Navigate to="/punch" replace />} />
             <Route path="/punch" element={<PunchMenu />} />

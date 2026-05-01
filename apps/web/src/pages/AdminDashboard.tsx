@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
@@ -7,26 +7,6 @@ import { useOrg } from '../context/OrgContext'
 import { phoneDigitsFromE164 } from '../lib/phoneDisplay'
 
 const KEY = 'minyan_admin_token'
-
-type SessionResp = {
-  dateKey: string
-  sessionId: string
-  attendances: {
-    id: string
-    punchInAt: string
-    punchInStatus: string
-    punchOutAt: string | null
-    wouldBeFirstNine: boolean
-    user: {
-      id: string
-      firstName: string
-      lastName: string
-      displayName: string
-      phone: string
-      attendanceCode: string
-    }
-  }[]
-}
 
 type MemberRow = {
   id: string
@@ -64,21 +44,6 @@ type AdminLocationRow = {
   createdAt: string
 }
 
-type AttendanceTxn = {
-  id: string
-  sessionId: string
-  sessionDateKey: string
-  userId: string
-  userDisplayName: string
-  userPhone: string
-  userPunchInCode: string
-  punchInAt: string
-  punchInStatus: 'PENDING' | 'CONFIRMED' | 'REJECTED'
-  punchInConfirmedAt: string | null
-  punchOutAt: string | null
-  createdAt: string
-}
-
 type RabbiProfile = {
   id: string
   name: string
@@ -88,6 +53,26 @@ type RabbiProfile = {
   postalCode: string | null
   phone: string | null
   email: string | null
+}
+
+type TodayAttendance = {
+  id: string
+  punchInAt: string
+  punchInStatus: 'PENDING' | 'CONFIRMED' | 'REJECTED'
+  punchOutAt: string | null
+  wouldBeFirstNine: boolean
+  user: {
+    id: string
+    displayName: string
+    phone: string
+    attendanceCode: string
+  }
+}
+
+type SessionResp = {
+  dateKey: string
+  sessionId: string
+  attendances: TodayAttendance[]
 }
 
 function emptyMemberForm() {
@@ -110,7 +95,46 @@ function emptyMemberForm() {
     paypalAccount: '',
     achRoutingNumber: '',
     achAccountNumber: '',
+    bonusRecipient: 'WIFE' as 'SELF' | 'WIFE',
   }
+}
+
+function rabbiOneLine(r: RabbiProfile): string {
+  const addr = [r.address, r.city, r.stateRegion, r.postalCode]
+    .filter(Boolean)
+    .join(', ')
+  return [r.name, r.phone ?? '—', r.email ?? '—', addr || '—'].join(' · ')
+}
+
+function locationOneLine(loc: AdminLocationRow): string {
+  return [
+    loc.synagogueName,
+    loc.slug,
+    loc.locationAddress ?? '—',
+    loc.timezone,
+  ].join(' · ')
+}
+
+function memberOneLine(m: MemberRow, t: (k: string) => string): string {
+  const cityLine = [m.city, m.stateRegion, m.postalCode]
+    .filter(Boolean)
+    .join(' ')
+  const addr = [m.addressLine1, cityLine].filter(Boolean).join(', ')
+  const status = m.isApproved ? t('admin.active') : t('admin.pending')
+  const pref = m.preferredForCheckIn ? ` · ${t('admin.preferredShort')}` : ''
+  return [
+    m.displayName,
+    m.phone,
+    m.attendanceCode,
+    `${status}${pref}`,
+    addr,
+    m.email ?? '—',
+    m.zellePhone ?? '—',
+    m.wifeZellePhone ?? '—',
+    m.bonusRecipient,
+    m.spousePhone ?? '—',
+    m.paypalAccount ?? '—',
+  ].join(' · ')
 }
 
 function maskBankTail(s: string | null): string {
@@ -143,7 +167,6 @@ export function AdminDashboard() {
   const nav = useNavigate()
   const { refreshOrganizations } = useOrg()
   const token = localStorage.getItem(KEY)
-  const [session, setSession] = useState<SessionResp | null>(null)
   const [members, setMembers] = useState<MemberRow[]>([])
   const [settings, setSettings] = useState<{
     slug: string
@@ -170,16 +193,6 @@ export function AdminDashboard() {
   const [newLocName, setNewLocName] = useState('')
   const [newLocSynagogue, setNewLocSynagogue] = useState('')
   const [addLocMsg, setAddLocMsg] = useState<string | null>(null)
-  const [attendanceTxns, setAttendanceTxns] = useState<AttendanceTxn[]>([])
-  const [editTxn, setEditTxn] = useState<AttendanceTxn | null>(null)
-  const [editTxnMsg, setEditTxnMsg] = useState<string | null>(null)
-  const [editTxnForm, setEditTxnForm] = useState<{
-    punchInAtLocal: string
-    punchOutAtLocal: string
-  }>({
-    punchInAtLocal: '',
-    punchOutAtLocal: '',
-  })
   const [locationNameDraft, setLocationNameDraft] = useState('')
   const [locationAddressDraft, setLocationAddressDraft] = useState('')
   const [locationPhoneDraft, setLocationPhoneDraft] = useState('')
@@ -189,7 +202,6 @@ export function AdminDashboard() {
     'en' | 'he' | 'es' | 'ru' | 'fr'
   >('he')
   const [locationSetupMsg, setLocationSetupMsg] = useState<string | null>(null)
-  const [isLocationEditing, setIsLocationEditing] = useState(false)
   const [rabbis, setRabbis] = useState<RabbiProfile[]>([])
   const [rabbiEditId, setRabbiEditId] = useState<string | null>(null)
   const [rabbiNameDraft, setRabbiNameDraft] = useState('')
@@ -208,19 +220,20 @@ export function AdminDashboard() {
   const [editForm, setEditForm] = useState(() => emptyMemberForm())
   const [editPin, setEditPin] = useState('')
   const [editSaveMsg, setEditSaveMsg] = useState<string | null>(null)
-  /** overview | locations | approvals | members | today | add | checkio */
-  const [adminTab, setAdminTab] = useState<
-    'overview' | 'locations' | 'approvals' | 'members' | 'today' | 'add' | 'checkio'
-  >('overview')
-  const prevAdminTab = useRef(adminTab)
-
-  useEffect(() => {
-    const prev = prevAdminTab.current
-    prevAdminTab.current = adminTab
-    if (adminTab !== prev) {
-      setMemberMsg(null)
-    }
-  }, [adminTab])
+  const [adminHub, setAdminHub] = useState<
+    'today' | 'member' | 'rabbi' | 'location'
+  >(
+    'today'
+  )
+  const [todaySession, setTodaySession] = useState<SessionResp | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const [addForm, setAddForm] = useState(() => emptyMemberForm())
+  const [addPin, setAddPin] = useState('')
+  const [addSaveMsg, setAddSaveMsg] = useState<string | null>(null)
+  const [rabbiPanelOpen, setRabbiPanelOpen] = useState(false)
+  const [locationPanelOpen, setLocationPanelOpen] = useState(false)
+  const [selectedRabbiId, setSelectedRabbiId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!token) {
@@ -228,8 +241,7 @@ export function AdminDashboard() {
       return
     }
     try {
-      const [s, st, m, tx, rb, locs] = await Promise.all([
-        api<SessionResp>('/api/admin/session/today', { token }),
+      const [st, m, rb, locs, sess] = await Promise.all([
         api<{
           slug: string
           name: string
@@ -250,11 +262,10 @@ export function AdminDashboard() {
           checkInOnlyPreferred?: boolean
         }>('/api/admin/settings', { token }),
         api<MemberRow[]>('/api/admin/members', { token }),
-        api<AttendanceTxn[]>('/api/admin/attendance', { token }),
         api<RabbiProfile[]>('/api/admin/rabbis', { token }),
         api<AdminLocationRow[]>('/api/admin/organizations', { token }),
+        api<SessionResp>('/api/admin/session/today', { token }),
       ])
-      setSession(s)
       setSettings(st)
       setLocationNameDraft(st.synagogueName ?? '')
       setLocationAddressDraft(st.locationAddress ?? '')
@@ -264,8 +275,8 @@ export function AdminDashboard() {
       setLocationLocaleDraft(st.defaultLocale ?? 'he')
       setRabbis(rb)
       setMembers(m)
-      setAttendanceTxns(tx)
       setAllLocations(locs)
+      setTodaySession(sess)
       setErr(null)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('admin.loadFailed'))
@@ -277,7 +288,9 @@ export function AdminDashboard() {
   }, [load])
 
   function openEdit(m: MemberRow) {
+    setSelectedMemberId(m.id)
     setEditMember(m)
+    setViewMember(null)
     setEditSaveMsg(null)
     setEditPin('')
     setEditForm({
@@ -301,6 +314,7 @@ export function AdminDashboard() {
       paypalAccount: m.paypalAccount ?? '',
       achRoutingNumber: m.achRoutingNumber ?? '',
       achAccountNumber: m.achAccountNumber ?? '',
+      bonusRecipient: m.bonusRecipient === 'SELF' ? 'SELF' : 'WIFE',
     })
   }
 
@@ -339,6 +353,7 @@ export function AdminDashboard() {
         isApproved: editMember.isApproved,
         zellePhone: editForm.zellePhone.trim() || null,
         wifeZellePhone: editForm.wifeZellePhone.trim() || null,
+        bonusRecipient: editForm.bonusRecipient,
         addressLine1: editForm.addressLine1.trim() || null,
         city: editForm.city.trim() || null,
         stateRegion: editForm.stateRegion.trim() || null,
@@ -361,6 +376,7 @@ export function AdminDashboard() {
       })
       setEditMember(null)
       setEditSaveMsg(null)
+      setSelectedMemberId(null)
       setMemberMsg(t('admin.memberUpdated'))
       await load()
     } catch (e: unknown) {
@@ -396,6 +412,7 @@ export function AdminDashboard() {
       await api(`/api/admin/members/${id}`, { method: 'DELETE', token })
       setEditMember(null)
       setViewMember((v) => (v?.id === id ? null : v))
+      setSelectedMemberId((s) => (s === id ? null : s))
       setMemberMsg(t('admin.memberDeleted'))
       await load()
     } catch (e: unknown) {
@@ -403,52 +420,74 @@ export function AdminDashboard() {
     }
   }
 
-  function memberRowForUserId(userId: string): MemberRow | undefined {
-    return members.find((m) => m.id === userId)
-  }
-
-  async function saveEditTxn(e: React.FormEvent) {
+  async function saveAddMember(e: React.FormEvent) {
     e.preventDefault()
-    if (!token || !editTxn) return
-    setEditTxnMsg(null)
-    if (!editTxnForm.punchInAtLocal) {
-      setEditTxnMsg(t('admin.punchInRequired'))
+    if (!token) return
+    setAddSaveMsg(null)
+    if (addForm.phoneDigits.length !== 10) {
+      setAddSaveMsg(t('admin.phone10'))
+      return
+    }
+    if (
+      addForm.spousePhoneDigits.length > 0 &&
+      addForm.spousePhoneDigits.length !== 10
+    ) {
+      setAddSaveMsg(t('admin.spousePhone10'))
+      return
+    }
+    if (isPunchInCodeTaken(members, addForm.attendanceCode)) {
+      setAddSaveMsg(t('admin.punchTakenErr'))
+      return
+    }
+    const zip5 = addForm.postalCode.replace(/\D/g, '').slice(0, 5)
+    if (zip5.length !== 5) {
+      setAddSaveMsg(t('admin.zip5Required'))
+      return
+    }
+    if (addPin.trim().length < 4) {
+      setAddSaveMsg(t('admin.pinRule'))
+      return
+    }
+    if (!addForm.addressLine1.trim() || !addForm.city.trim() || !addForm.stateRegion.trim()) {
+      setAddSaveMsg(t('admin.addressRequired'))
       return
     }
     try {
-      await api(`/api/admin/attendance/${editTxn.id}`, {
-        method: 'PATCH',
+      await api('/api/admin/members', {
+        method: 'POST',
         token,
         body: JSON.stringify({
-          punchInAt: new Date(editTxnForm.punchInAtLocal).toISOString(),
-          punchOutAt: editTxnForm.punchOutAtLocal
-            ? new Date(editTxnForm.punchOutAtLocal).toISOString()
-            : null,
+          firstName: addForm.firstName.trim(),
+          lastName: addForm.lastName.trim(),
+          phone: addForm.phoneDigits,
+          pin: addPin.trim(),
+          attendanceCode: addForm.attendanceCode.trim(),
+          isMarried: addForm.isMarried,
+          bonusRecipient: addForm.bonusRecipient,
+          zellePhone: addForm.zellePhone.trim() || null,
+          wifeZellePhone: addForm.wifeZellePhone.trim() || null,
+          addressLine1: addForm.addressLine1.trim(),
+          city: addForm.city.trim(),
+          stateRegion: addForm.stateRegion.trim(),
+          postalCode: zip5,
+          email: addForm.email.trim() || null,
+          spouseEmail: addForm.spouseEmail.trim() || null,
+          spousePhone:
+            addForm.spousePhoneDigits.length === 10
+              ? addForm.spousePhoneDigits
+              : null,
+          paypalAccount: addForm.paypalAccount.trim() || null,
+          achRoutingNumber: addForm.achRoutingNumber.trim() || null,
+          achAccountNumber: addForm.achAccountNumber.trim() || null,
         }),
       })
-      setEditTxn(null)
-      setMemberMsg(t('admin.txnUpdated'))
+      setAddMemberOpen(false)
+      setAddForm(emptyMemberForm())
+      setAddPin('')
+      setMemberMsg(t('admin.memberCreated'))
       await load()
     } catch (e: unknown) {
-      setEditTxnMsg(e instanceof Error ? e.message : t('admin.updateFailed'))
-    }
-  }
-
-  async function deleteTxn(id: string) {
-    if (!token) return
-    if (
-      !window.confirm(t('admin.deleteTxnConfirm'))
-    ) {
-      return
-    }
-    setEditTxnMsg(null)
-    try {
-      await api(`/api/admin/attendance/${id}`, { method: 'DELETE', token })
-      setEditTxn((v) => (v?.id === id ? null : v))
-      setMemberMsg(t('admin.txnDeleted'))
-      await load()
-    } catch (e: unknown) {
-      setEditTxnMsg(e instanceof Error ? e.message : t('admin.deleteFailed'))
+      setAddSaveMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
     }
   }
 
@@ -474,7 +513,7 @@ export function AdminDashboard() {
           defaultLocale: locationLocaleDraft,
         }),
       })
-      setIsLocationEditing(false)
+      setLocationPanelOpen(false)
       setLocationSetupMsg(t('admin.locationSaved'))
       await load()
     } catch (e: unknown) {
@@ -497,7 +536,7 @@ export function AdminDashboard() {
           locationWebsite: null,
         }),
       })
-      setIsLocationEditing(false)
+      setLocationPanelOpen(false)
       setLocationSetupMsg(t('admin.locationDeleted'))
       await load()
     } catch (e: unknown) {
@@ -565,6 +604,7 @@ export function AdminDashboard() {
       }
       setRabbiPasswordDraft('')
       resetRabbiForm()
+      setRabbiPanelOpen(false)
       setRabbiSetupMsg(t('admin.rabbiSetupSaved'))
       await load()
     } catch (e: unknown) {
@@ -619,25 +659,6 @@ export function AdminDashboard() {
     }
   }
 
-  const tabBtn = (id: typeof adminTab, label: string) => {
-    const on = adminTab === id
-    return (
-      <button
-        key={id}
-        type="button"
-        className={`rounded-lg border px-2.5 py-2 text-center text-[11px] font-medium uppercase leading-tight sm:text-xs ${
-          on
-            ? 'border-blue-500 bg-blue-50 text-blue-900 shadow-sm'
-            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-        }`}
-        onClick={() => setAdminTab(id)}
-      >
-        {label}
-      </button>
-    )
-  }
-
-  const checkedInCount = session?.attendances.length ?? 0
   const pendingApprovalCount = members.filter((m) => !m.isApproved).length
   const punchInTakenEdit = useMemo(
     () =>
@@ -646,18 +667,28 @@ export function AdminDashboard() {
         : false,
     [members, editForm.attendanceCode, editMember]
   )
+  const punchInTakenAdd = useMemo(
+    () => isPunchInCodeTaken(members, addForm.attendanceCode),
+    [members, addForm.attendanceCode]
+  )
+  const selectedMember = useMemo(
+    () => members.find((m) => m.id === selectedMemberId) ?? null,
+    [members, selectedMemberId]
+  )
+  const selectedRabbi = useMemo(
+    () => rabbis.find((r) => r.id === selectedRabbiId) ?? null,
+    [rabbis, selectedRabbiId]
+  )
+  const todayRows = todaySession?.attendances ?? []
 
-  const fmtAttendanceStatus = (s: string) =>
-    s === 'PENDING'
-      ? t('admin.statusPending')
-      : s === 'CONFIRMED'
-        ? t('admin.statusConfirmed')
-        : t('admin.statusRejected')
+  const inp =
+    'mt-0.5 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-900'
+  const lbl = 'block text-[10px] font-semibold uppercase tracking-wide text-slate-600'
 
   if (!token) return null
 
   return (
-    <div className="space-y-3">
+    <div className="mx-auto w-full min-w-0 max-w-full space-y-3 pb-4 text-center sm:text-left">
       <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Link
           to="/punch"
@@ -681,124 +712,434 @@ export function AdminDashboard() {
           {t('admin.title')}
         </h1>
         <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
-          {adminTab === 'overview' && t('admin.subOverview')}
-          {adminTab === 'locations' &&
-            t('admin.subLocations', { count: allLocations.length })}
-          {adminTab === 'approvals' &&
-            t('admin.subApprovals', { count: pendingApprovalCount })}
-          {adminTab === 'members' &&
-            t('admin.subMembers', { count: members.length })}
-          {adminTab === 'today' &&
-            (session
-              ? t('admin.subToday', {
-                  date: session.dateKey,
-                  count: checkedInCount,
-                })
-              : t('common.loading'))}
-          {adminTab === 'add' && t('admin.subAdd')}
-          {adminTab === 'checkio' &&
-            t('admin.subCheckIo', { count: attendanceTxns.length })}
+          {t('admin.subHub', {
+            members: members.length,
+            rabbis: rabbis.length,
+            locations: allLocations.length,
+          })}
         </p>
       </div>
       {err && <p className="text-xs text-red-600">{err}</p>}
       {memberMsg && <p className="text-xs text-slate-600">{memberMsg}</p>}
 
       <nav
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+        className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4"
         aria-label={t('admin.navAria')}
       >
-        {tabBtn('overview', t('admin.tabOverview'))}
-        {tabBtn('locations', t('admin.tabLocations'))}
-        {tabBtn(
-          'members',
-          pendingApprovalCount
-            ? t('admin.tabMembersPending', {
-                count: pendingApprovalCount,
-              })
-            : t('admin.tabMembersAll')
-        )}
-        {tabBtn('today', t('admin.tabToday'))}
-        {tabBtn('add', t('admin.tabAdd'))}
+        <button
+          type="button"
+          className={`min-w-0 rounded-xl border-2 px-2 py-3 text-center text-[10px] font-bold leading-tight whitespace-normal ${
+            adminHub === 'today'
+              ? 'border-cyan-600 bg-cyan-600 text-white shadow-md'
+              : 'border-cyan-200 bg-cyan-50 text-cyan-900'
+          }`}
+          onClick={() => {
+            setAdminHub('today')
+            setMemberMsg(null)
+          }}
+        >
+          {t('admin.hubToday')}
+        </button>
+        <button
+          type="button"
+          className={`min-w-0 rounded-xl border-2 px-2 py-3 text-center text-[10px] font-bold leading-tight whitespace-normal ${
+            adminHub === 'member'
+              ? 'border-indigo-600 bg-indigo-600 text-white shadow-md'
+              : 'border-indigo-200 bg-indigo-50 text-indigo-900'
+          }`}
+          onClick={() => {
+            setAdminHub('member')
+            setMemberMsg(null)
+          }}
+        >
+          {t('admin.hubMember')}
+        </button>
+        <button
+          type="button"
+          className={`min-w-0 rounded-xl border-2 px-2 py-3 text-center text-[10px] font-bold leading-tight whitespace-normal ${
+            adminHub === 'rabbi'
+              ? 'border-violet-600 bg-violet-600 text-white shadow-md'
+              : 'border-violet-200 bg-violet-50 text-violet-900'
+          }`}
+          onClick={() => {
+            setAdminHub('rabbi')
+            setMemberMsg(null)
+            setSelectedRabbiId(null)
+          }}
+        >
+          {t('admin.hubRabbi')}
+        </button>
+        <button
+          type="button"
+          className={`min-w-0 rounded-xl border-2 px-2 py-3 text-center text-[10px] font-bold leading-tight whitespace-normal ${
+            adminHub === 'location'
+              ? 'border-amber-500 bg-amber-500 text-white shadow-md'
+              : 'border-amber-200 bg-amber-50 text-amber-950'
+          }`}
+          onClick={() => {
+            setAdminHub('location')
+            setMemberMsg(null)
+          }}
+        >
+          {t('admin.hubLocation')}
+        </button>
       </nav>
 
-      {adminTab === 'locations' && (
-        <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100">
-          <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-            {t('admin.locationsViewTitle')}
-          </h2>
-          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.locationsViewHelp')}
-          </p>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {allLocations.map((loc) => (
-              <li
-                key={loc.slug}
-                className="rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-[11px] leading-snug text-slate-700 sm:text-xs"
+      {adminHub === 'today' && (
+        <div className="w-full min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="min-w-0 text-[11px] font-semibold text-slate-700">
+              {t('admin.todayCheckIns', { count: todayRows.length })}
+            </p>
+            <button
+              type="button"
+              className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-2 text-[11px] font-semibold text-cyan-900"
+              onClick={() => void load()}
+            >
+              {t('admin.actionRefresh')}
+            </button>
+          </div>
+          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
+            {todayRows.map((row) => (
+              <div
+                key={row.id}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5"
               >
-                <p className="font-medium text-slate-900">{loc.synagogueName}</p>
-                <p className="font-mono text-[10px] text-slate-500">{loc.slug}</p>
-                <p className="text-slate-600">{loc.locationAddress || '—'}</p>
-                <p className="text-slate-500">{loc.timezone}</p>
-              </li>
+                <div className="overflow-x-auto whitespace-nowrap text-[10px] font-mono leading-snug text-slate-800">
+                  {[
+                    row.user.displayName,
+                    row.user.phone,
+                    row.user.attendanceCode,
+                    row.punchInStatus,
+                    new Date(row.punchInAt).toLocaleTimeString(),
+                    row.punchOutAt
+                      ? `out ${new Date(row.punchOutAt).toLocaleTimeString()}`
+                      : 'out —',
+                    row.wouldBeFirstNine ? 'first-9' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              </div>
             ))}
-          </ul>
-          {allLocations.length === 0 && (
-            <p className="text-xs text-slate-500">{t('admin.noLocations')}</p>
+          </div>
+          {todayRows.length === 0 && (
+            <p className="text-center text-xs text-slate-500">
+              {t('admin.noPunchInsToday')}
+            </p>
           )}
         </div>
       )}
 
-      {adminTab === 'overview' && (
-        <>
-      {settings && (
-        <div className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="font-medium text-slate-800">{t('admin.locationSetupTitle')}</h2>
+      {adminHub === 'member' && (
+        <div className="w-full min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+          <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
-              className="text-xs text-blue-700 underline decoration-blue-400"
-              onClick={() => setIsLocationEditing((v) => !v)}
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white"
+              onClick={() => {
+                setAddSaveMsg(null)
+                setAddForm(emptyMemberForm())
+                setAddPin('')
+                setAddMemberOpen(true)
+              }}
             >
-              {isLocationEditing ? t('common.view') : t('admin.editSave')}
+              {t('admin.actionAdd')}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedMember}
+              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-semibold text-sky-900 disabled:opacity-40"
+              onClick={() => selectedMember && setViewMember(selectedMember)}
+            >
+              {t('admin.actionView')}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedMember}
+              className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-2 text-[11px] font-semibold text-indigo-900 disabled:opacity-40"
+              onClick={() => selectedMember && openEdit(selectedMember)}
+            >
+              {t('admin.actionEdit')}
             </button>
           </div>
-          {!isLocationEditing ? (
-            <dl className="grid gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
-              <div><dt className="font-medium">{t('admin.locationDisplayName')}</dt><dd>{settings.synagogueName || '—'}</dd></div>
-              <div><dt className="font-medium">{t('admin.phone')}</dt><dd>{settings.locationPhone || '—'}</dd></div>
-              <div><dt className="font-medium">{t('admin.labelEmail')}</dt><dd>{settings.locationEmail || '—'}</dd></div>
-              <div><dt className="font-medium">{t('admin.website')}</dt><dd>{settings.locationWebsite || '—'}</dd></div>
-              <div className="sm:col-span-2"><dt className="font-medium">{t('admin.address')}</dt><dd>{settings.locationAddress || '—'}</dd></div>
-            </dl>
-          ) : (
+          <p className="text-center text-[10px] text-slate-500">
+            {t('admin.doubleClickHint')}
+          </p>
+          {pendingApprovalCount > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-2">
+              <p className="mb-1 text-[10px] font-semibold uppercase text-amber-900">
+                {t('admin.approvalsHeader', { count: pendingApprovalCount })}
+              </p>
+              <ul className="max-h-28 space-y-1 overflow-y-auto">
+                {members
+                  .filter((m) => !m.isApproved)
+                  .map((m) => (
+                    <li
+                      key={m.id}
+                      className="flex flex-wrap items-center justify-between gap-1 text-[10px]"
+                    >
+                      <span className="min-w-0 truncate font-medium text-slate-800">
+                        {m.displayName}
+                      </span>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded bg-emerald-600 px-2 py-0.5 text-white"
+                        onClick={() => void approveMember(m.id)}
+                      >
+                        {t('admin.approve')}
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
+            {members.map((m) => (
+              <div
+                key={m.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedMemberId(m.id)}
+                onDoubleClick={() => openEdit(m)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedMemberId(m.id)
+                  }
+                }}
+                className={`cursor-pointer rounded-lg border px-2 py-1.5 text-left transition ${
+                  selectedMemberId === m.id
+                    ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-200'
+                    : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                }`}
+              >
+                <div className="overflow-x-auto whitespace-nowrap text-[10px] font-mono leading-snug text-slate-800">
+                  {memberOneLine(m, t)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {members.length === 0 && (
+            <p className="text-center text-xs text-slate-500">
+              {t('admin.noMembers')}
+            </p>
+          )}
+        </div>
+      )}
+
+      {adminHub === 'rabbi' && (
+        <div className="w-full min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white"
+              onClick={() => {
+                setRabbiSetupMsg(null)
+                resetRabbiForm()
+                setRabbiPasswordDraft('')
+                setRabbiPanelOpen(true)
+              }}
+            >
+              {t('admin.actionAdd')}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedRabbi}
+              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-semibold text-sky-900 disabled:opacity-40"
+              onClick={() => {
+                if (!selectedRabbi) return
+                beginEditRabbi(selectedRabbi)
+                setRabbiPanelOpen(true)
+              }}
+            >
+              {t('admin.actionView')}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedRabbi}
+              className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-[11px] font-semibold text-violet-900 disabled:opacity-40"
+              onClick={() => {
+                if (!selectedRabbi) return
+                beginEditRabbi(selectedRabbi)
+                setRabbiPanelOpen(true)
+              }}
+            >
+              {t('admin.actionEdit')}
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-slate-500">
+            {t('admin.doubleClickHint')}
+          </p>
+          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
+            {rabbis.map((r) => (
+              <div
+                key={r.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedRabbiId(r.id)}
+                onDoubleClick={() => {
+                  beginEditRabbi(r)
+                  setRabbiPanelOpen(true)
+                }}
+                className={`cursor-pointer rounded-lg border px-2 py-1.5 text-left ${
+                  selectedRabbiId === r.id
+                    ? 'border-violet-400 bg-violet-50 ring-1 ring-violet-200'
+                    : 'border-slate-200 bg-slate-50'
+                }`}
+              >
+                <div className="overflow-x-auto whitespace-nowrap text-[10px] font-mono text-slate-800">
+                  {rabbiOneLine(r)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {rabbis.length === 0 && (
+            <p className="text-center text-xs text-slate-500">
+              {t('admin.noRabbisYet')}
+            </p>
+          )}
+        </div>
+      )}
+
+      {adminHub === 'location' && (
+        <div className="w-full min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+          <div className="flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white"
+              onClick={() => {
+                setAddLocMsg(null)
+                setShowAddLocation(true)
+              }}
+            >
+              {t('admin.actionAdd')}
+            </button>
+            <button
+              type="button"
+              disabled={!settings}
+              className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-[11px] font-semibold text-sky-900 disabled:opacity-40"
+              onClick={() => {
+                if (!settings) return
+                setLocationSetupMsg(null)
+                setLocationPanelOpen(true)
+              }}
+            >
+              {t('admin.actionView')}
+            </button>
+            <button
+              type="button"
+              disabled={!settings}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-900 disabled:opacity-40"
+              onClick={() => {
+                if (!settings) return
+                setLocationSetupMsg(null)
+                setLocationPanelOpen(true)
+              }}
+            >
+              {t('admin.actionEdit')}
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-slate-500">
+            {t('admin.locationListHint')}
+          </p>
+          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
+            {allLocations.map((loc) => (
+              <div
+                key={loc.slug}
+                role="button"
+                tabIndex={0}
+                onDoubleClick={() => {
+                  if (settings && loc.slug === settings.slug) {
+                    setLocationPanelOpen(true)
+                  } else {
+                    setMemberMsg(t('admin.switchLocationToEdit'))
+                  }
+                }}
+                className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5"
+              >
+                <div className="overflow-x-auto whitespace-nowrap text-[10px] font-mono text-slate-800">
+                  {locationOneLine(loc)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {locationPanelOpen && settings && (
+        <div className={MODAL_BACKDROP}>
+          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-left text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t('admin.locationPanelTitle')}
+              </h3>
+              <button
+                type="button"
+                className={MODAL_TEXT_BTN}
+                onClick={() => setLocationPanelOpen(false)}
+              >
+                {t('common.close')}
+              </button>
+            </div>
             <form className="grid gap-2" onSubmit={saveLocationSetup}>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="text-xs text-slate-600">
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
                   {t('admin.locationDisplayName')}
-                  <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationNameDraft} onChange={(e) => setLocationNameDraft(e.target.value)} />
+                  <input
+                    className={inp}
+                    value={locationNameDraft}
+                    onChange={(e) => setLocationNameDraft(e.target.value)}
+                  />
                 </label>
-                <label className="text-xs text-slate-600">
+                <label className={lbl}>
                   {t('admin.phone')}
-                  <PhoneInput className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={phoneDigitsFromE164(locationPhoneDraft)} onChange={setLocationPhoneDraft} />
+                  <PhoneInput
+                    className={inp}
+                    value={phoneDigitsFromE164(locationPhoneDraft)}
+                    onChange={setLocationPhoneDraft}
+                  />
                 </label>
               </div>
-              <label className="text-xs text-slate-600">
+              <label className={lbl}>
                 {t('admin.address')}
-                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationAddressDraft} onChange={(e) => setLocationAddressDraft(e.target.value)} />
+                <input
+                  className={inp}
+                  value={locationAddressDraft}
+                  onChange={(e) => setLocationAddressDraft(e.target.value)}
+                />
               </label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="text-xs text-slate-600">
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
                   {t('admin.labelEmail')}
-                  <input type="email" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationEmailDraft} onChange={(e) => setLocationEmailDraft(e.target.value)} />
+                  <input
+                    type="email"
+                    className={inp}
+                    value={locationEmailDraft}
+                    onChange={(e) => setLocationEmailDraft(e.target.value)}
+                  />
                 </label>
-                <label className="text-xs text-slate-600">
+                <label className={lbl}>
                   {t('admin.website')}
-                  <input type="url" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationWebsiteDraft} onChange={(e) => setLocationWebsiteDraft(e.target.value)} />
+                  <input
+                    type="url"
+                    className={inp}
+                    value={locationWebsiteDraft}
+                    onChange={(e) => setLocationWebsiteDraft(e.target.value)}
+                  />
                 </label>
               </div>
-              <label className="text-xs text-slate-600">
+              <label className={lbl}>
                 {t('admin.locationDefaultLanguage')}
-                <select className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={locationLocaleDraft} onChange={(e) => setLocationLocaleDraft(e.target.value as 'en' | 'he' | 'es' | 'ru' | 'fr')}>
+                <select
+                  className={inp}
+                  value={locationLocaleDraft}
+                  onChange={(e) =>
+                    setLocationLocaleDraft(
+                      e.target.value as 'en' | 'he' | 'es' | 'ru' | 'fr'
+                    )
+                  }
+                >
                   <option value="he">{t('lang.he')}</option>
                   <option value="en">{t('lang.en')}</option>
                   <option value="es">{t('lang.es')}</option>
@@ -806,374 +1147,392 @@ export function AdminDashboard() {
                   <option value="fr">{t('lang.fr')}</option>
                 </select>
               </label>
-              <div className="flex flex-wrap gap-2">
-                <button type="submit" className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">{t('admin.saveLocationSetup')}</button>
-                <button type="button" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 hover:bg-red-100" onClick={() => void clearLocationSetup()}>{t('common.delete')}</button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-amber-600 py-2.5 text-sm font-semibold text-white"
+                >
+                  {t('admin.saveLocationSetup')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-800"
+                  onClick={() => void clearLocationSetup()}
+                >
+                  {t('common.delete')}
+                </button>
               </div>
             </form>
-          )}
-          {locationSetupMsg && (
-            <p className="mt-2 text-[11px] text-slate-500">{locationSetupMsg}</p>
-          )}
-        </div>
-      )}
-
-      {settings && (
-        <div
-          id="admin-rabbi-setup"
-          className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm"
-        >
-          <h2 className="mb-2 font-medium text-slate-800">{t('admin.rabbiSetupTitle')}</h2>
-          <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">{t('admin.rabbiSetupLinkHint')}</p>
-          <ul className="mb-3 grid gap-2">
-            {rabbis.map((r) => (
-              <li key={r.id} className="flex items-start justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
-                <div className="min-w-0 text-[11px]">
-                  <p className="truncate font-medium text-slate-800">{r.name}</p>
-                  <p className="truncate text-slate-600">{r.phone || '—'} · {r.email || '—'}</p>
-                  <p className="truncate text-slate-500">{[r.city, r.stateRegion, r.postalCode].filter(Boolean).join(', ') || '—'}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1 text-[11px]">
-                  <button type="button" className="text-blue-700 underline decoration-blue-400" onClick={() => beginEditRabbi(r)}>{t('admin.editSave')}</button>
-                  <button type="button" className="text-red-700 underline decoration-red-400" onClick={() => void deleteRabbi(r.id)}>{t('common.delete')}</button>
-                </div>
-              </li>
-            ))}
-            {rabbis.length === 0 && <li className="text-[11px] text-slate-500">{t('admin.noRabbisYet')}</li>}
-          </ul>
-          <form className="grid gap-2" onSubmit={saveRabbiSetup}>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs text-slate-600">
-                {t('admin.rabbiName')}
-                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiNameDraft} onChange={(e) => setRabbiNameDraft(e.target.value)} />
-              </label>
-              <label className="text-xs text-slate-600">
-                {t('admin.phone')}
-                <PhoneInput className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiPhoneDraft} onChange={setRabbiPhoneDraft} />
-              </label>
-            </div>
-            <label className="text-xs text-slate-600">
-              {t('admin.address')}
-              <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiAddressDraft} onChange={(e) => setRabbiAddressDraft(e.target.value)} />
-            </label>
-            <div className="grid gap-2 sm:grid-cols-3">
-              <label className="text-xs text-slate-600">
-                {t('signup.city')}
-                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiCityDraft} onChange={(e) => setRabbiCityDraft(e.target.value)} />
-              </label>
-              <label className="text-xs text-slate-600">
-                {t('signup.state')}
-                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiStateDraft} onChange={(e) => setRabbiStateDraft(e.target.value)} />
-              </label>
-              <label className="text-xs text-slate-600">
-                {t('signup.zip')}
-                <input className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiZipDraft} onChange={(e) => setRabbiZipDraft(e.target.value)} />
-              </label>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs text-slate-600">
-                {t('admin.labelEmail')}
-                <input type="email" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiEmailDraft} onChange={(e) => setRabbiEmailDraft(e.target.value)} />
-              </label>
-              <label className="text-xs text-slate-600">
-                {t('admin.rabbiPasswordLabel')}
-                <input type="password" className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1" value={rabbiPasswordDraft} onChange={(e) => setRabbiPasswordDraft(e.target.value)} autoComplete="new-password" />
-              </label>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="submit"
-                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-              >
-                {rabbiEditId ? t('admin.saveRabbiSetup') : t('admin.addRabbi')}
-              </button>
-              <button
-                type="button"
-                className="rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                onClick={resetRabbiForm}
-              >
-                {t('common.cancel')}
-              </button>
-            </div>
-          </form>
-          {rabbiSetupMsg && (
-            <p className="mt-2 text-[11px] text-slate-500">{rabbiSetupMsg}</p>
-          )}
-        </div>
-      )}
-        </>
-      )}
-
-      {adminTab === 'approvals' && (
-        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-          <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-            {t('admin.approvalsHeader', { count: pendingApprovalCount })}
-          </h2>
-          <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.approvalsHelp')}
-          </p>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {members
-              .filter((m) => !m.isApproved)
-              .map((m) => (
-                <li
-                  key={m.id}
-                  className="rounded-md border border-amber-200/90 bg-amber-50/80 px-2.5 py-2 text-[11px] leading-snug text-slate-700 sm:text-xs"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-slate-900">
-                        {m.displayName}
-                      </p>
-                      <p className="truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">
-                        {t('admin.punchInLine', {
-                          phone: m.phone,
-                          code: m.attendanceCode,
-                        })}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <button
-                        type="button"
-                        className="text-blue-600/90 active:underline"
-                        onClick={() => setViewMember(m)}
-                      >
-                        {t('common.view')}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-emerald-700 active:underline"
-                        onClick={() => void approveMember(m.id)}
-                      >
-                        {t('admin.approve')}
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-          </ul>
-          {pendingApprovalCount === 0 && (
-            <p className="text-xs text-slate-500">{t('admin.noPendingApprovals')}</p>
-          )}
-        </div>
-      )}
-
-      {adminTab === 'members' && (
-      <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-        <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-          {t('admin.allMembersHeader', { count: members.length })}
-        </h2>
-        <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">
-          {t('admin.allMembersHelp')}
-        </p>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {members.map((m) => (
-            <li
-              key={m.id}
-              className="rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-[11px] leading-snug text-slate-700 sm:text-xs"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-900">
-                    {m.displayName}
-                  </p>
-                  <p className="truncate font-mono text-[10px] text-slate-500 sm:text-[11px]">
-                    {t('admin.punchInLine', {
-                      phone: m.phone,
-                      code: m.attendanceCode,
-                    })}
-                  </p>
-                  <p className="mt-0.5">
-                    {m.isApproved ? (
-                      <span className="text-emerald-600">{t('admin.active')}</span>
-                    ) : (
-                      <span className="text-blue-600">{t('admin.pending')}</span>
-                    )}
-                    {m.isApproved && m.preferredForCheckIn && (
-                      <span className="ml-1.5 text-violet-700">
-                        · {t('admin.preferredCheckIn')}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <button
-                    type="button"
-                    className="text-blue-600/90 active:underline"
-                    onClick={() => setViewMember(m)}
-                  >
-                    {t('common.view')}
-                  </button>
-                  <button
-                    type="button"
-                    className="text-slate-700 active:underline"
-                    onClick={() => openEdit(m)}
-                  >
-                    {t('admin.editSave')}
-                  </button>
-                  <button
-                    type="button"
-                    className="text-red-700/90 active:underline"
-                    onClick={() => void deleteMember(m.id)}
-                  >
-                    {t('common.delete')}
-                  </button>
-                  {!m.isApproved && (
-                    <button
-                      type="button"
-                      className="text-emerald-600 active:underline"
-                      onClick={() => void approveMember(m.id)}
-                    >
-                      {t('admin.approve')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-        {members.length === 0 && (
-          <p className="text-xs text-slate-500">{t('admin.noMembers')}</p>
-        )}
-      </div>
-      )}
-
-      {adminTab === 'add' && (
-        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-          <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-            {t('admin.addShortcutsTitle')}
-          </h2>
-          <p className="text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.addShortcutsHelp')}
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <Link
-              to="/member/signup"
-              className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-2.5 text-center text-sm font-medium text-white no-underline hover:bg-blue-700"
-            >
-              {t('admin.addMemberCta')}
-            </Link>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-full border border-blue-600 bg-blue-50 px-3 py-2.5 text-center text-sm font-medium text-blue-900 hover:bg-blue-100"
-              onClick={() => {
-                setAdminTab('overview')
-                setTimeout(() => {
-                  document
-                    .getElementById('admin-rabbi-setup')
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }, 0)
-              }}
-            >
-              {t('admin.addRabbiCta')}
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-slate-800 hover:bg-slate-50"
-              onClick={() => {
-                setAddLocMsg(null)
-                setShowAddLocation(true)
-              }}
-            >
-              {t('admin.addLocationCta')}
-            </button>
+            {locationSetupMsg && (
+              <p className="mt-2 text-[11px] text-slate-600">{locationSetupMsg}</p>
+            )}
           </div>
         </div>
       )}
 
-      {adminTab === 'today' && session && (
-        <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
-          <h2 className="mb-1.5 text-xs font-medium text-slate-700 sm:text-sm">
-            {t('admin.checkedInToday', {
-              count: session.attendances.length,
-              date: session.dateKey,
-            })}
-          </h2>
-          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.todayHelp')}
-          </p>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {session.attendances.map((a) => {
-              const row = memberRowForUserId(a.user.id)
-              return (
-                <li
-                  key={a.id}
-                  className="rounded-md border border-slate-200 bg-slate-50/80 p-2.5 text-[11px] leading-snug sm:text-xs"
+      {rabbiPanelOpen && (
+        <div className={MODAL_BACKDROP}>
+          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-left text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-semibold text-slate-900">
+                {rabbiEditId ? t('admin.editRabbiTitle') : t('admin.addRabbiTitle')}
+              </h3>
+              <button
+                type="button"
+                className={MODAL_TEXT_BTN}
+                onClick={() => {
+                  setRabbiPanelOpen(false)
+                  resetRabbiForm()
+                  setRabbiPasswordDraft('')
+                }}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            <form className="grid gap-2" onSubmit={saveRabbiSetup}>
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
+                  {t('admin.rabbiName')}
+                  <input
+                    className={inp}
+                    value={rabbiNameDraft}
+                    onChange={(e) => setRabbiNameDraft(e.target.value)}
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.phone')}
+                  <PhoneInput
+                    className={inp}
+                    value={rabbiPhoneDraft}
+                    onChange={setRabbiPhoneDraft}
+                  />
+                </label>
+              </div>
+              <label className={lbl}>
+                {t('admin.address')}
+                <input
+                  className={inp}
+                  value={rabbiAddressDraft}
+                  onChange={(e) => setRabbiAddressDraft(e.target.value)}
+                />
+              </label>
+              <div className="grid grid-cols-3 gap-1">
+                <label className={lbl}>
+                  {t('signup.city')}
+                  <input
+                    className={inp}
+                    value={rabbiCityDraft}
+                    onChange={(e) => setRabbiCityDraft(e.target.value)}
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('signup.state')}
+                  <input
+                    className={inp}
+                    value={rabbiStateDraft}
+                    onChange={(e) => setRabbiStateDraft(e.target.value)}
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('signup.zip')}
+                  <input
+                    className={inp}
+                    value={rabbiZipDraft}
+                    onChange={(e) => setRabbiZipDraft(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
+                  {t('admin.labelEmail')}
+                  <input
+                    type="email"
+                    className={inp}
+                    value={rabbiEmailDraft}
+                    onChange={(e) => setRabbiEmailDraft(e.target.value)}
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.rabbiPasswordLabel')}
+                  <input
+                    type="password"
+                    className={inp}
+                    value={rabbiPasswordDraft}
+                    onChange={(e) => setRabbiPasswordDraft(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-violet-600 py-2.5 text-sm font-semibold text-white"
                 >
-                  <div className="flex flex-col gap-2">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {a.user.displayName}
-                      </p>
-                      <p className="mt-0.5 text-slate-500">
-                        {new Date(a.punchInAt).toLocaleString()} ·{' '}
-                        <span
-                          className={
-                            a.punchInStatus === 'CONFIRMED'
-                              ? 'text-emerald-700'
-                              : a.punchInStatus === 'PENDING'
-                                ? 'text-amber-700'
-                                : 'text-slate-600'
-                          }
-                        >
-                          {fmtAttendanceStatus(a.punchInStatus)}
-                        </span>
-                        {a.punchOutAt
-                          ? t('admin.outAt', {
-                              time: new Date(a.punchOutAt).toLocaleTimeString(),
-                            })
-                          : t('admin.noPunchOut')}
-                      </p>
-                      {a.punchInStatus === 'CONFIRMED' && (
-                        <p className="mt-1 text-[10px] text-blue-700/85 sm:text-[11px]">
-                          {t('admin.firstNine')}{' '}
-                          {a.wouldBeFirstNine
-                            ? t('admin.firstNineYes')
-                            : t('admin.firstNineNo')}
-                        </p>
-                      )}
-                    </div>
-                    {a.punchInStatus === 'PENDING' && (
-                      <p className="text-[10px] text-amber-800 sm:text-[11px]">
-                        {t('admin.pendingRabbiConfirm')}
-                      </p>
-                    )}
-                    {row && (
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-200/90 pt-2 text-[11px] sm:text-xs">
-                        <button
-                          type="button"
-                          className="text-blue-600/95 hover:underline"
-                          onClick={() => setViewMember(row)}
-                        >
-                          {t('common.view')}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-slate-700 hover:underline"
-                          onClick={() => openEdit(row)}
-                        >
-                          {t('admin.editSave')}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-red-700/90 hover:underline"
-                          onClick={() => void deleteMember(row.id)}
-                        >
-                          {t('common.delete')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-          {session.attendances.length === 0 && (
-            <p className="text-xs text-slate-500">{t('admin.noPunchInsToday')}</p>
-          )}
+                  {rabbiEditId ? t('admin.saveRabbiSetup') : t('admin.addRabbi')}
+                </button>
+                {rabbiEditId && (
+                  <button
+                    type="button"
+                    className="rounded-lg border border-red-200 bg-red-50 py-2.5 text-sm font-semibold text-red-800"
+                    onClick={() => void deleteRabbi(rabbiEditId)}
+                  >
+                    {t('common.delete')}
+                  </button>
+                )}
+              </div>
+            </form>
+            {rabbiSetupMsg && (
+              <p className="mt-2 text-[11px] text-slate-600">{rabbiSetupMsg}</p>
+            )}
+          </div>
         </div>
       )}
 
+      {addMemberOpen && (
+        <div className={MODAL_BACKDROP}>
+          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-left text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-semibold text-slate-900">
+                {t('admin.addMemberModalTitle')}
+              </h3>
+              <button
+                type="button"
+                className={MODAL_TEXT_BTN}
+                onClick={() => {
+                  setAddMemberOpen(false)
+                  setAddSaveMsg(null)
+                }}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            <form className="grid gap-2" onSubmit={saveAddMember}>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className={inp}
+                  placeholder={t('signup.firstName')}
+                  value={addForm.firstName}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, firstName: e.target.value }))
+                  }
+                  required
+                />
+                <input
+                  className={inp}
+                  placeholder={t('signup.lastName')}
+                  value={addForm.lastName}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, lastName: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <label className={lbl}>
+                {t('admin.phone')}
+                <PhoneInput
+                  className={inp}
+                  value={addForm.phoneDigits}
+                  onChange={(d) => setAddForm((f) => ({ ...f, phoneDigits: d }))}
+                  required
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
+                  {t('admin.newPinPh')}
+                  <input
+                    type="password"
+                    className={inp}
+                    value={addPin}
+                    onChange={(e) => setAddPin(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.punchInPh')}
+                  <input
+                    className={`${inp} font-mono ${punchInTakenAdd ? 'border-red-500 ring-1 ring-red-200' : ''}`}
+                    value={addForm.attendanceCode}
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        attendanceCode: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </label>
+              </div>
+              {punchInTakenAdd && (
+                <p className="text-xs text-red-600">{t('admin.punchInTaken')}</p>
+              )}
+              <label className={lbl}>
+                {t('admin.street1')}
+                <input
+                  className={inp}
+                  value={addForm.addressLine1}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, addressLine1: e.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <div className="grid grid-cols-3 gap-1">
+                <input
+                  className={inp}
+                  placeholder={t('signup.city')}
+                  value={addForm.city}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, city: e.target.value }))
+                  }
+                  required
+                />
+                <input
+                  className={inp}
+                  placeholder={t('signup.state')}
+                  value={addForm.stateRegion}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, stateRegion: e.target.value }))
+                  }
+                  required
+                />
+                <input
+                  className={inp}
+                  placeholder={t('signup.zip')}
+                  value={addForm.postalCode}
+                  onChange={(e) =>
+                    setAddForm((f) => ({
+                      ...f,
+                      postalCode: e.target.value.replace(/\D/g, '').slice(0, 5),
+                    }))
+                  }
+                  inputMode="numeric"
+                  maxLength={5}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 text-[11px] text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={addForm.isMarried}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, isMarried: e.target.checked }))
+                    }
+                  />
+                  {t('admin.marriedLabel')}
+                </label>
+                <label className={lbl}>
+                  {t('admin.bonusRecipientLabel')}
+                  <select
+                    className={inp}
+                    value={addForm.bonusRecipient}
+                    onChange={(e) =>
+                      setAddForm((f) => ({
+                        ...f,
+                        bonusRecipient: e.target.value as 'SELF' | 'WIFE',
+                      }))
+                    }
+                  >
+                    <option value="WIFE">{t('billing.toSpouseZelle')}</option>
+                    <option value="SELF">{t('billing.toYourZelle')}</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className={inp}
+                  placeholder={t('admin.zellePlaceholder')}
+                  value={addForm.zellePhone}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, zellePhone: e.target.value }))
+                  }
+                />
+                <input
+                  className={inp}
+                  placeholder={t('admin.spouseZellePlaceholder')}
+                  value={addForm.wifeZellePhone}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, wifeZellePhone: e.target.value }))
+                  }
+                />
+              </div>
+              <input
+                className={inp}
+                type="email"
+                placeholder={t('signup.emailOpt')}
+                value={addForm.email}
+                onChange={(e) =>
+                  setAddForm((f) => ({ ...f, email: e.target.value }))
+                }
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
+                  {t('admin.spousePhone')}
+                  <PhoneInput
+                    className={inp}
+                    value={addForm.spousePhoneDigits}
+                    onChange={(d) =>
+                      setAddForm((f) => ({ ...f, spousePhoneDigits: d }))
+                    }
+                  />
+                </label>
+                <input
+                  className={inp}
+                  type="email"
+                  placeholder={t('admin.spouseEmail')}
+                  value={addForm.spouseEmail}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, spouseEmail: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className={inp}
+                  placeholder={t('admin.paypalPh')}
+                  value={addForm.paypalAccount}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, paypalAccount: e.target.value }))
+                  }
+                />
+                <input
+                  className={inp}
+                  placeholder={t('admin.achRouting')}
+                  value={addForm.achRoutingNumber}
+                  onChange={(e) =>
+                    setAddForm((f) => ({
+                      ...f,
+                      achRoutingNumber: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <input
+                className={inp}
+                placeholder={t('admin.achAccount')}
+                value={addForm.achAccountNumber}
+                onChange={(e) =>
+                  setAddForm((f) => ({
+                    ...f,
+                    achAccountNumber: e.target.value,
+                  }))
+                }
+              />
+              <button
+                type="submit"
+                disabled={punchInTakenAdd}
+                className="rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {t('admin.createMember')}
+              </button>
+            </form>
+            {addSaveMsg && (
+              <p className="mt-2 text-xs text-red-600">{addSaveMsg}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {viewMember && (
         <div className={MODAL_BACKDROP}>
@@ -1343,9 +1702,9 @@ export function AdminDashboard() {
 
       {editMember && (
         <div className={MODAL_BACKDROP}>
-          <div className="max-h-[min(90dvh,100%)] w-full max-w-md overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-base font-semibold text-slate-900">
+          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 text-left text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-semibold text-slate-900">
                 {t('admin.editMember')}
               </h3>
               <button
@@ -1357,9 +1716,9 @@ export function AdminDashboard() {
               </button>
             </div>
             <form onSubmit={saveEdit} className="grid gap-2">
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2">
                 <input
-                  className="rounded border border-slate-200 bg-white px-2 py-1"
+                  className={inp}
                   placeholder={t('signup.firstName')}
                   value={editForm.firstName}
                   onChange={(e) =>
@@ -1368,7 +1727,7 @@ export function AdminDashboard() {
                   required
                 />
                 <input
-                  className="rounded border border-slate-200 bg-white px-2 py-1"
+                  className={inp}
                   placeholder={t('signup.lastName')}
                   value={editForm.lastName}
                   onChange={(e) =>
@@ -1377,10 +1736,10 @@ export function AdminDashboard() {
                   required
                 />
               </div>
-              <label className="text-xs text-slate-400">
+              <label className={lbl}>
                 {t('admin.phone')}
                 <PhoneInput
-                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
+                  className={inp}
                   value={editForm.phoneDigits}
                   onChange={(d) =>
                     setEditForm((f) => ({ ...f, phoneDigits: d }))
@@ -1388,55 +1747,58 @@ export function AdminDashboard() {
                   required
                 />
               </label>
-              <label className="text-xs text-slate-600">
-                {t('admin.loginPinEdit')}
-                <input
-                  type="password"
-                  className={`mt-1 w-full rounded border bg-white px-2 py-1 ${
-                    editPin.length > 0 && editPin.length < 4
-                      ? 'border-red-500 ring-1 ring-red-200'
-                      : 'border-slate-200'
-                  }`}
-                  placeholder={t('admin.newPinPh')}
-                  value={editPin}
-                  onChange={(e) => setEditPin(e.target.value)}
-                  autoComplete="new-password"
-                />
-              </label>
-              <label className="text-xs text-slate-600">
-                {t('admin.punchInEdit')}
-                <input
-                  className={`mt-1 w-full rounded border bg-white px-2 py-1 font-mono ${
-                    punchInTakenEdit
-                      ? 'border-red-500 ring-1 ring-red-200'
-                      : 'border-slate-200'
-                  }`}
-                  placeholder={t('admin.punchInPh')}
-                  value={editForm.attendanceCode}
-                  onChange={(e) =>
-                    setEditForm((f) => ({
-                      ...f,
-                      attendanceCode: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
+                  {t('admin.loginPinEdit')}
+                  <input
+                    type="password"
+                    className={`${inp} ${
+                      editPin.length > 0 && editPin.length < 4
+                        ? 'border-red-500 ring-1 ring-red-200'
+                        : ''
+                    }`}
+                    placeholder={t('admin.newPinPh')}
+                    value={editPin}
+                    onChange={(e) => setEditPin(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.punchInEdit')}
+                  <input
+                    className={`${inp} font-mono ${
+                      punchInTakenEdit
+                        ? 'border-red-500 ring-1 ring-red-200'
+                        : ''
+                    }`}
+                    placeholder={t('admin.punchInPh')}
+                    value={editForm.attendanceCode}
+                    onChange={(e) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        attendanceCode: e.target.value,
+                      }))
+                    }
+                    required
+                  />
+                </label>
+              </div>
               {punchInTakenEdit && (
                 <p className="text-xs text-red-600">{t('admin.punchInTaken')}</p>
               )}
-              <p className="text-xs text-slate-500">{t('admin.address')}</p>
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.street1')}
-                value={editForm.addressLine1}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, addressLine1: e.target.value }))
-                }
-              />
-              <div className="grid gap-2 sm:grid-cols-3">
+              <label className={lbl}>
+                {t('admin.street1')}
                 <input
-                  className="rounded border border-slate-200 bg-white px-2 py-1"
+                  className={inp}
+                  value={editForm.addressLine1}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, addressLine1: e.target.value }))
+                  }
+                />
+              </label>
+              <div className="grid grid-cols-3 gap-1">
+                <input
+                  className={inp}
                   placeholder={t('signup.city')}
                   value={editForm.city}
                   onChange={(e) =>
@@ -1444,7 +1806,7 @@ export function AdminDashboard() {
                   }
                 />
                 <input
-                  className="rounded border border-slate-200 bg-white px-2 py-1"
+                  className={inp}
                   placeholder={t('signup.state')}
                   value={editForm.stateRegion}
                   onChange={(e) =>
@@ -1452,104 +1814,143 @@ export function AdminDashboard() {
                   }
                 />
                 <input
-                  className="rounded border border-slate-200 bg-white px-2 py-1"
+                  className={inp}
                   placeholder={t('signup.zip')}
                   value={editForm.postalCode}
                   onChange={(e) =>
-                    setEditForm((f) => ({ ...f, postalCode: e.target.value }))
+                    setEditForm((f) => ({
+                      ...f,
+                      postalCode: e.target.value.replace(/\D/g, '').slice(0, 5),
+                    }))
+                  }
+                  inputMode="numeric"
+                  maxLength={5}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 text-[11px] text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isMarried}
+                    onChange={(e) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        isMarried: e.target.checked,
+                      }))
+                    }
+                  />
+                  {t('admin.marriedLabel')}
+                </label>
+                <label className={lbl}>
+                  {t('admin.bonusRecipientLabel')}
+                  <select
+                    className={inp}
+                    value={editForm.bonusRecipient}
+                    onChange={(e) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        bonusRecipient: e.target.value as 'SELF' | 'WIFE',
+                      }))
+                    }
+                  >
+                    <option value="WIFE">{t('billing.toSpouseZelle')}</option>
+                    <option value="SELF">{t('billing.toYourZelle')}</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className={inp}
+                  placeholder={t('admin.zellePlaceholder')}
+                  value={editForm.zellePhone}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, zellePhone: e.target.value }))
+                  }
+                />
+                <input
+                  className={inp}
+                  placeholder={t('admin.spouseZellePlaceholder')}
+                  value={editForm.wifeZellePhone}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      wifeZellePhone: e.target.value,
+                    }))
                   }
                 />
               </div>
-              <label className="flex items-center gap-2 text-slate-400">
+              <div className="grid grid-cols-2 gap-2">
                 <input
-                  type="checkbox"
-                  checked={editForm.isMarried}
+                  className={inp}
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t('signup.emailOpt')}
+                  value={editForm.email}
                   onChange={(e) =>
-                    setEditForm((f) => ({ ...f, isMarried: e.target.checked }))
+                    setEditForm((f) => ({ ...f, email: e.target.value }))
                   }
                 />
-                {t('admin.marriedLabel')}
-              </label>
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.zellePlaceholder')}
-                value={editForm.zellePhone}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, zellePhone: e.target.value }))
-                }
-              />
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.spouseZellePlaceholder')}
-                value={editForm.wifeZellePhone}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, wifeZellePhone: e.target.value }))
-                }
-              />
-              <p className="text-xs text-slate-500">{t('admin.contactPayment')}</p>
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                type="email"
-                autoComplete="email"
-                placeholder={t('signup.emailOpt')}
-                value={editForm.email}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, email: e.target.value }))
-                }
-              />
-              <label className="text-xs text-slate-400">
-                {t('admin.spousePhone')}
-                <PhoneInput
-                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                  value={editForm.spousePhoneDigits}
-                  onChange={(d) =>
-                    setEditForm((f) => ({ ...f, spousePhoneDigits: d }))
+                <label className={lbl}>
+                  {t('admin.spousePhone')}
+                  <PhoneInput
+                    className={inp}
+                    value={editForm.spousePhoneDigits}
+                    onChange={(d) =>
+                      setEditForm((f) => ({ ...f, spousePhoneDigits: d }))
+                    }
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className={inp}
+                  type="email"
+                  placeholder={t('admin.spouseEmail')}
+                  value={editForm.spouseEmail}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, spouseEmail: e.target.value }))
                   }
                 />
-              </label>
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                type="email"
-                placeholder={t('admin.spouseEmail')}
-                value={editForm.spouseEmail}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, spouseEmail: e.target.value }))
-                }
-              />
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.paypalPh')}
-                value={editForm.paypalAccount}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, paypalAccount: e.target.value }))
-                }
-              />
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.achRouting')}
-                inputMode="numeric"
-                value={editForm.achRoutingNumber}
-                onChange={(e) =>
-                  setEditForm((f) => ({
-                    ...f,
-                    achRoutingNumber: e.target.value,
-                  }))
-                }
-              />
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.achAccount')}
-                inputMode="numeric"
-                autoComplete="off"
-                value={editForm.achAccountNumber}
-                onChange={(e) =>
-                  setEditForm((f) => ({
-                    ...f,
-                    achAccountNumber: e.target.value,
-                  }))
-                }
-              />
-              <label className="flex items-center gap-2 text-slate-400">
+                <input
+                  className={inp}
+                  placeholder={t('admin.paypalPh')}
+                  value={editForm.paypalAccount}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      paypalAccount: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  className={inp}
+                  placeholder={t('admin.achRouting')}
+                  inputMode="numeric"
+                  value={editForm.achRoutingNumber}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      achRoutingNumber: e.target.value,
+                    }))
+                  }
+                />
+                <input
+                  className={inp}
+                  placeholder={t('admin.achAccount')}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={editForm.achAccountNumber}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      achAccountNumber: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <label className="flex items-center gap-2 text-[11px] text-slate-600">
                 <input
                   type="checkbox"
                   checked={editMember.isApproved}
@@ -1564,13 +1965,13 @@ export function AdminDashboard() {
               <button
                 type="submit"
                 disabled={punchInTakenEdit}
-                className="rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-blue-600 py-2.5 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t('admin.saveChanges')}
               </button>
               <button
                 type="button"
-                className="rounded border border-red-200 bg-red-50 py-2 text-sm text-red-800 hover:bg-red-100"
+                className="rounded-lg border border-red-200 bg-red-50 py-2.5 text-[11px] font-semibold text-red-800 hover:bg-red-100"
                 onClick={() => void deleteMember(editMember.id)}
               >
                 {t('admin.deleteMember')}
@@ -1583,74 +1984,6 @@ export function AdminDashboard() {
         </div>
       )}
 
-      {editTxn && (
-        <div className={MODAL_BACKDROP}>
-          <div className="max-h-[min(90dvh,100%)] w-full max-w-md overflow-y-auto rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-base font-semibold text-slate-900">
-                {t('admin.editCheckIo')}
-              </h3>
-              <button
-                type="button"
-                className={MODAL_TEXT_BTN}
-                onClick={() => setEditTxn(null)}
-              >
-                {t('common.cancel')}
-              </button>
-            </div>
-            <p className="mb-2 text-[11px] text-slate-500">
-              {editTxn.userDisplayName} · {editTxn.userPhone}
-            </p>
-            <form onSubmit={saveEditTxn} className="grid gap-2">
-              <label className="text-xs text-slate-600">
-                {t('admin.punchInDt')}
-                <input
-                  type="datetime-local"
-                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                  value={editTxnForm.punchInAtLocal}
-                  onChange={(e) =>
-                    setEditTxnForm((f) => ({ ...f, punchInAtLocal: e.target.value }))
-                  }
-                  required
-                />
-              </label>
-              <label className="text-xs text-slate-600">
-                {t('admin.punchOutDt')}
-                <input
-                  type="datetime-local"
-                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                  value={editTxnForm.punchOutAtLocal}
-                  onChange={(e) =>
-                    setEditTxnForm((f) => ({ ...f, punchOutAtLocal: e.target.value }))
-                  }
-                />
-              </label>
-              <p className="text-xs text-slate-600">
-                {t('admin.status')}:{' '}
-                <span className="font-medium text-slate-800">
-                  {fmtAttendanceStatus(editTxn.punchInStatus)}
-                </span>
-              </p>
-              <button
-                type="submit"
-                className="rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700"
-              >
-                {t('admin.saveChanges')}
-              </button>
-              <button
-                type="button"
-                className="rounded border border-red-200 bg-red-50 py-2 text-sm text-red-800 hover:bg-red-100"
-                onClick={() => void deleteTxn(editTxn.id)}
-              >
-                {t('admin.deleteTxn')}
-              </button>
-            </form>
-            {editTxnMsg && (
-              <p className="mt-2 text-xs text-red-600">{editTxnMsg}</p>
-            )}
-          </div>
-        </div>
-      )}
 
       {showAddLocation && (
         <div className={MODAL_BACKDROP}>

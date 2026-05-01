@@ -15,12 +15,13 @@ import {
 
 const KEY = 'minyan_member_token'
 
+/** `attendanceCode` is returned for kiosk check-in but not shown on this page. */
 type Profile = {
   firstName: string
   lastName: string
   phone: string
   hasPin: boolean
-  attendanceCode: string
+  attendanceCode?: string
   zellePhone: string | null
   wifeZellePhone: string | null
   addressLine1: string | null
@@ -35,7 +36,6 @@ export function MemberProfile() {
   const [form, setForm] = useState<Profile | null>(null)
   const [newPin, setNewPin] = useState('')
   const [showNewPin, setShowNewPin] = useState(false)
-  const [showPunchCode, setShowPunchCode] = useState(false)
   const [code, setCode] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [devCode, setDevCode] = useState<string | null>(null)
@@ -123,13 +123,12 @@ export function MemberProfile() {
     }
   }
 
-  const maskedPunch =
-    form.attendanceCode.length > 0
-      ? '•'.repeat(Math.min(form.attendanceCode.length, 12))
-      : '—'
+  const sectionKicker = 'text-xs font-semibold uppercase tracking-wide text-slate-400'
+  const sectionTitle = 'mt-1 font-semibold text-slate-900'
+  const sectionHint = 'mt-0.5 text-xs text-slate-500'
 
   return (
-    <div className="space-y-6">
+    <form className="space-y-4" onSubmit={save}>
       <div className="flex items-start gap-3">
         <BackLink to="/member/app" />
         <div>
@@ -137,11 +136,12 @@ export function MemberProfile() {
           <p className={pageSubtitle}>View and update PIN, address, and Zelle details.</p>
         </div>
       </div>
-      <form
-        className={`${cardShell} space-y-4 md:grid md:grid-cols-2 md:gap-x-3 md:gap-y-3 md:space-y-0`}
-        onSubmit={save}
-      >
-        <div className="grid grid-cols-2 gap-2 md:col-span-2">
+
+      <div className={cardShell}>
+        <p className={sectionKicker}>Account</p>
+        <p className={sectionTitle}>Name &amp; phone</p>
+        <p className={`${sectionHint} mb-4`}>These are read-only. Contact your admin if they need to change.</p>
+        <div className="grid grid-cols-2 gap-3">
           <label>
             <span className={fieldLabel}>First name</span>
             <input className={pillInput} value={form.firstName} readOnly />
@@ -151,11 +151,21 @@ export function MemberProfile() {
             <input className={pillInput} value={form.lastName} readOnly />
           </label>
         </div>
-        <label className="md:col-span-2 block">
+        <label className="mt-3 block">
           <span className={fieldLabel}>Phone</span>
           <input className={pillInput} value={form.phone} readOnly />
         </label>
-        <label className="block min-w-0">
+      </div>
+
+      <div className={cardShell}>
+        <p className={sectionKicker}>Security</p>
+        <p className={sectionTitle}>Login PIN</p>
+        <p className={sectionHint}>
+          {form.hasPin
+            ? 'Your current PIN cannot be shown. Enter a new one to replace it.'
+            : 'Choose a PIN for member login.'}
+        </p>
+        <label className="mt-3 block min-w-0">
           <span className={fieldLabel}>New login PIN (optional)</span>
           <div className="relative mt-0.5">
             <input
@@ -174,44 +184,37 @@ export function MemberProfile() {
               {showNewPin ? 'Hide' : 'Show'}
             </button>
           </div>
-          <p className="mt-1 text-[10px] text-slate-500">
-            {form.hasPin
-              ? 'Your current PIN cannot be shown (stored securely). Enter a new one to replace it.'
-              : 'Choose a PIN for member login. Tap Show to check what you type.'}
-          </p>
         </label>
-        <div className="block min-w-0 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
-          <span className={fieldLabel}>Punch-in code (kiosk)</span>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="font-mono text-sm tracking-wide text-slate-800">
-              {showPunchCode ? form.attendanceCode : maskedPunch}
-            </span>
-            <button
-              type="button"
-              className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => setShowPunchCode((v) => !v)}
-            >
-              {showPunchCode ? 'Hide' : 'Show'}
-            </button>
-          </div>
+      </div>
+
+      <div className={cardShell}>
+        <p className={sectionKicker}>Payouts</p>
+        <p className={sectionTitle}>Zelle numbers</p>
+        <p className={sectionHint}>Used for attendance payouts.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="block min-w-0">
+            <span className={fieldLabel}>Zelle (you)</span>
+            <PhoneInput
+              className={pillInput}
+              value={form.zellePhone ?? ''}
+              onChange={(v) => setForm((p) => (p ? { ...p, zellePhone: v || null } : p))}
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className={fieldLabel}>Zelle (spouse)</span>
+            <PhoneInput
+              className={pillInput}
+              value={form.wifeZellePhone ?? ''}
+              onChange={(v) => setForm((p) => (p ? { ...p, wifeZellePhone: v || null } : p))}
+            />
+          </label>
         </div>
-        <label className="block min-w-0">
-          <span className={fieldLabel}>Zelle (you)</span>
-          <PhoneInput
-            className={pillInput}
-            value={form.zellePhone ?? ''}
-            onChange={(v) => setForm((p) => (p ? { ...p, zellePhone: v || null } : p))}
-          />
-        </label>
-        <label className="block min-w-0">
-          <span className={fieldLabel}>Zelle (spouse)</span>
-          <PhoneInput
-            className={pillInput}
-            value={form.wifeZellePhone ?? ''}
-            onChange={(v) => setForm((p) => (p ? { ...p, wifeZellePhone: v || null } : p))}
-          />
-        </label>
-        <label className="md:col-span-2 block">
+      </div>
+
+      <div className={cardShell}>
+        <p className={sectionKicker}>Mailing</p>
+        <p className={sectionTitle}>Address</p>
+        <label className="mt-4 block">
           <span className={fieldLabel}>Address line 1</span>
           <input
             className={pillInput}
@@ -219,7 +222,7 @@ export function MemberProfile() {
             onChange={(e) => setForm((p) => (p ? { ...p, addressLine1: e.target.value } : p))}
           />
         </label>
-        <label className="block min-w-0">
+        <label className="mt-3 block min-w-0">
           <span className={fieldLabel}>City</span>
           <input
             className={pillInput}
@@ -227,7 +230,7 @@ export function MemberProfile() {
             onChange={(e) => setForm((p) => (p ? { ...p, city: e.target.value } : p))}
           />
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block min-w-0">
             <span className={fieldLabel}>State</span>
             <input
@@ -251,36 +254,41 @@ export function MemberProfile() {
             />
           </label>
         </div>
-        <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-          <p className="text-xs text-slate-600">
+      </div>
+
+      <div className={cardShell}>
+        <p className={sectionKicker}>Save</p>
+        <p className={sectionTitle}>Verify &amp; submit</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-xs leading-snug text-slate-600">
             Security verification is required before saving profile changes.
-          </p>
-          <div className="mt-2 grid grid-cols-[1fr_auto] gap-2">
-            <input
-              className={pillInput}
-              placeholder="Enter 6-digit code"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            />
-            <button
-              type="button"
-              className="rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700"
-              onClick={() => void sendCode()}
-            >
-              Send code
-            </button>
-          </div>
-          {devCode && (
-            <p className="mt-2 text-xs text-slate-500">Dev code: {devCode}</p>
-          )}
+          </span>
+          <input
+            className={`${pillInput} !mt-0 w-[9.5rem] shrink-0 sm:w-40`}
+            placeholder="Enter 6-digit code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          />
+          <button
+            type="button"
+            className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            onClick={() => void sendCode()}
+          >
+            Send code
+          </button>
         </div>
-        {msg && (
-          <p className="md:col-span-2 text-sm text-slate-600">{msg}</p>
+        {devCode && (
+          <p className="mt-2 text-xs text-slate-500">
+            Dev / echo code (only when server allows): {devCode}
+          </p>
         )}
-        <button className={`${primaryBtn} md:col-span-2`} type="submit">
+        {msg && <p className="mt-3 text-sm text-slate-600">{msg}</p>}
+        <button className={`${primaryBtn} mt-4`} type="submit">
           Save profile changes
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
   )
 }
