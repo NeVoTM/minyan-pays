@@ -24,7 +24,6 @@ const empty = () => ({
   zelleDigits: '',
   wifeZelleDigits: '',
   addressLine1: '',
-  addressLine2: '',
   city: '',
   stateRegion: '',
   postalCode: '',
@@ -125,7 +124,6 @@ export function MemberSignup() {
           zellePhone: f.zelleDigits || undefined,
           wifeZellePhone: f.wifeZelleDigits || undefined,
           addressLine1: f.addressLine1.trim(),
-          addressLine2: f.addressLine2.trim() || undefined,
           city: f.city.trim(),
           stateRegion: f.stateRegion.trim(),
           postalCode: zip5,
@@ -144,7 +142,7 @@ export function MemberSignup() {
   return (
     <div className="space-y-3 pb-5">
       <div className="flex items-start gap-2">
-        <BackLink to="/" />
+        <BackLink to="/punch" />
         <div>
           <h1 className={`${pageTitle} !text-xl`}>{t('signup.title')}</h1>
         </div>
@@ -261,21 +259,6 @@ export function MemberSignup() {
               onFocus={(e) => scrollFieldIntoView(e.target)}
               required
               autoComplete="street-address"
-            />
-            <textarea
-              className={`${pillTextarea} mt-1.5 !py-2.5 !text-xs sm:!text-sm`}
-              placeholder={t('signup.line2')}
-              maxLength={100}
-              rows={1}
-              value={f.addressLine2}
-              onChange={(e) =>
-                setF((x) => ({
-                  ...x,
-                  addressLine2: e.target.value.slice(0, 100),
-                }))
-              }
-              onFocus={(e) => scrollFieldIntoView(e.target)}
-              autoComplete="off"
             />
           </div>
 

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { ClockBar } from './components/ClockBar'
 import { MobileNav } from './components/MobileNav'
 import { RabbiBanner } from './components/RabbiBanner'
-import { Home } from './pages/Home'
 import { PunchMenu } from './pages/PunchMenu'
 import { PunchIn } from './pages/PunchIn'
 import { PunchOut } from './pages/PunchOut'
@@ -179,7 +178,7 @@ export default function App() {
         <RabbiBanner text={pub?.rabbiBanner} />
         <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-y-auto px-4 py-5 text-sm sm:text-[15px] pb-[calc(5rem+env(safe-area-inset-bottom))]">
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Navigate to="/punch" replace />} />
             <Route path="/punch" element={<PunchMenu />} />
             <Route path="/punch/in" element={<PunchIn />} />
             <Route path="/punch/out" element={<PunchOut />} />
@@ -193,7 +192,7 @@ export default function App() {
             <Route path="/member/app" element={<MemberDashboard />} />
             <Route path="/member/profile" element={<MemberProfile />} />
             <Route path="/member/billing" element={<MemberBilling />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/punch" replace />} />
           </Routes>
         </main>
         <MobileNav />

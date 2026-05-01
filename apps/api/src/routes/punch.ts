@@ -27,7 +27,7 @@ type ResolveMemberResult =
   | { ok: false; status: number; error: string };
 
 const pendingMsg =
-  "This account is pending rabbi approval. You cannot use punch until approved.";
+  "This account is pending admin approval. You cannot check in until approved.";
 
 /** INSECURE — PIN not verified; phone + approved member only. */
 async function resolveVerifiedMember(
@@ -161,6 +161,21 @@ punchRouter.post("/in", async (req, res) => {
     return;
   }
   const user = resolved.user;
+
+  const orgPolicy = await prisma.organization.findUnique({
+    where: { id: org.id },
+    select: { checkInOnlyPreferred: true },
+  });
+  if (
+    orgPolicy?.checkInOnlyPreferred &&
+    !user.preferredForCheckIn
+  ) {
+    res.status(403).json({
+      error:
+        "This location only accepts check-ins from preferred members. Ask the rabbi to add you to the preferred list.",
+    });
+    return;
+  }
 
   const dateKey = todayDateKeyInZone(org.timezone);
   let session = await prisma.minyanSession.findUnique({

@@ -5,6 +5,8 @@ Repo: `NeVoTM/minyan-pays` (`origin/main`)
 
 Use this as the **only continuity file** across chats. If anything changes, update this file first, then optionally update other docs.
 
+**Next chat:** Open [`HANDOFF_NEXT_SESSION.md`](./HANDOFF_NEXT_SESSION.md) → section **“Next session — read first (2026-04-30)”** for URLs, env vars, DB ops, and rollout.
+
 ---
 
 ## Chat #1 accomplished (date: 2026-04-29 to 2026-04-30)
@@ -25,12 +27,20 @@ Use this as the **only continuity file** across chats. If anything changes, upda
 
 - Created and deployed Render API service from `apps/api` on `main`.
 - Verified live API health: `https://minyan-pays.onrender.com/api/health`.
-- Created and deployed Render static web from `apps/web`.
+- Created and deployed static web from `apps/web`.
 - Set web env var: `VITE_API_BASE_URL=https://minyan-pays.onrender.com`.
 - Configured custom domains:
   - `minyanpays.com`
   - `www.minyanpays.com`
 - Aligned Namecheap DNS to Render targets.
+
+## Chat #3 accomplished (date: 2026-04-30)
+
+- Confirmed **correct program** linked (GitHub + Render).
+- **Prod DB / “no locations”:** schema via API build (`db push`); seed/one-offs from **local Prisma + prod `DATABASE_URL`** or paid shell — see `RENDER_DEPLOYMENT.md` (*Running Prisma / one-off DB commands*).
+- **Free Render API:** no Dashboard Shell/SSH; browser automation not a substitute.
+- **Rollout:** `git push origin main` for routine deploys.
+- **Handoff:** full *Next session* block in `HANDOFF_NEXT_SESSION.md` (URLs, `WEB_ORIGIN`, secrets rotation, DB expiry **2026-05-29**).
 
 ## What still remains (combined; as of 2026-04-30)
 
@@ -48,26 +58,26 @@ Use this as the **only continuity file** across chats. If anything changes, upda
 - Optional hardening:
   - review `npm audit` findings
   - confirm Render plan/cost settings
+- Product/planning items: see `HANDOFF_NEXT_SESSION.md` (*Event menu*, *Wife-focused track*, *Next Chat Discussion List*).
 
 ---
 
 ## Fast links
 
-- Main handoff: `docs/HANDOFF_NEXT_SESSION.md`
+- **Main handoff (start here):** `docs/HANDOFF_NEXT_SESSION.md`
 - Render deployment reference: `docs/RENDER_DEPLOYMENT.md`
 - Step-by-step runbook: `docs/STEP_BY_STEP_DEPLOY.md`
 - Chat #2 original notes: `docs/chat#2.md`
 
 ---
 
-## Chat #3 template (copy for future chats)
+## Chat #4 template (copy for future chats)
 
-### Chat #3 accomplished (date: YYYY-MM-DD)
+### Chat #4 accomplished (date: YYYY-MM-DD)
 - [ ] fill in completed actions
 
-### What still remains after Chat #3 (as of YYYY-MM-DD)
+### What still remains after Chat #4 (as of YYYY-MM-DD)
 - [ ] fill in remaining work
 
-### Blockers / errors seen in Chat #3
+### Blockers / errors seen in Chat #4
 - [ ] fill in blocker details and fix status
-

@@ -26,6 +26,7 @@ type OrgContextValue = {
   setOrganizationSlug: (slug: string | null) => void
   organizations: OrganizationRow[]
   loading: boolean
+  refreshOrganizations: () => Promise<void>
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -59,43 +60,41 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setOrgSlugGetter(() => organizationSlug)
   }, [organizationSlug])
 
-  useEffect(() => {
-    let cancelled = false
-    fetch(apiUrl('/api/public/organizations'))
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: OrganizationRow[]) => {
-        if (cancelled) return
-        const nextRows = Array.isArray(rows) ? rows : []
-        setOrganizations(nextRows)
-        setOrganizationSlugState((prev) => {
-          if (prev && nextRows.some((r) => r.slug === prev)) return prev
-          if (nextRows.length === 1) {
-            const single = nextRows[0].slug
-            try {
-              localStorage.setItem(STORAGE_KEY, single)
-            } catch {
-              /* ignore */
-            }
-            return single
-          }
+  const refreshOrganizations = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(apiUrl('/api/public/organizations'))
+      const rows: OrganizationRow[] = r.ok ? await r.json() : []
+      const nextRows = Array.isArray(rows) ? rows : []
+      setOrganizations(nextRows)
+      setOrganizationSlugState((prev) => {
+        if (prev && nextRows.some((row) => row.slug === prev)) return prev
+        if (nextRows.length === 1) {
+          const single = nextRows[0]!.slug
           try {
-            localStorage.removeItem(STORAGE_KEY)
+            localStorage.setItem(STORAGE_KEY, single)
           } catch {
             /* ignore */
           }
-          return null
-        })
+          return single
+        }
+        try {
+          localStorage.removeItem(STORAGE_KEY)
+        } catch {
+          /* ignore */
+        }
+        return null
       })
-      .catch(() => {
-        if (!cancelled) setOrganizations([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
+    } catch {
+      setOrganizations([])
+    } finally {
+      setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    void refreshOrganizations()
+  }, [refreshOrganizations])
 
   const value = useMemo(
     () => ({
@@ -103,8 +102,9 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       setOrganizationSlug,
       organizations,
       loading,
+      refreshOrganizations,
     }),
-    [organizationSlug, setOrganizationSlug, organizations, loading]
+    [organizationSlug, setOrganizationSlug, organizations, loading, refreshOrganizations]
   )
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>

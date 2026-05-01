@@ -24,7 +24,6 @@ type Profile = {
   zellePhone: string | null
   wifeZellePhone: string | null
   addressLine1: string | null
-  addressLine2: string | null
   city: string | null
   stateRegion: string | null
   postalCode: string | null
@@ -92,7 +91,6 @@ export function MemberProfile() {
           zellePhone: form.zellePhone || null,
           wifeZellePhone: form.wifeZellePhone || null,
           addressLine1: form.addressLine1 || null,
-          addressLine2: form.addressLine2 || null,
           city: form.city || null,
           stateRegion: form.stateRegion || null,
           postalCode: form.postalCode || null,
@@ -219,14 +217,6 @@ export function MemberProfile() {
             className={pillInput}
             value={form.addressLine1 ?? ''}
             onChange={(e) => setForm((p) => (p ? { ...p, addressLine1: e.target.value } : p))}
-          />
-        </label>
-        <label className="md:col-span-2 block">
-          <span className={fieldLabel}>Address line 2</span>
-          <input
-            className={pillInput}
-            value={form.addressLine2 ?? ''}
-            onChange={(e) => setForm((p) => (p ? { ...p, addressLine2: e.target.value } : p))}
           />
         </label>
         <label className="block min-w-0">

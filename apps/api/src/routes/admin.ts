@@ -19,6 +19,7 @@ import {
   DuplicateMemberError,
 } from "../lib/memberDuplicates.js";
 import { memberFieldsSchema, memberUpdateSchema } from "../lib/memberSchemas.js";
+import { normalizeOrgSlug } from "../lib/organizationService.js";
 
 export const adminRouter = Router();
 adminRouter.use(authMiddleware);
@@ -34,10 +35,18 @@ function trimOrNull(s: string | undefined | null): string | null {
   return t || null;
 }
 
-const attendanceTxnUpdateSchema = z.object({
+/** Admin may adjust punch times only; rabbi confirms or rejects check-ins. */
+const adminAttendanceTxnUpdateSchema = z.object({
   punchInAt: z.string().datetime().optional(),
   punchOutAt: z.union([z.string().datetime(), z.null()]).optional(),
-  punchInStatus: z.enum(["PENDING", "CONFIRMED", "REJECTED"]).optional(),
+});
+
+const createOrganizationBody = z.object({
+  slug: z.string().min(2).max(64),
+  name: z.string().min(1).max(120),
+  synagogueName: z.string().min(1).max(120),
+  kind: z.enum(["SYNAGOGUE", "STUDY_HALL"]).optional(),
+  timezone: z.string().min(1).max(80).optional(),
 });
 
 const rabbiProfileSchema = z.object({
@@ -48,6 +57,68 @@ const rabbiProfileSchema = z.object({
   postalCode: z.union([z.string().max(30), z.null()]).optional(),
   phone: z.union([z.string().max(40), z.null()]).optional(),
   email: z.union([z.string().email(), z.null()]).optional(),
+});
+
+/** All locations (for treasurer overview). */
+adminRouter.get("/organizations", async (_req, res) => {
+  const rows = await prisma.organization.findMany({
+    orderBy: { slug: "asc" },
+    select: {
+      slug: true,
+      name: true,
+      kind: true,
+      synagogueName: true,
+      locationAddress: true,
+      timezone: true,
+      createdAt: true,
+    },
+  });
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+    }))
+  );
+});
+
+adminRouter.post("/organizations", async (req, res) => {
+  const parsed = createOrganizationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const slug = normalizeOrgSlug(parsed.data.slug);
+  if (!slug) {
+    res.status(400).json({ error: "Invalid slug (lowercase letters, numbers, hyphens)." });
+    return;
+  }
+  const taken = await prisma.organization.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+  if (taken) {
+    res.status(409).json({ error: "That location key is already in use." });
+    return;
+  }
+  try {
+    const org = await prisma.organization.create({
+      data: {
+        slug,
+        name: parsed.data.name.trim(),
+        synagogueName: parsed.data.synagogueName.trim(),
+        kind: parsed.data.kind ?? "SYNAGOGUE",
+        timezone: parsed.data.timezone ?? "America/New_York",
+        treasury: {
+          create: { balanceCents: 0, systemLocked: false },
+        },
+      },
+      select: { slug: true, name: true, synagogueName: true },
+    });
+    res.status(201).json(org);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Create failed";
+    res.status(409).json({ error: msg });
+  }
 });
 
 adminRouter.get("/session/today", async (req, res) => {
@@ -163,7 +234,7 @@ adminRouter.post("/members", async (req, res) => {
         wifeZellePhone: trimOrNull(d.wifeZellePhone ?? undefined),
         bonusRecipient: d.bonusRecipient ?? "WIFE",
         addressLine1: d.addressLine1.trim(),
-        addressLine2: trimOrNull(d.addressLine2 ?? undefined),
+        addressLine2: null,
         city: d.city.trim(),
         stateRegion: d.stateRegion.trim(),
         postalCode: d.postalCode.trim(),
@@ -217,7 +288,6 @@ adminRouter.get("/members", async (req, res) => {
       wifeZellePhone: true,
       bonusRecipient: true,
       addressLine1: true,
-      addressLine2: true,
       city: true,
       stateRegion: true,
       postalCode: true,
@@ -228,6 +298,7 @@ adminRouter.get("/members", async (req, res) => {
       achRoutingNumber: true,
       achAccountNumber: true,
       isApproved: true,
+      preferredForCheckIn: true,
       createdAt: true,
     },
   });
@@ -255,7 +326,6 @@ adminRouter.get("/members/:id", async (req, res) => {
       wifeZellePhone: true,
       bonusRecipient: true,
       addressLine1: true,
-      addressLine2: true,
       city: true,
       stateRegion: true,
       postalCode: true,
@@ -266,6 +336,7 @@ adminRouter.get("/members/:id", async (req, res) => {
       achRoutingNumber: true,
       achAccountNumber: true,
       isApproved: true,
+      preferredForCheckIn: true,
       createdAt: true,
     },
   });
@@ -336,10 +407,7 @@ adminRouter.patch("/members/:id", async (req, res) => {
       p.addressLine1 !== undefined
         ? trimOrNull(p.addressLine1)
         : existing.addressLine1,
-    addressLine2:
-      p.addressLine2 !== undefined
-        ? trimOrNull(p.addressLine2)
-        : existing.addressLine2,
+    addressLine2: null,
     city: p.city !== undefined ? trimOrNull(p.city) : existing.city,
     stateRegion:
       p.stateRegion !== undefined
@@ -440,63 +508,16 @@ adminRouter.delete("/members/:id", async (req, res) => {
   res.status(204).send();
 });
 
-adminRouter.post("/attendance/:id/confirm", async (req, res) => {
-  const oid = orgId(req);
-  const treasury = await getTreasuryForOrg(oid);
-  const settings = await getOrganizationSettings(oid);
-  if (treasury.systemLocked) {
-    res.status(423).json({ error: "System locked" });
-    return;
-  }
-  if (treasury.balanceCents < settings.minReserveCents) {
-    res.status(423).json({ error: "Insufficient treasury reserve" });
-    return;
-  }
-
-  const id = req.params.id;
-  const att = await prisma.attendance.findFirst({
-    where: {
-      id,
-      session: { organizationId: oid },
-    },
-    include: {
-      session: { include: { attendances: { include: { user: true } } } },
-    },
-  });
-  if (!att || att.punchInStatus !== "PENDING") {
-    res.status(400).json({ error: "Not pending" });
-    return;
-  }
-
-  const updated = await prisma.attendance.update({
-    where: { id },
-    data: {
-      punchInStatus: "CONFIRMED",
-      punchInConfirmedAt: new Date(),
-    },
-  });
-  res.json({
-    id: updated.id,
-    punchInStatus: updated.punchInStatus,
-    punchInConfirmedAt: updated.punchInConfirmedAt!.toISOString(),
+adminRouter.post("/attendance/:id/confirm", async (_req, res) => {
+  res.status(403).json({
+    error: "Check-ins are confirmed or rejected by the rabbi only.",
   });
 });
 
-adminRouter.post("/attendance/:id/reject", async (req, res) => {
-  const oid = orgId(req);
-  const id = req.params.id;
-  const att = await prisma.attendance.findFirst({
-    where: { id, session: { organizationId: oid } },
+adminRouter.post("/attendance/:id/reject", async (_req, res) => {
+  res.status(403).json({
+    error: "Check-ins are confirmed or rejected by the rabbi only.",
   });
-  if (!att || att.punchInStatus !== "PENDING") {
-    res.status(400).json({ error: "Not pending" });
-    return;
-  }
-  const updated = await prisma.attendance.update({
-    where: { id },
-    data: { punchInStatus: "REJECTED" },
-  });
-  res.json({ id: updated.id, punchInStatus: updated.punchInStatus });
 });
 
 adminRouter.get("/attendance", async (req, res) => {
@@ -543,7 +564,7 @@ adminRouter.get("/attendance", async (req, res) => {
 
 adminRouter.patch("/attendance/:id", async (req, res) => {
   const oid = orgId(req);
-  const parsed = attendanceTxnUpdateSchema.safeParse(req.body);
+  const parsed = adminAttendanceTxnUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
@@ -562,14 +583,6 @@ adminRouter.patch("/attendance/:id", async (req, res) => {
   }
   if (p.punchOutAt !== undefined) {
     updateData.punchOutAt = p.punchOutAt ? new Date(p.punchOutAt) : null;
-  }
-  if (p.punchInStatus !== undefined) {
-    updateData.punchInStatus = p.punchInStatus;
-    if (p.punchInStatus === "CONFIRMED") {
-      updateData.punchInConfirmedAt = existing.punchInConfirmedAt ?? new Date();
-    } else if (p.punchInStatus === "PENDING") {
-      updateData.punchInConfirmedAt = null;
-    }
   }
   const updated = await prisma.attendance.update({
     where: { id: existing.id },
@@ -713,6 +726,7 @@ const orgSettingsPublicSelect = {
   minReserveCents: true,
   timezone: true,
   defaultLocale: true,
+  checkInOnlyPreferred: true,
   createdAt: true,
   updatedAt: true,
 } as const;

@@ -1,6 +1,6 @@
 # Render + GitHub — production reference (minyan-pays)
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-04-30*
 
 Keep this file updated when URLs, service names, or IDs change. **Do not paste live database passwords or full `DATABASE_URL` strings into git** — store secrets only in Render (or a password manager) and note here *where* they live.
 
@@ -61,6 +61,22 @@ Canonical deploy source: **`origin`** → **`NeVoTM/minyan-pays`**.
 3. Ensure Prisma uses **`postgresql`** in production (`schema.prisma` / env).
 4. Run migrations after deploy: e.g. **`npx prisma migrate deploy`** (or your approved `db push` flow for early pilot — document which you used).
 
+### Running Prisma / one-off DB commands (shell vs free tier)
+
+**What went wrong with “web shell” automation:** Browser automation is not a full terminal; Render’s in-browser shell is built for humans, not reliable programmatic typing. That is a **tooling limitation**, not a sign your repo or Render link is wrong.
+
+**Critical Render constraint — free API plan:** For **free** web services, Render provides **no** Dashboard Shell and **no** SSH. Only **paid** web services get shell + SSH. See [SSH and Shell Access](https://render.com/docs/ssh) (compatibility table).
+
+**Practical ways to run DB commands anyway:**
+
+| Approach | When to use |
+|----------|-------------|
+| **Deploy build** | Your API build already runs **`npx prisma db push`** (see [`render.yaml`](../render.yaml)), so schema updates apply on every successful deploy. Prefer **`prisma migrate deploy`** once you move off ad-hoc `db push` for production. |
+| **Local CLI against prod** | On your PC: `cd apps/api`, set **`DATABASE_URL`** to Render Postgres **external** URL (from dashboard only; never commit), then `npx prisma generate`, `npx prisma db push` or `migrate deploy`, `npm run db:seed` as needed. |
+| **Upgrade API to paid** | If you want a real shell: upgrade the **API** web service to a paid instance type, then use Dashboard **Shell** or **SSH** per Render docs. |
+
+**Seeding:** Avoid adding **`npm run db:seed`** to every production build unless the seed is **idempotent** (safe to run repeatedly). Otherwise use one-time seed from your machine or a controlled release step.
+
 ### Optional integrations (skipped at creation)
 
 - **Datadog API key:** left empty (monitoring disabled unless you add later).
@@ -96,6 +112,7 @@ After you create these in the Render dashboard, add rows here so nothing is lost
 3. [ ] Web deploy succeeds; points API to production URL.
 4. [ ] Custom domain `minyanpays.com` + `www` attached per Render; HTTPS enabled.
 5. [ ] Calendar reminder before **2026-05-29** for DB upgrade / backup / migration.
+6. [ ] Security: Since it was exposed in chat, rotate DB credentials after deploy.
 
 ---
 

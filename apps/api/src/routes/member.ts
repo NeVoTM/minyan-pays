@@ -135,7 +135,6 @@ memberRouter.get("/profile", async (req: Request, res) => {
       pinHash: true,
       attendanceCode: true,
       addressLine1: true,
-      addressLine2: true,
       city: true,
       stateRegion: true,
       postalCode: true,

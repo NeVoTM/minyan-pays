@@ -21,9 +21,6 @@ export function MemberMenu() {
             {t('home.viewMember')}
           </Link>
         </div>
-        <p className="mt-3 border-t border-slate-100 pt-3 text-center text-[11px] leading-snug text-slate-500">
-          {t('home.treasurerAdminHint')}
-        </p>
       </div>
     </div>
   )

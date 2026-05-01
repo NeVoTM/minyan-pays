@@ -19,7 +19,7 @@ import {
 export const authRouter = Router();
 
 const adminLoginBody = z.object({
-  organizationSlug: z.string().min(1),
+  organizationSlug: z.string().optional(),
   password: z.string().optional(),
 });
 
@@ -35,17 +35,27 @@ authRouter.post("/admin", async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const slug = normalizeOrgSlug(parsed.data.organizationSlug);
-  if (!slug) {
-    res.status(400).json({ error: "Invalid organization slug." });
-    return;
+  let org = null;
+  const rawSlug = parsed.data.organizationSlug?.trim();
+  if (rawSlug) {
+    const slug = normalizeOrgSlug(rawSlug);
+    if (!slug) {
+      res.status(400).json({ error: "Invalid organization slug." });
+      return;
+    }
+    org = await getOrganizationBySlug(slug);
+    if (!org) {
+      res.status(404).json({ error: "Unknown organization." });
+      return;
+    }
+  } else {
+    org = await prisma.organization.findFirst({ orderBy: { slug: "asc" } });
+    if (!org) {
+      res.status(404).json({ error: "No organization configured." });
+      return;
+    }
   }
-  const org = await getOrganizationBySlug(slug);
-  if (!org) {
-    res.status(404).json({ error: "Unknown organization." });
-    return;
-  }
-  res.json({ token: signAdminToken(org.id) });
+  res.json({ token: signAdminToken(org.id), organizationSlug: org.slug });
 });
 
 authRouter.post("/rabbi", async (req, res) => {
@@ -95,7 +105,7 @@ authRouter.post("/member", async (req, res) => {
   if (!user.isApproved) {
     res.status(403).json({
       error:
-        "Account pending rabbi approval. You will receive access after the rabbi approves your registration.",
+        "Account pending admin approval. You will receive access after an administrator approves your registration.",
     });
     return;
   }

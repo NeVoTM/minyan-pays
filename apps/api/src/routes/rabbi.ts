@@ -31,68 +31,88 @@ rabbiRouter.get("/settings", async (req, res) => {
   const oid = orgId(req);
   const org = await prisma.organization.findUnique({
     where: { id: oid },
-    select: { rabbiBanner: true },
+    select: { rabbiBanner: true, checkInOnlyPreferred: true },
   });
   if (!org) {
     res.status(400).json({ error: "Invalid organization" });
     return;
   }
-  res.json({ rabbiBanner: org.rabbiBanner ?? "" });
+  res.json({
+    rabbiBanner: org.rabbiBanner ?? "",
+    checkInOnlyPreferred: org.checkInOnlyPreferred,
+  });
 });
 
-/** Members waiting for approval at this location. */
-rabbiRouter.get("/members/pending", async (req, res) => {
+const checkInPolicySchema = z.object({
+  checkInOnlyPreferred: z.boolean(),
+});
+
+rabbiRouter.patch("/settings/check-in-policy", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = checkInPolicySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const updated = await prisma.organization.update({
+    where: { id: oid },
+    data: { checkInOnlyPreferred: parsed.data.checkInOnlyPreferred },
+    select: { checkInOnlyPreferred: true },
+  });
+  res.json(updated);
+});
+
+/** Approved members — rabbi marks who is preferred for check-in when policy is restricted. */
+rabbiRouter.get("/members", async (req, res) => {
   const oid = orgId(req);
   const users = await prisma.user.findMany({
-    where: { role: "MEMBER", organizationId: oid, isApproved: false },
-    orderBy: [{ createdAt: "asc" }],
+    where: { role: "MEMBER", organizationId: oid, isApproved: true },
+    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     select: {
       id: true,
       firstName: true,
       lastName: true,
       phone: true,
       attendanceCode: true,
-      addressLine1: true,
-      city: true,
-      stateRegion: true,
-      postalCode: true,
-      email: true,
-      createdAt: true,
+      preferredForCheckIn: true,
     },
   });
   res.json(
     users.map((u) => ({
       ...u,
       displayName: fullName(u.firstName, u.lastName),
-      createdAt: u.createdAt.toISOString(),
     }))
   );
 });
 
-/** Approve a pending member (rabbi only). */
-rabbiRouter.post("/members/:id/approve", async (req, res) => {
+const preferredBody = z.object({ preferred: z.boolean() });
+
+rabbiRouter.patch("/members/:id/preferred", async (req, res) => {
   const oid = orgId(req);
+  const parsed = preferredBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
   const user = await prisma.user.findFirst({
     where: {
       id: req.params.id,
       role: "MEMBER",
       organizationId: oid,
-      isApproved: false,
+      isApproved: true,
     },
+    select: { id: true },
   });
   if (!user) {
-    res.status(404).json({ error: "Pending member not found" });
+    res.status(404).json({ error: "Member not found" });
     return;
   }
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { isApproved: true },
+    data: { preferredForCheckIn: parsed.data.preferred },
+    select: { id: true, preferredForCheckIn: true },
   });
-  res.json({
-    id: updated.id,
-    displayName: fullName(updated.firstName, updated.lastName),
-    isApproved: updated.isApproved,
-  });
+  res.json(updated);
 });
 
 rabbiRouter.get("/session/today", async (req, res) => {

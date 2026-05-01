@@ -143,6 +143,8 @@ npm run build
 
 **Pass:** Browser loads site; login/public endpoints work; no CORS errors in devtools.
 
+**Security note:** Since it was exposed in chat, rotate DB credentials after deploy.
+
 ---
 
 *Last updated: 2026-04-30*

@@ -3,6 +3,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { PhoneInput } from '../components/PhoneInput'
+import { useOrg } from '../context/OrgContext'
 
 const KEY = 'minyan_admin_token'
 
@@ -38,7 +39,6 @@ type MemberRow = {
   wifeZellePhone: string | null
   bonusRecipient: string
   addressLine1: string | null
-  addressLine2: string | null
   city: string | null
   stateRegion: string | null
   postalCode: string | null
@@ -49,6 +49,17 @@ type MemberRow = {
   achRoutingNumber: string | null
   achAccountNumber: string | null
   isApproved: boolean
+  preferredForCheckIn: boolean
+  createdAt: string
+}
+
+type AdminLocationRow = {
+  slug: string
+  name: string
+  kind: 'SYNAGOGUE' | 'STUDY_HALL'
+  synagogueName: string
+  locationAddress: string | null
+  timezone: string
   createdAt: string
 }
 
@@ -89,7 +100,6 @@ function emptyMemberForm() {
     zellePhone: '',
     wifeZellePhone: '',
     addressLine1: '',
-    addressLine2: '',
     city: '',
     stateRegion: '',
     postalCode: '',
@@ -136,6 +146,7 @@ const MODAL_TEXT_BTN =
 export function AdminDashboard() {
   const { t } = useTranslation()
   const nav = useNavigate()
+  const { refreshOrganizations } = useOrg()
   const token = localStorage.getItem(KEY)
   const [session, setSession] = useState<SessionResp | null>(null)
   const [members, setMembers] = useState<MemberRow[]>([])
@@ -156,18 +167,23 @@ export function AdminDashboard() {
     firstNineCents: number
     weeklyBonusCents: number
     firstNineSlots: number
+    checkInOnlyPreferred?: boolean
   } | null>(null)
+  const [allLocations, setAllLocations] = useState<AdminLocationRow[]>([])
+  const [showAddLocation, setShowAddLocation] = useState(false)
+  const [newLocSlug, setNewLocSlug] = useState('')
+  const [newLocName, setNewLocName] = useState('')
+  const [newLocSynagogue, setNewLocSynagogue] = useState('')
+  const [addLocMsg, setAddLocMsg] = useState<string | null>(null)
   const [attendanceTxns, setAttendanceTxns] = useState<AttendanceTxn[]>([])
   const [editTxn, setEditTxn] = useState<AttendanceTxn | null>(null)
   const [editTxnMsg, setEditTxnMsg] = useState<string | null>(null)
   const [editTxnForm, setEditTxnForm] = useState<{
     punchInAtLocal: string
     punchOutAtLocal: string
-    punchInStatus: 'PENDING' | 'CONFIRMED' | 'REJECTED'
   }>({
     punchInAtLocal: '',
     punchOutAtLocal: '',
-    punchInStatus: 'PENDING',
   })
   const [locationNameDraft, setLocationNameDraft] = useState('')
   const [locationAddressDraft, setLocationAddressDraft] = useState('')
@@ -197,9 +213,9 @@ export function AdminDashboard() {
   const [editForm, setEditForm] = useState(() => emptyMemberForm())
   const [editPin, setEditPin] = useState('')
   const [editSaveMsg, setEditSaveMsg] = useState<string | null>(null)
-  /** overview | approvals | members | today | add | checkio */
+  /** overview | locations | approvals | members | today | add | checkio */
   const [adminTab, setAdminTab] = useState<
-    'overview' | 'approvals' | 'members' | 'today' | 'add' | 'checkio'
+    'overview' | 'locations' | 'approvals' | 'members' | 'today' | 'add' | 'checkio'
   >('overview')
   const prevAdminTab = useRef(adminTab)
 
@@ -217,7 +233,7 @@ export function AdminDashboard() {
       return
     }
     try {
-      const [s, st, m, tx, rb] = await Promise.all([
+      const [s, st, m, tx, rb, locs] = await Promise.all([
         api<SessionResp>('/api/admin/session/today', { token }),
         api<{
           slug: string
@@ -236,10 +252,12 @@ export function AdminDashboard() {
           firstNineCents: number
           weeklyBonusCents: number
           firstNineSlots: number
+          checkInOnlyPreferred?: boolean
         }>('/api/admin/settings', { token }),
         api<MemberRow[]>('/api/admin/members', { token }),
         api<AttendanceTxn[]>('/api/admin/attendance', { token }),
         api<RabbiProfile[]>('/api/admin/rabbis', { token }),
+        api<AdminLocationRow[]>('/api/admin/organizations', { token }),
       ])
       setSession(s)
       setSettings(st)
@@ -252,6 +270,7 @@ export function AdminDashboard() {
       setRabbis(rb)
       setMembers(m)
       setAttendanceTxns(tx)
+      setAllLocations(locs)
       setErr(null)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('admin.loadFailed'))
@@ -276,7 +295,6 @@ export function AdminDashboard() {
       zellePhone: m.zellePhone ?? '',
       wifeZellePhone: m.wifeZellePhone ?? '',
       addressLine1: m.addressLine1 ?? '',
-      addressLine2: m.addressLine2 ?? '',
       city: m.city ?? '',
       stateRegion: m.stateRegion ?? '',
       postalCode: m.postalCode ?? '',
@@ -327,7 +345,6 @@ export function AdminDashboard() {
         zellePhone: editForm.zellePhone.trim() || null,
         wifeZellePhone: editForm.wifeZellePhone.trim() || null,
         addressLine1: editForm.addressLine1.trim() || null,
-        addressLine2: editForm.addressLine2.trim() || null,
         city: editForm.city.trim() || null,
         stateRegion: editForm.stateRegion.trim() || null,
         postalCode: editForm.postalCode.trim() || null,
@@ -391,26 +408,6 @@ export function AdminDashboard() {
     }
   }
 
-  async function confirm(id: string) {
-    if (!token) return
-    await api(`/api/admin/attendance/${id}/confirm`, {
-      method: 'POST',
-      token,
-      body: '{}',
-    })
-    await load()
-  }
-
-  async function reject(id: string) {
-    if (!token) return
-    await api(`/api/admin/attendance/${id}/reject`, {
-      method: 'POST',
-      token,
-      body: '{}',
-    })
-    await load()
-  }
-
   function memberRowForUserId(userId: string): MemberRow | undefined {
     return members.find((m) => m.id === userId)
   }
@@ -432,7 +429,6 @@ export function AdminDashboard() {
           punchOutAt: editTxnForm.punchOutAtLocal
             ? new Date(editTxnForm.punchOutAtLocal).toISOString()
             : null,
-          punchInStatus: editTxnForm.punchInStatus,
         }),
       })
       setEditTxn(null)
@@ -595,6 +591,39 @@ export function AdminDashboard() {
     }
   }
 
+  async function submitAddLocation(e: React.FormEvent) {
+    e.preventDefault()
+    if (!token) return
+    setAddLocMsg(null)
+    const slug = newLocSlug.trim()
+    const name = newLocName.trim()
+    const syn = newLocSynagogue.trim() || name
+    if (!slug || !name) {
+      setAddLocMsg(t('admin.addLocationRequired'))
+      return
+    }
+    try {
+      await api('/api/admin/organizations', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({
+          slug,
+          name,
+          synagogueName: syn,
+        }),
+      })
+      setAddLocMsg(t('admin.locationCreated'))
+      setNewLocSlug('')
+      setNewLocName('')
+      setNewLocSynagogue('')
+      setShowAddLocation(false)
+      await refreshOrganizations()
+      await load()
+    } catch (e: unknown) {
+      setAddLocMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
+    }
+  }
+
   const tabBtn = (id: typeof adminTab, label: string) => {
     const on = adminTab === id
     return (
@@ -636,7 +665,7 @@ export function AdminDashboard() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <Link
-          to="/"
+          to="/punch"
           className="text-[11px] text-slate-500 hover:text-slate-700 sm:text-xs"
         >
           {t('admin.home')}
@@ -658,6 +687,8 @@ export function AdminDashboard() {
         </h1>
         <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
           {adminTab === 'overview' && t('admin.subOverview')}
+          {adminTab === 'locations' &&
+            t('admin.subLocations', { count: allLocations.length })}
           {adminTab === 'approvals' &&
             t('admin.subApprovals', { count: pendingApprovalCount })}
           {adminTab === 'members' &&
@@ -677,8 +708,12 @@ export function AdminDashboard() {
       {err && <p className="text-xs text-red-600">{err}</p>}
       {memberMsg && <p className="text-xs text-slate-600">{memberMsg}</p>}
 
-      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label={t('admin.navAria')}>
+      <nav
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+        aria-label={t('admin.navAria')}
+      >
         {tabBtn('overview', t('admin.tabOverview'))}
+        {tabBtn('locations', t('admin.tabLocations'))}
         {tabBtn(
           'members',
           pendingApprovalCount
@@ -690,6 +725,33 @@ export function AdminDashboard() {
         {tabBtn('today', t('admin.tabToday'))}
         {tabBtn('add', t('admin.tabAdd'))}
       </nav>
+
+      {adminTab === 'locations' && (
+        <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-slate-100">
+          <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
+            {t('admin.locationsViewTitle')}
+          </h2>
+          <p className="mb-3 text-[11px] text-slate-500 sm:text-xs">
+            {t('admin.locationsViewHelp')}
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {allLocations.map((loc) => (
+              <li
+                key={loc.slug}
+                className="rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-[11px] leading-snug text-slate-700 sm:text-xs"
+              >
+                <p className="font-medium text-slate-900">{loc.synagogueName}</p>
+                <p className="font-mono text-[10px] text-slate-500">{loc.slug}</p>
+                <p className="text-slate-600">{loc.locationAddress || '—'}</p>
+                <p className="text-slate-500">{loc.timezone}</p>
+              </li>
+            ))}
+          </ul>
+          {allLocations.length === 0 && (
+            <p className="text-xs text-slate-500">{t('admin.noLocations')}</p>
+          )}
+        </div>
+      )}
 
       {adminTab === 'overview' && (
         <>
@@ -762,7 +824,10 @@ export function AdminDashboard() {
       )}
 
       {settings && (
-        <div className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm">
+        <div
+          id="admin-rabbi-setup"
+          className="rounded-md border border-slate-200 bg-white p-3 text-xs sm:text-sm"
+        >
           <h2 className="mb-2 font-medium text-slate-800">{t('admin.rabbiSetupTitle')}</h2>
           <p className="mb-2 text-[11px] text-slate-500 sm:text-xs">{t('admin.rabbiSetupLinkHint')}</p>
           <ul className="mb-3 grid gap-2">
@@ -929,6 +994,11 @@ export function AdminDashboard() {
                     ) : (
                       <span className="text-blue-600">{t('admin.pending')}</span>
                     )}
+                    {m.isApproved && m.preferredForCheckIn && (
+                      <span className="ml-1.5 text-violet-700">
+                        · {t('admin.preferredCheckIn')}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
@@ -976,17 +1046,43 @@ export function AdminDashboard() {
       {adminTab === 'add' && (
         <div className="rounded-md border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 p-3">
           <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
-            {t('admin.addMemberTitle')}
+            {t('admin.addShortcutsTitle')}
           </h2>
           <p className="text-[11px] text-slate-500 sm:text-xs">
-            {t('admin.addUsesJoinRegister')}
+            {t('admin.addShortcutsHelp')}
           </p>
-          <Link
-            to="/member/signup"
-            className="mt-3 inline-flex rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            {t('home.signupCta')}
-          </Link>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <Link
+              to="/member/signup"
+              className="inline-flex items-center justify-center rounded-full bg-blue-600 px-3 py-2.5 text-center text-sm font-medium text-white no-underline hover:bg-blue-700"
+            >
+              {t('admin.addMemberCta')}
+            </Link>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full border border-blue-600 bg-blue-50 px-3 py-2.5 text-center text-sm font-medium text-blue-900 hover:bg-blue-100"
+              onClick={() => {
+                setAdminTab('overview')
+                setTimeout(() => {
+                  document
+                    .getElementById('admin-rabbi-setup')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }, 0)
+              }}
+            >
+              {t('admin.addRabbiCta')}
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-slate-800 hover:bg-slate-50"
+              onClick={() => {
+                setAddLocMsg(null)
+                setShowAddLocation(true)
+              }}
+            >
+              {t('admin.addLocationCta')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -1043,22 +1139,9 @@ export function AdminDashboard() {
                       )}
                     </div>
                     {a.punchInStatus === 'PENDING' && (
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          className="rounded bg-emerald-800 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-700 sm:text-xs"
-                          onClick={() => void confirm(a.id)}
-                        >
-                          {t('admin.confirm')}
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded bg-slate-700 px-2.5 py-1 text-[11px] text-white hover:bg-slate-600 sm:text-xs"
-                          onClick={() => void reject(a.id)}
-                        >
-                          {t('admin.reject')}
-                        </button>
-                      </div>
+                      <p className="text-[10px] text-amber-800 sm:text-[11px]">
+                        {t('admin.pendingRabbiConfirm')}
+                      </p>
                     )}
                     {row && (
                       <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-200/90 pt-2 text-[11px] sm:text-xs">
@@ -1152,9 +1235,7 @@ export function AdminDashboard() {
                 <dd
                   className="min-w-0 max-w-[min(100%,20rem)] truncate text-right text-slate-900"
                   title={[
-                    [viewMember.addressLine1, viewMember.addressLine2]
-                      .filter(Boolean)
-                      .join(', '),
+                    viewMember.addressLine1,
                     [
                       viewMember.city,
                       viewMember.stateRegion,
@@ -1174,12 +1255,7 @@ export function AdminDashboard() {
                     ]
                       .filter(Boolean)
                       .join(', ')
-                    const streetLine = [
-                      viewMember.addressLine1,
-                      viewMember.addressLine2,
-                    ]
-                      .filter(Boolean)
-                      .join(', ')
+                    const streetLine = viewMember.addressLine1 ?? ''
                     const one = [streetLine, cityLine].filter(Boolean).join(' · ')
                     return one || t('common.dash')
                   })()}
@@ -1361,14 +1437,6 @@ export function AdminDashboard() {
                 value={editForm.addressLine1}
                 onChange={(e) =>
                   setEditForm((f) => ({ ...f, addressLine1: e.target.value }))
-                }
-              />
-              <input
-                className="rounded border border-slate-200 bg-white px-2 py-1"
-                placeholder={t('admin.street2')}
-                value={editForm.addressLine2}
-                onChange={(e) =>
-                  setEditForm((f) => ({ ...f, addressLine2: e.target.value }))
                 }
               />
               <div className="grid gap-2 sm:grid-cols-3">
@@ -1562,26 +1630,12 @@ export function AdminDashboard() {
                   }
                 />
               </label>
-              <label className="text-xs text-slate-600">
-                {t('admin.status')}
-                <select
-                  className="mt-1 w-full rounded border border-slate-200 bg-white px-2 py-1"
-                  value={editTxnForm.punchInStatus}
-                  onChange={(e) =>
-                    setEditTxnForm((f) => ({
-                      ...f,
-                      punchInStatus: e.target.value as
-                        | 'PENDING'
-                        | 'CONFIRMED'
-                        | 'REJECTED',
-                    }))
-                  }
-                >
-                  <option value="PENDING">{t('admin.statusPending')}</option>
-                  <option value="CONFIRMED">{t('admin.statusConfirmed')}</option>
-                  <option value="REJECTED">{t('admin.statusRejected')}</option>
-                </select>
-              </label>
+              <p className="text-xs text-slate-600">
+                {t('admin.status')}:{' '}
+                <span className="font-medium text-slate-800">
+                  {fmtAttendanceStatus(editTxn.punchInStatus)}
+                </span>
+              </p>
               <button
                 type="submit"
                 className="rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700"
@@ -1598,6 +1652,83 @@ export function AdminDashboard() {
             </form>
             {editTxnMsg && (
               <p className="mt-2 text-xs text-red-600">{editTxnMsg}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showAddLocation && (
+        <div className={MODAL_BACKDROP}>
+          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-4 text-xs shadow-xl sm:text-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-slate-900">
+                {t('admin.addLocationModalTitle')}
+              </h3>
+              <button
+                type="button"
+                className={MODAL_TEXT_BTN}
+                onClick={() => {
+                  setShowAddLocation(false)
+                  setAddLocMsg(null)
+                }}
+              >
+                {t('common.close')}
+              </button>
+            </div>
+            <form className="grid gap-2" onSubmit={submitAddLocation}>
+              <label className="text-xs text-slate-600">
+                {t('admin.addLocationSlug')}
+                <input
+                  className="mt-1 w-full rounded border border-slate-200 px-2 py-1 font-mono"
+                  value={newLocSlug}
+                  onChange={(e) =>
+                    setNewLocSlug(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+                    )
+                  }
+                  placeholder="new-site"
+                  required
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                {t('admin.addLocationInternalName')}
+                <input
+                  className="mt-1 w-full rounded border border-slate-200 px-2 py-1"
+                  value={newLocName}
+                  onChange={(e) => setNewLocName(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="text-xs text-slate-600">
+                {t('admin.addLocationDisplayName')}
+                <input
+                  className="mt-1 w-full rounded border border-slate-200 px-2 py-1"
+                  value={newLocSynagogue}
+                  onChange={(e) => setNewLocSynagogue(e.target.value)}
+                  placeholder={t('admin.addLocationDisplayPlaceholder')}
+                />
+              </label>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+                >
+                  {t('admin.addLocationSubmit')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-slate-700"
+                  onClick={() => {
+                    setShowAddLocation(false)
+                    setAddLocMsg(null)
+                  }}
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </form>
+            {addLocMsg && (
+              <p className="mt-2 text-[11px] text-slate-600">{addLocMsg}</p>
             )}
           </div>
         </div>

@@ -99,7 +99,7 @@ registerRouter.post("/", async (req, res) => {
         wifeZellePhone: trimOrNull(d.wifeZellePhone ?? undefined),
         bonusRecipient: d.bonusRecipient ?? "WIFE",
         addressLine1: d.addressLine1.trim(),
-        addressLine2: trimOrNull(d.addressLine2 ?? undefined),
+        addressLine2: null,
         city: d.city.trim(),
         stateRegion: d.stateRegion.trim(),
         postalCode: d.postalCode.trim(),
@@ -109,7 +109,7 @@ registerRouter.post("/", async (req, res) => {
     });
     res.status(201).json({
       message:
-        "Registration received. The rabbi will approve your account before you can sign in or punch in.",
+        "Registration received. An administrator will approve your account before you can sign in or check in.",
       id: user.id,
       displayName: fullName(user.firstName, user.lastName),
       attendanceCode: user.attendanceCode,

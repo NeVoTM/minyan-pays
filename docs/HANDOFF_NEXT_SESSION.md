@@ -1,6 +1,53 @@
 # Handoff Summary (Admin / Rabbi / Member)
 
-Date: 2026-04-20
+*Handoff last updated: 2026-04-30* · Original summary date: 2026-04-20
+
+## Next session — read first (2026-04-30)
+
+**Say to the AI:** *“Check `docs/HANDOFF_NEXT_SESSION.md` (Next session section) and `docs/CHAT_CONTINUITY_MASTER.md` — continue from there.”*
+
+### Deploy / URLs (verified direction)
+
+| Item | Value |
+|------|--------|
+| **Git / deploy branch** | `origin` → `NeVoTM/minyan-pays`, branch **`main`** |
+| **Rollout** | **`git push origin main`** → Render rebuilds API + static site (if auto-deploy on). Fastest routine release path. |
+| **API (public)** | `https://minyan-pays.onrender.com` |
+| **Health** | `GET https://minyan-pays.onrender.com/api/health` |
+| **Public orgs (sanity check)** | `GET https://minyan-pays.onrender.com/api/public/organizations` |
+| **Web** | `https://minyanpays.com` and `https://www.minyanpays.com` |
+| **Static site env** | `VITE_API_BASE_URL=https://minyan-pays.onrender.com` (or current API URL if it changes) |
+| **API env** | `DATABASE_URL` (Render Postgres), `ADMIN_PASSWORD`, `JWT_SECRET`, **`WEB_ORIGIN`** = comma-separated allowed frontends (e.g. `https://minyanpays.com,https://www.minyanpays.com,https://minyan-pays-1.onrender.com` — match your real static hostname(s)) |
+
+### Production DB / Prisma (critical ops)
+
+- **Schema on deploy:** API **build** includes **`npx prisma db push`** (see repo `render.yaml`). Each successful API deploy applies schema to linked Postgres.
+- **Seed / one-off SQL:** Render **free** API tier has **no** Dashboard Shell and **no** SSH. Do **not** rely on in-browser shell or Cursor browser automation for prod DB commands.
+  - **Preferred one-offs:** On your PC, `cd apps/api`, set **`DATABASE_URL`** to Render Postgres **external** URL (dashboard only; never commit), then `npx prisma …` / `npm run db:seed` as needed.
+  - **Optional:** Upgrade API to a **paid** instance for Render Shell/SSH ([Render SSH docs](https://render.com/docs/ssh)).
+- **Detail:** [`docs/RENDER_DEPLOYMENT.md`](./RENDER_DEPLOYMENT.md) → section *Running Prisma / one-off DB commands*.
+
+### What we confirmed this cycle
+
+- **Correct program** is linked: GitHub + Render services match the intended **`minyan-pays`** monorepo (`apps/api`, `apps/web`).
+- **“No locations configured”** on the public site was tied to **production DB** not matching app expectations (seed/schema). Path to fix: **`db push` + seed** (or rely on deploy build for schema + run seed from local against prod URL once).
+
+### Still do soon (production hygiene)
+
+1. Confirm **HTTPS/TLS** stable on `minyanpays.com` and `www`.
+2. **Smoke test** on real domain: load app, login/admin/rabbi/member paths, watch browser **Console** and **Network** for errors.
+3. **Rotate secrets** that may have appeared in chat/screenshots (DB, admin, JWT); update **Render env vars**; **redeploy** API (and web if needed).
+4. Calendar: Postgres **free tier expiry** — **`2026-05-29`** for `minyan-pays-db` unless upgraded (see `RENDER_DEPLOYMENT.md`).
+
+### Dev machine note (optional)
+
+- If local dev feels slow: ~**12 GB RAM** and **~34 GB free on C:** were observed; **close** extra browsers/Cursor windows, **free disk space**, **reboot** after long uptime. Not required for app deploy; helps daily dev.
+
+### Cursor / automation
+
+- **IDE browser MCP** is a **separate** browser session from your normal Chrome; it cannot “take over” your logged-in profile. Render dashboard automation needs login **inside that context** or manual steps.
+
+---
 
 ## Production / Render / GitHub (2026-04-29)
 
@@ -57,17 +104,38 @@ Date: 2026-04-20
   - review `npm audit` findings
   - confirm Render plan/cost settings
 
-### Chat #3 template (future handoff block)
+### Chat #3 accomplished (date: 2026-04-30)
 
-Copy this block for every new chat so continuity stays clear:
+- User confirmed **correct repo/service linkage** (GitHub `origin/main` + Render API + static site).
+- **Production homepage** behavior aligned with DB: empty prod DB showed “no locations”; **schema + seed** path documented; live checks pointed at **`/api/public/organizations`** and HTTPS frontends.
+- **Operational docs:** `RENDER_DEPLOYMENT.md` updated with **free-tier Render API has no Shell/SSH**; use **build `db push`**, **local Prisma + prod `DATABASE_URL`**, or **paid API** for shell.
+- **Rollout guidance:** routine releases = **`git push origin main`**; env vars (`WEB_ORIGIN`, `VITE_API_BASE_URL`, secrets) summarized in *Next session* above.
+- **Browser automation limits:** MCP browser ≠ user Chrome login; Render steps may need manual login in automation context.
+- **Laptop performance snapshot:** ~12 GB RAM (~3 GB free), C: ~34 GB free — noted for local dev comfort (close apps, free space, reboot).
 
-#### Chat #3 accomplished (date: YYYY-MM-DD)
-- [ ] fill in completed actions
+#### What still remains after Chat #3 (as of 2026-04-30)
 
-#### What still remains after Chat #3 (as of YYYY-MM-DD)
-- [ ] fill in remaining work
+- Final **TLS** confirmation on apex + `www`.
+- Full **production smoke test** (navigation, auth paths, console/network clean).
+- **Secret rotation** + Render env update + redeploy.
+- Optional: **`npm audit`**, Render billing/plan review.
+- Product backlog unchanged — see *Current Known Discussion Items* and *Next Chat Discussion List* below.
 
 #### Blockers / errors seen in Chat #3
+
+- **Render web shell / automation:** not reliable for programmatic DB commands; **not fixable** on free API tier (no shell). Use documented workarounds in `RENDER_DEPLOYMENT.md`.
+
+### Chat #4 template (future handoff block)
+
+Copy for the next session:
+
+#### Chat #4 accomplished (date: YYYY-MM-DD)
+- [ ] fill in completed actions
+
+#### What still remains after Chat #4 (as of YYYY-MM-DD)
+- [ ] fill in remaining work
+
+#### Blockers / errors seen in Chat #4
 - [ ] fill in blocker details and fix status
 
 ## Latest Session Updates (2026-04-22)

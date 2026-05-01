@@ -4,17 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { api, fetchBlob } from '../api'
 import { RABBI_KEY } from './RabbiLogin'
 
-type PendingMember = {
+type RabbiMemberRow = {
   id: string
   displayName: string
   phone: string
   attendanceCode: string
-  addressLine1: string | null
-  city: string | null
-  stateRegion: string | null
-  postalCode: string | null
-  email: string | null
-  createdAt: string
+  preferredForCheckIn: boolean
 }
 
 type SessionResp = {
@@ -56,10 +51,11 @@ export function RabbiDashboard() {
   const { t } = useTranslation()
   const nav = useNavigate()
   const token = localStorage.getItem(RABBI_KEY)
-  const [tab, setTab] = useState<'approvals' | 'today' | 'payouts' | 'banner'>(
-    'approvals'
+  const [tab, setTab] = useState<'today' | 'members' | 'payouts' | 'banner'>(
+    'today'
   )
-  const [pending, setPending] = useState<PendingMember[]>([])
+  const [rabbiMembers, setRabbiMembers] = useState<RabbiMemberRow[]>([])
+  const [checkInOnlyPreferred, setCheckInOnlyPreferred] = useState(false)
   const [session, setSession] = useState<SessionResp | null>(null)
   const [weekDate, setWeekDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
@@ -80,14 +76,18 @@ export function RabbiDashboard() {
       return
     }
     try {
-      const [p, s, st] = await Promise.all([
-        api<PendingMember[]>('/api/rabbi/members/pending', { token }),
+      const [mem, s, st] = await Promise.all([
+        api<RabbiMemberRow[]>('/api/rabbi/members', { token }),
         api<SessionResp>('/api/rabbi/session/today', { token }),
-        api<{ rabbiBanner: string }>('/api/rabbi/settings', { token }),
+        api<{ rabbiBanner: string; checkInOnlyPreferred: boolean }>(
+          '/api/rabbi/settings',
+          { token }
+        ),
       ])
-      setPending(p)
+      setRabbiMembers(mem)
       setSession(s)
       setBannerDraft(st.rabbiBanner ?? '')
+      setCheckInOnlyPreferred(st.checkInOnlyPreferred)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
     }
@@ -122,13 +122,37 @@ export function RabbiDashboard() {
     if (tab === 'payouts' && token) void loadWeek()
   }, [tab, token, loadWeek])
 
-  async function approvePending(id: string) {
+  async function saveCheckInPolicy(onlyPreferred: boolean) {
     if (!token) return
+    setErr(null)
     setMsg(null)
     try {
-      await api(`/api/rabbi/members/${id}/approve`, { method: 'POST', token })
-      setMsg(t('rabbi.approved'))
-      await load()
+      await api('/api/rabbi/settings/check-in-policy', {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ checkInOnlyPreferred: onlyPreferred }),
+      })
+      setCheckInOnlyPreferred(onlyPreferred)
+      setMsg(t('rabbi.policySaved'))
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
+    }
+  }
+
+  async function setMemberPreferred(id: string, preferred: boolean) {
+    if (!token) return
+    setErr(null)
+    try {
+      await api(`/api/rabbi/members/${id}/preferred`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ preferred }),
+      })
+      setRabbiMembers((rows) =>
+        rows.map((r) =>
+          r.id === id ? { ...r, preferredForCheckIn: preferred } : r
+        )
+      )
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
     }
@@ -290,8 +314,8 @@ export function RabbiDashboard() {
       {err && <p className="text-xs text-red-600">{err}</p>}
       {msg && <p className="text-xs text-emerald-700">{msg}</p>}
 
-      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Rabbi">
-        {(['approvals', 'today', 'payouts', 'banner'] as const).map((id) => (
+      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Rabbi">
+        {(['today', 'members', 'payouts', 'banner'] as const).map((id) => (
           <button
             key={id}
             type="button"
@@ -307,31 +331,61 @@ export function RabbiDashboard() {
         ))}
       </nav>
 
-      {tab === 'approvals' && (
-        <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+      {tab === 'members' && (
+        <div className="space-y-3 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="rounded-md border border-slate-100 bg-slate-50/80 p-2.5 text-[11px] text-slate-600 sm:text-xs">
+            <p className="font-medium text-slate-800">{t('rabbi.checkInPolicyTitle')}</p>
+            <p className="mt-1">{t('rabbi.checkInPolicyHelp')}</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="checkin-policy"
+                  checked={!checkInOnlyPreferred}
+                  onChange={() => void saveCheckInPolicy(false)}
+                />
+                <span>{t('rabbi.checkInAnyone')}</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="checkin-policy"
+                  checked={checkInOnlyPreferred}
+                  onChange={() => void saveCheckInPolicy(true)}
+                />
+                <span>{t('rabbi.checkInPreferredOnly')}</span>
+              </label>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 sm:text-xs">
+            {t('rabbi.preferredMembersHelp')}
+          </p>
           <ul className="grid gap-2 sm:grid-cols-2">
-            {pending.map((m) => (
+            {rabbiMembers.map((m) => (
               <li
                 key={m.id}
-                className="rounded-md border border-amber-200 bg-amber-50/80 px-2.5 py-2 text-[11px] sm:text-xs"
+                className="rounded-md border border-slate-200 bg-slate-50/80 px-2.5 py-2 text-[11px] sm:text-xs"
               >
                 <p className="font-medium text-slate-900">{m.displayName}</p>
                 <p className="font-mono text-[10px] text-slate-500">{m.phone}</p>
                 <p className="font-mono text-[10px] text-slate-500">
                   {m.attendanceCode}
                 </p>
-                <button
-                  type="button"
-                  className="mt-1 text-emerald-700 underline"
-                  onClick={() => void approvePending(m.id)}
-                >
-                  {t('rabbi.approve')}
-                </button>
+                <label className="mt-2 flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={m.preferredForCheckIn}
+                    onChange={(e) =>
+                      void setMemberPreferred(m.id, e.target.checked)
+                    }
+                  />
+                  <span>{t('rabbi.preferredForCheckIn')}</span>
+                </label>
               </li>
             ))}
           </ul>
-          {pending.length === 0 && (
-            <p className="text-xs text-slate-500">{t('rabbi.noPending')}</p>
+          {rabbiMembers.length === 0 && (
+            <p className="text-xs text-slate-500">{t('rabbi.noApprovedMembers')}</p>
           )}
         </div>
       )}
