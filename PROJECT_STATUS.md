@@ -24,3 +24,4 @@ Ship the 13-item minyan-pays product update: routing defaults, admin/rabbi/membe
 ## Notes / Context
 
 - Local `prisma migrate dev` was not run (DB unreachable); `prisma generate` and `tsc`/`web build` succeeded.
+- **2026-04-30:** Pushed `main` to **origin** (`github.com/NeVoTM/minyan-pays`) and **cur** (`github.com/NeVoTM/minyan-pays-cur`) at commit `e917685`.
