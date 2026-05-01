@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-04-30* (signup: phone + email 2-col layout)
 
 ## Current Task / Goal
 
