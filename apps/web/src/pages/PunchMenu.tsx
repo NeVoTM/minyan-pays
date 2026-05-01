@@ -13,10 +13,10 @@ export function PunchMenu() {
   const { t } = useTranslation()
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start gap-3">
+    <div className="mx-auto w-full min-w-0 max-w-full space-y-5 text-center sm:text-left">
+      <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
         <BackLink to="/" />
-        <div>
+        <div className="min-w-0">
           <h1 className={pageTitle}>{t('nav.punch')}</h1>
           <div className={`${pageSubtitle} space-y-1`}>
             <p>* Check-in, Rabbi will confirm</p>
@@ -27,16 +27,16 @@ export function PunchMenu() {
       </div>
 
       <div className={`${cardShell} !p-3`}>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2">
           <Link
             to="/punch/in"
-            className={`${punchInCheckInBtn} !py-4 !text-base block text-center`}
+            className={`${punchInCheckInBtn} block min-w-0 !py-4 !text-base text-center`}
           >
             {t('punchIn.submit')}
           </Link>
           <Link
             to="/punch/out"
-            className={`${punchOutDepartureBtn} !py-4 !text-base block text-center`}
+            className={`${punchOutDepartureBtn} block min-w-0 !py-4 !text-base text-center`}
           >
             {t('punchOut.submit')}
           </Link>

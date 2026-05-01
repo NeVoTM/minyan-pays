@@ -62,10 +62,10 @@ export function RabbiLogin() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start gap-3">
+    <div className="mx-auto w-full min-w-0 max-w-full space-y-6 text-center sm:text-left">
+      <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
         <BackLink to="/" />
-        <div>
+        <div className="min-w-0">
           <h1 className={pageTitle}>{t('rabbiLogin.title')}</h1>
           <p className={pageSubtitle}>{t('rabbiLogin.subtitle')}</p>
         </div>

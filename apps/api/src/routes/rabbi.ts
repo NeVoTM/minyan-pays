@@ -1,4 +1,6 @@
 import { Router, type Request } from "express";
+import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import {
@@ -14,6 +16,12 @@ import {
   rankFirstNine,
 } from "../lib/earnings.js";
 import { fullName } from "../lib/memberDisplay.js";
+import {
+  assertNoMemberDuplicates,
+  DuplicateMemberError,
+} from "../lib/memberDuplicates.js";
+import { rabbiMemberUpdateSchema } from "../lib/memberSchemas.js";
+import { normalizeOptionalUsPhone, normalizePhone } from "../lib/phone.js";
 
 export const rabbiRouter = Router();
 rabbiRouter.use(authMiddleware);
@@ -21,6 +29,12 @@ rabbiRouter.use(requireRabbi);
 
 function orgId(req: Request): string {
   return (req as Request & { auth: JwtPayload }).auth.organizationId;
+}
+
+function trimOrNull(s: string | undefined | null): string | null {
+  if (s == null || s === "") return null;
+  const t = s.trim();
+  return t || null;
 }
 
 const weekKeyParam = z
@@ -115,6 +129,198 @@ rabbiRouter.patch("/members/:id/preferred", async (req, res) => {
   res.json(updated);
 });
 
+/** Single approved member — view/edit from rabbi dashboard. */
+rabbiRouter.get("/members/:id", async (req, res) => {
+  const oid = orgId(req);
+  const user = await prisma.user.findFirst({
+    where: {
+      id: req.params.id,
+      role: "MEMBER",
+      organizationId: oid,
+      isApproved: true,
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      attendanceCode: true,
+      isMarried: true,
+      zellePhone: true,
+      wifeZellePhone: true,
+      bonusRecipient: true,
+      addressLine1: true,
+      city: true,
+      stateRegion: true,
+      postalCode: true,
+      email: true,
+      spousePhone: true,
+      spouseEmail: true,
+      paypalAccount: true,
+      achRoutingNumber: true,
+      achAccountNumber: true,
+      preferredForCheckIn: true,
+      createdAt: true,
+    },
+  });
+  if (!user) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  res.json({
+    ...user,
+    displayName: fullName(user.firstName, user.lastName),
+    createdAt: user.createdAt.toISOString(),
+  });
+});
+
+rabbiRouter.patch("/members/:id", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = rabbiMemberUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const existing = await prisma.user.findFirst({
+    where: {
+      id: req.params.id,
+      role: "MEMBER",
+      organizationId: oid,
+      isApproved: true,
+    },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+
+  const p = parsed.data;
+  const firstName = p.firstName ?? existing.firstName;
+  const lastName = p.lastName ?? existing.lastName;
+  const phone = p.phone ? normalizePhone(p.phone) : existing.phone;
+  const zellePhone =
+    p.zellePhone !== undefined ? trimOrNull(p.zellePhone) : existing.zellePhone;
+  const wifeZellePhone =
+    p.wifeZellePhone !== undefined
+      ? trimOrNull(p.wifeZellePhone)
+      : existing.wifeZellePhone;
+
+  try {
+    await assertNoMemberDuplicates(prisma, {
+      organizationId: oid,
+      excludeUserId: existing.id,
+      firstName,
+      lastName,
+      phone,
+      zellePhone,
+      wifeZellePhone,
+    });
+  } catch (e: unknown) {
+    if (e instanceof DuplicateMemberError) {
+      res.status(409).json({ error: e.message });
+      return;
+    }
+    throw e;
+  }
+
+  const updateData: Prisma.UserUpdateInput = {
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    phone,
+    isMarried: p.isMarried ?? existing.isMarried,
+    zellePhone,
+    wifeZellePhone,
+    bonusRecipient: p.bonusRecipient ?? existing.bonusRecipient,
+    addressLine1:
+      p.addressLine1 !== undefined
+        ? trimOrNull(p.addressLine1)
+        : existing.addressLine1,
+    addressLine2: null,
+    city: p.city !== undefined ? trimOrNull(p.city) : existing.city,
+    stateRegion:
+      p.stateRegion !== undefined
+        ? trimOrNull(p.stateRegion)
+        : existing.stateRegion,
+    postalCode:
+      p.postalCode !== undefined
+        ? trimOrNull(p.postalCode)
+        : existing.postalCode,
+    email: p.email !== undefined ? p.email : existing.email,
+    spousePhone:
+      p.spousePhone !== undefined
+        ? normalizeOptionalUsPhone(p.spousePhone)
+        : existing.spousePhone,
+    spouseEmail:
+      p.spouseEmail !== undefined ? p.spouseEmail : existing.spouseEmail,
+    paypalAccount:
+      p.paypalAccount !== undefined
+        ? trimOrNull(p.paypalAccount)
+        : existing.paypalAccount,
+    achRoutingNumber:
+      p.achRoutingNumber !== undefined
+        ? trimOrNull(p.achRoutingNumber)
+        : existing.achRoutingNumber,
+    achAccountNumber:
+      p.achAccountNumber !== undefined
+        ? trimOrNull(p.achAccountNumber)
+        : existing.achAccountNumber,
+  };
+
+  if (p.attendanceCode !== undefined) {
+    const nextCode = p.attendanceCode.trim();
+    if (nextCode !== existing.attendanceCode) {
+      const taken = await prisma.user.findFirst({
+        where: {
+          organizationId: oid,
+          attendanceCode: nextCode,
+          role: "MEMBER",
+          NOT: { id: existing.id },
+        },
+        select: { id: true },
+      });
+      if (taken) {
+        res.status(409).json({
+          error:
+            "That punch-in code is already assigned to another member. Choose a different code.",
+        });
+        return;
+      }
+    }
+    updateData.attendanceCode = nextCode;
+  }
+  if (p.pin !== undefined && p.pin.trim().length >= 4) {
+    updateData.pinHash = await bcrypt.hash(p.pin.trim(), 10);
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: updateData,
+    });
+    res.json({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      displayName: fullName(user.firstName, user.lastName),
+      phone: user.phone,
+      attendanceCode: user.attendanceCode,
+    });
+  } catch (e: unknown) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      res.status(409).json({
+        error:
+          "That punch-in code or phone is already in use. Change the punch-in code or phone.",
+      });
+      return;
+    }
+    const msg = e instanceof Error ? e.message : "Update failed";
+    res.status(409).json({ error: msg });
+  }
+});
+
 rabbiRouter.get("/session/today", async (req, res) => {
   const oid = orgId(req);
   const org = await prisma.organization.findUnique({ where: { id: oid } });
@@ -149,6 +355,7 @@ rabbiRouter.get("/session/today", async (req, res) => {
   const firstMap = rankFirstNine(session.attendances, settings.firstNineSlots);
   res.json({
     dateKey,
+    timezone: org.timezone,
     sessionId: session.id,
     attendances: session.attendances.map((a) => ({
       id: a.id,
@@ -165,6 +372,11 @@ rabbiRouter.get("/session/today", async (req, res) => {
         displayName: fullName(a.user.firstName, a.user.lastName),
         phone: a.user.phone,
         attendanceCode: a.user.attendanceCode,
+        addressLine1: a.user.addressLine1,
+        city: a.user.city,
+        stateRegion: a.user.stateRegion,
+        postalCode: a.user.postalCode,
+        email: a.user.email,
       },
     })),
   });

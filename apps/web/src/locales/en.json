@@ -425,6 +425,14 @@
     "clearSelection": "Clear paid marks",
     "savePayouts": "Save payout marks",
     "saved": "Payout marks saved.",
-    "loadFailed": "Load failed"
+    "loadFailed": "Load failed",
+    "memberAddress": "Address",
+    "checkInTime": "Checked in",
+    "viewEditMember": "View / edit member",
+    "editMemberTitle": "Member details",
+    "memberUpdated": "Member updated.",
+    "punchCodeLabel": "Punch-in code",
+    "bonusRecipientLabel": "Weekly bonus goes to",
+    "newPinOptional": "New PIN (optional, 4+ digits)"
   }
 }

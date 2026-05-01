@@ -83,3 +83,8 @@ export const memberSelfUpdateSchema = memberUpdateSchema.omit({
   attendanceCode: true,
   isApproved: true,
 });
+
+/** Rabbi may edit approved members but not approval status. */
+export const rabbiMemberUpdateSchema = memberUpdateSchema.omit({
+  isApproved: true,
+});

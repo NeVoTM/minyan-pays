@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { PhoneInput } from '../components/PhoneInput'
 import { useOrg } from '../context/OrgContext'
+import { phoneDigitsFromE164 } from '../lib/phoneDisplay'
 
 const KEY = 'minyan_admin_token'
 
@@ -110,12 +111,6 @@ function emptyMemberForm() {
     achRoutingNumber: '',
     achAccountNumber: '',
   }
-}
-
-function phoneDigitsFromE164(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1)
-  return digits.slice(0, 10)
 }
 
 function maskBankTail(s: string | null): string {
@@ -663,16 +658,16 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
         <Link
           to="/punch"
-          className="text-[11px] text-slate-500 hover:text-slate-700 sm:text-xs"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-[11px] font-medium text-slate-700 shadow-sm sm:text-left sm:text-xs"
         >
           {t('admin.home')}
         </Link>
         <button
           type="button"
-          className="text-[11px] text-slate-500 sm:text-xs"
+          className="w-full rounded-lg border-2 border-rose-300 bg-rose-50 px-3 py-2.5 text-[11px] font-semibold text-rose-800 sm:w-auto sm:text-xs"
           onClick={() => {
             localStorage.removeItem(KEY)
             nav('/admin')
