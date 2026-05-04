@@ -3,7 +3,9 @@
     "title": "minyan-pays",
     "subtitle": "Attendance & payouts",
     "loading": "Loading…",
-    "emptyDb": "No locations configured. Run {{seed}} in the API folder after {{push}}."
+    "emptyDb": "No locations configured. Run {{seed}} in the API folder after {{push}}.",
+    "deployMissingApiBase": "This site is not connected to the API. On the static host (e.g. Render), set VITE_API_BASE_URL to your API URL and redeploy.",
+    "deployBadResponse": "Could not load locations from the server. Check your internet connection, or try again after the API wakes up."
   },
   "nav": {
     "home": "Home",
@@ -71,9 +73,10 @@
   },
   "memberLogin": {
     "title": "Welcome back",
-    "subtitle": "Sign in with your phone (same number you registered).",
+    "subtitle": "Sign in with your phone and PIN (same number you registered).",
     "phone": "Phone",
     "pin": "PIN",
+    "pinInvalid": "Enter your PIN (at least 4 digits).",
     "submit": "View Member",
     "newHere": "New here?",
     "create": "Create an account",
@@ -404,6 +407,7 @@
     "locationLabel": "Location",
     "locationHelp": "Each rabbi signs in to one location. Switch location here if you serve more than one site.",
     "password": "Rabbi password",
+    "passwordRequired": "Enter the rabbi password.",
     "submit": "Sign in",
     "chooseOrgFirst": "Choose a location first.",
     "loginFailed": "Login failed"

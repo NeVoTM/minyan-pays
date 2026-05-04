@@ -19,6 +19,7 @@ export function RabbiLogin() {
   const { t } = useTranslation()
   const { organizationSlug, organizations, setOrganizationSlug } = useOrg()
   const [locationSlug, setLocationSlug] = useState('')
+  const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
@@ -48,10 +49,17 @@ export function RabbiLogin() {
       setErr(t('rabbiLogin.chooseOrgFirst'))
       return
     }
+    if (!password.trim()) {
+      setErr(t('rabbiLogin.passwordRequired'))
+      return
+    }
     try {
       const r = await api<{ token: string }>('/api/auth/rabbi', {
         method: 'POST',
-        body: JSON.stringify({ organizationSlug: slug }),
+        body: JSON.stringify({
+          organizationSlug: slug,
+          password: password.trim(),
+        }),
       })
       setOrganizationSlug(slug)
       localStorage.setItem(RABBI_KEY, r.token)
@@ -99,6 +107,19 @@ export function RabbiLogin() {
             <span className="mt-1 block text-[11px] text-slate-500">
               {t('rabbiLogin.locationHelp')}
             </span>
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>{t('rabbiLogin.password')}</span>
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              className={pillInput}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={1}
+            />
           </label>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">

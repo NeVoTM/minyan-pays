@@ -14,7 +14,7 @@ export function signAdminToken(organizationId: string): string {
   return jwt.sign(
     { sub: "admin", role: "ADMIN", organizationId },
     secret,
-    { expiresIn: "12h" }
+    { expiresIn: "24h" }
   );
 }
 
@@ -24,7 +24,7 @@ export function signRabbiToken(organizationId: string): string {
   return jwt.sign(
     { sub: "rabbi", role: "RABBI", organizationId },
     secret,
-    { expiresIn: "12h" }
+    { expiresIn: "24h" }
   );
 }
 
@@ -34,7 +34,7 @@ export function signMemberToken(userId: string, organizationId: string): string 
   return jwt.sign(
     { sub: userId, role: "MEMBER", organizationId },
     secret,
-    { expiresIn: "30d" }
+    { expiresIn: "24h" }
   );
 }
 

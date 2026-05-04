@@ -20,6 +20,7 @@ export function MemberLogin() {
   const { t } = useTranslation()
   const { organizationSlug } = useOrg()
   const [phoneDigits, setPhoneDigits] = useState('')
+  const [pinDigits, setPinDigits] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
@@ -34,12 +35,17 @@ export function MemberLogin() {
       setErr(t('memberLogin.phoneInvalid'))
       return
     }
+    if (pinDigits.trim().length < 4) {
+      setErr(t('memberLogin.pinInvalid'))
+      return
+    }
     try {
       const r = await api<{ token: string }>('/api/auth/member', {
         method: 'POST',
         body: JSON.stringify({
           phone: phoneDigits,
           organizationSlug,
+          pin: pinDigits.trim(),
         }),
       })
       localStorage.setItem(KEY, r.token)
@@ -76,6 +82,24 @@ export function MemberLogin() {
               onChange={setPhoneDigits}
               required
               autoComplete="off"
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>{t('memberLogin.pin')}</span>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="current-password"
+              name="pin"
+              className={pillInput}
+              value={pinDigits}
+              onChange={(e) =>
+                setPinDigits(e.target.value.replace(/\D/g, '').slice(0, 12))
+              }
+              required
+              minLength={4}
+              maxLength={12}
+              placeholder="••••"
             />
           </label>
           {err && (

@@ -1,6 +1,8 @@
+import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
+import { timingSafeEqualString } from "../lib/timingSafeString.js";
 import { normalizePhone } from "../lib/phone.js";
 import {
   signAdminToken,
@@ -12,21 +14,22 @@ import {
   normalizeOrgSlug,
 } from "../lib/organizationService.js";
 
-/**
- * INSECURE — password and PIN checks are disabled. Restore credential checks
- * before any production use.
- */
 export const authRouter = Router();
 
 const adminLoginBody = z.object({
   organizationSlug: z.string().optional(),
-  password: z.string().optional(),
+  password: z.string().min(1),
+});
+
+const rabbiLoginBody = z.object({
+  organizationSlug: z.string().min(1),
+  password: z.string().min(1),
 });
 
 const memberLogin = z.object({
   phone: z.string().min(7),
   organizationSlug: z.string().min(1),
-  pin: z.string().max(12).optional(),
+  pin: z.string().min(4).max(12),
 });
 
 authRouter.post("/admin", async (req, res) => {
@@ -35,6 +38,17 @@ authRouter.post("/admin", async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
+  const submitted = parsed.data.password;
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!submitted || !expected) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!timingSafeEqualString(submitted, expected)) {
+    res.status(401).json({ error: "Invalid password" });
+    return;
+  }
+
   let org = null;
   const rawSlug = parsed.data.organizationSlug?.trim();
   if (rawSlug) {
@@ -59,7 +73,7 @@ authRouter.post("/admin", async (req, res) => {
 });
 
 authRouter.post("/rabbi", async (req, res) => {
-  const parsed = adminLoginBody.safeParse(req.body);
+  const parsed = rabbiLoginBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
@@ -69,11 +83,34 @@ authRouter.post("/rabbi", async (req, res) => {
     res.status(400).json({ error: "Invalid organization slug." });
     return;
   }
-  const org = await getOrganizationBySlug(slug);
+  const org = await prisma.organization.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      slug: true,
+      rabbiPasswordHash: true,
+    },
+  });
   if (!org) {
     res.status(404).json({ error: "Unknown organization." });
     return;
   }
+
+  const password = parsed.data.password;
+  let ok = false;
+  if (org.rabbiPasswordHash) {
+    ok = await bcrypt.compare(password, org.rabbiPasswordHash);
+  } else {
+    const fallback = process.env.RABBI_PASSWORD;
+    if (fallback) {
+      ok = timingSafeEqualString(password, fallback);
+    }
+  }
+  if (!ok) {
+    res.status(401).json({ error: "Invalid password" });
+    return;
+  }
+
   res.json({ token: signRabbiToken(org.id) });
 });
 
@@ -96,17 +133,15 @@ authRouter.post("/member", async (req, res) => {
 
   const phone = normalizePhone(parsed.data.phone);
   const user = await prisma.user.findFirst({
-    where: { phone, organizationId: org.id },
+    where: { phone, organizationId: org.id, isApproved: true },
   });
   if (!user) {
-    res.status(401).json({ error: "Unknown phone number for this location." });
+    res.status(401).json({ error: "Invalid phone or PIN." });
     return;
   }
-  if (!user.isApproved) {
-    res.status(403).json({
-      error:
-        "Account pending admin approval. You will receive access after an administrator approves your registration.",
-    });
+  const pinMatch = await bcrypt.compare(parsed.data.pin.trim(), user.pinHash);
+  if (!pinMatch) {
+    res.status(401).json({ error: "Invalid PIN" });
     return;
   }
   res.json({ token: signMemberToken(user.id, org.id) });

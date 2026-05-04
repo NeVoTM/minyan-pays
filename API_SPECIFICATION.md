@@ -1,119 +1,21 @@
-# API Specification
+# API specification (minyan-pays)
 
-This document outlines the REST API endpoints for the Minyan Pays application, including endpoints for authentication, attendance tracking, payments, fund management, and admin functions.
+**Route map and auth model:** [docs/PROGRAMMER_HANDOFF.md](./docs/PROGRAMMER_HANDOFF.md) section *HTTP API surface*.
 
-## Authentication
+**Implementation:** Express routers under `apps/api/src/routes/`:
 
-### Register User
-- **POST /api/auth/register**  
-  - **Description**: Register a new user.
-  - **Request Body**:  
-    ```json
-    {
-      "username": "string",
-      "password": "string",
-      "email": "string"
-    }
-    ``` 
-- **Response**:  
-  - `201 Created`
+- `public.ts` → `/api/public`
+- `auth.ts` → `/api/auth`
+- `register.ts` → `/api/register`
+- `punch.ts` → `/api/punch`
+- `member.ts` → `/api/me`
+- `rabbi.ts` → `/api/rabbi`
+- `admin.ts` → `/api/admin`
 
-### Login User
-- **POST /api/auth/login**  
-  - **Description**: Authenticate a user.
-  - **Request Body**:  
-    ```json
-    {
-      "username": "string",
-      "password": "string"
-    }
-    ``` 
-- **Response**:  
-  - `200 OK`
-  - Returns JWT token
+**Health:** `GET /api/health`
 
-## Attendance Tracking
-
-### Mark Attendance
-- **POST /api/attendance/mark**  
-  - **Description**: Mark attendance for a user.
-  - **Request Body**:  
-    ```json
-    {
-      "userId": "string",
-      "eventId": "string"
-    }
-    ``` 
-- **Response**:  
-  - `200 OK`
-
-### Get Attendance
-- **GET /api/attendance/{eventId}**  
-  - **Description**: Get attendance list for an event.
-- **Response**:  
-  - `200 OK`
-  - Returns a list of attendees.
-
-## Payments
-
-### Create Payment
-- **POST /api/payments/create**  
-  - **Description**: Create a new payment.
-  - **Request Body**:  
-    ```json
-    {
-      "amount": "number",
-      "userId": "string",
-      "description": "string"
-    }
-    ``` 
-- **Response**:  
-  - `201 Created`
-
-### Get Payment History
-- **GET /api/payments/history/{userId}**  
-  - **Description**: Retrieve payment history for a user.
-- **Response**:  
-  - `200 OK`
-  - Returns a list of payments.
-
-## Fund Management
-
-### Create Fund
-- **POST /api/funds/create**  
-  - **Description**: Create a new fund.
-  - **Request Body**:  
-    ```json
-    {
-      "name": "string",
-      "goal": "number"
-    }
-    ``` 
-- **Response**:  
-  - `201 Created`
-
-### Get Funds
-- **GET /api/funds**  
-  - **Description**: Retrieve all funds.
-- **Response**:  
-  - `200 OK`
-  - Returns a list of funds.
-
-## Admin Functions
-
-### Get User List
-- **GET /api/admin/users**  
-  - **Description**: Retrieve a list of all users.
-- **Response**:  
-  - `200 OK`
-  - Returns a list of users.
-
-### Delete User
-- **DELETE /api/admin/users/{userId}**  
-  - **Description**: Delete a user by ID.
-- **Response**:  
-  - `204 No Content`  
+There is **no** maintained OpenAPI/Swagger file; request/response bodies are defined in route handlers and Zod schemas in the same files (and related `lib` modules).
 
 ---
 
-This API specification provides a comprehensive overview of the available endpoints and their functionality. Please refer to each endpoint for specific request and response formats.
+*The previous version of this file described fictional endpoints (`/api/payments/create`, etc.) that are not part of this codebase.*

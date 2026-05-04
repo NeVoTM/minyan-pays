@@ -4,27 +4,39 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
 import { useOrg } from '../context/OrgContext'
-import { cardShell, pageTitle, primaryBtn } from '../lib/uiClasses'
+import {
+  cardShell,
+  fieldLabel,
+  pageTitle,
+  pillInput,
+  primaryBtn,
+} from '../lib/uiClasses'
 
 const KEY = 'minyan_admin_token'
 
 export function AdminLogin() {
   const { t } = useTranslation()
   const { organizations, organizationSlug, setOrganizationSlug } = useOrg()
+  const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setErr(null)
+    if (!password.trim()) {
+      setErr(t('adminLogin.passwordRequired'))
+      return
+    }
     try {
       const r = await api<{ token: string; organizationSlug: string }>(
         '/api/auth/admin',
         {
           method: 'POST',
-          body: JSON.stringify(
-            organizationSlug ? { organizationSlug } : {}
-          ),
+          body: JSON.stringify({
+            ...(organizationSlug ? { organizationSlug } : {}),
+            password: password.trim(),
+          }),
         }
       )
       setOrganizationSlug(r.organizationSlug)
@@ -46,7 +58,21 @@ export function AdminLogin() {
       </div>
 
       <div className={cardShell}>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4" autoComplete="off">
+          <label className="block">
+            <span className={fieldLabel}>{t('adminLogin.password')}</span>
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              className={pillInput}
+              placeholder={t('adminLogin.passwordPh')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={1}
+            />
+          </label>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">
               {err}

@@ -1,5 +1,7 @@
 # Minyan-Pays Program Summary
 
+> **For programmers:** Use **[PROGRAMMER_HANDOFF.md](./PROGRAMMER_HANDOFF.md)** for accurate architecture, **PostgreSQL/Prisma schema**, **real API routes**, deployment, and known issues. This file is product narrative and historical notes; some bullets below still mention SQLite or `AppSettings` — the live schema is **`apps/api/prisma/schema.prisma`** (PostgreSQL only; banner/settings live on **Organization**).
+
 ## Overview
 
 `minyan-pays` is a mobile-first web app for synagogue attendance tracking and payout management at Dovrey Evrit. It supports daily minyan operations (punch-in/punch-out), rabbi/admin verification workflows, and weekly payout tracking with member-facing transparency.
@@ -34,7 +36,7 @@ The web client includes clearer service-unavailable messaging for proxy/API issu
 
 ## Data and Storage
 
-Current default storage is SQLite (local file) through Prisma. Key models include `User`, `Attendance`, `MinyanSession`, `WeeklyPayout`, `Treasury`, `AppSettings`, and `ZipCache`.
+Storage is **PostgreSQL** via Prisma (local Docker, Neon, or Render). Key models include `Organization`, `User`, `Attendance`, `MinyanSession`, `WeeklyPayout`, `Treasury`, `MemberLedgerEntry`, `ZipCache`, and related tables — see `schema.prisma`.
 
 ## API Surface (High Level)
 
@@ -146,5 +148,6 @@ Start locally from `C:\Users\17274\minyan-pays` with `npm run dev` (or desktop l
 
 ## Git and continuity
 
-- Primary handoff for the next session: `docs/NEXT-CHAT-HANDOFF.md`.
+- **Developer / contractor brief:** `docs/PROGRAMMER_HANDOFF.md`
+- Primary handoff for the next Cursor session: `docs/NEXT-CHAT-HANDOFF.md`.
 - After pulling on another machine, run `npm install` if dependencies changed, then `npm run dev` from repo root.

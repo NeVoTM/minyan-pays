@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { setOrgSlugGetter } from '../lib/orgSlugGetter'
-import { apiUrl } from '../lib/apiBase'
+import { apiUrl, isMissingProductionApiBase } from '../lib/apiBase'
 
 const STORAGE_KEY = 'minyan_org_slug'
 
@@ -21,12 +21,15 @@ export type OrganizationRow = {
   defaultLocale: string
 }
 
+export type OrgDeployBanner = 'missingVite' | 'badResponse' | null
+
 type OrgContextValue = {
   organizationSlug: string | null
   setOrganizationSlug: (slug: string | null) => void
   organizations: OrganizationRow[]
   loading: boolean
   refreshOrganizations: () => Promise<void>
+  deployBanner: OrgDeployBanner
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -43,6 +46,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   )
   const [organizations, setOrganizations] = useState<OrganizationRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [deployBanner, setDeployBanner] = useState<OrgDeployBanner>(null)
 
   const setOrganizationSlug = useCallback((slug: string | null) => {
     try {
@@ -50,6 +54,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       else localStorage.removeItem(STORAGE_KEY)
       localStorage.removeItem('minyan_member_token')
       localStorage.removeItem('minyan_admin_token')
+      localStorage.removeItem('minyan_rabbi_token')
     } catch {
       /* ignore */
     }
@@ -61,11 +66,33 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   }, [organizationSlug])
 
   const refreshOrganizations = useCallback(async () => {
+    if (isMissingProductionApiBase()) {
+      setDeployBanner('missingVite')
+      setOrganizations([])
+      setLoading(false)
+      return
+    }
+    setDeployBanner(null)
     setLoading(true)
     try {
       const r = await fetch(apiUrl('/api/public/organizations'))
-      const rows: OrganizationRow[] = r.ok ? await r.json() : []
-      const nextRows = Array.isArray(rows) ? rows : []
+      const text = await r.text()
+      const looksHtml = text.trimStart().startsWith('<')
+      let parsed: unknown = null
+      if (r.ok && !looksHtml && text.trim()) {
+        try {
+          parsed = JSON.parse(text) as unknown
+        } catch {
+          parsed = null
+        }
+      }
+      if (!r.ok || looksHtml || !Array.isArray(parsed)) {
+        setDeployBanner('badResponse')
+        setOrganizations([])
+        setLoading(false)
+        return
+      }
+      const nextRows = parsed as OrganizationRow[]
       setOrganizations(nextRows)
       setOrganizationSlugState((prev) => {
         if (prev && nextRows.some((row) => row.slug === prev)) return prev
@@ -86,6 +113,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
         return null
       })
     } catch {
+      setDeployBanner('badResponse')
       setOrganizations([])
     } finally {
       setLoading(false)
@@ -103,8 +131,16 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       organizations,
       loading,
       refreshOrganizations,
+      deployBanner,
     }),
-    [organizationSlug, setOrganizationSlug, organizations, loading, refreshOrganizations]
+    [
+      organizationSlug,
+      setOrganizationSlug,
+      organizations,
+      loading,
+      refreshOrganizations,
+      deployBanner,
+    ]
   )
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>

@@ -4,7 +4,7 @@ Planning and documentation for **minyan attendance**, **first-9 incentives**, **
 
 **Synagogue:** **Dovrey Evrit**
 
-**Start here:** [PLAN.md](./PLAN.md)
+**Start here:** [PLAN.md](./PLAN.md) · **Programmer handoff (architecture, schema, API, issues):** [docs/PROGRAMMER_HANDOFF.md](./docs/PROGRAMMER_HANDOFF.md)
 
 **Mobile:** Web layout is tuned for iPhone-width screens with a bottom navigation bar.
 
