@@ -25,5 +25,6 @@
 - **Reviewer report:** Full sprint summary for double-checking (done vs remaining vs ops) — **`docs/CLAUDE_REVIEW_REPORT.md`**.
 - **Claude Code:** CLI installed globally; launch + **`claude auth login`** — **`docs/CLAUDE_CODE_SETUP.md`**. Root context — **`CLAUDE.md`**. First-run summary (same intent as interactive prompts; use if CLI not authenticated) — **`docs/CLAUDE_CODE_FIRST_RUN_SUMMARY.md`**.
 - **GitHub Copilot / Google Gemini:** How to review & test, prompts, access limits — **`docs/COPILOT_GEMINI_REVIEW_INSTRUCTIONS.md`**.
+- **Brief checklist for other AIs (verify + test + suggest):** **`docs/AI_VERIFICATION_CHECKLIST.md`**.
 - Health check returns **`{ ok: true, service: "minyan-pays-api" }`** (not `{ status: "ok" }`).
 - **`lucide-react`** is not in **`apps/web/package.json`** yet — Task 8 / design system will add it.
