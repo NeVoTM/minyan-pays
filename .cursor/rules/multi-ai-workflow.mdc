@@ -1,0 +1,17 @@
+---
+description: Use the multi-AI development workflow for MinyanPays reviews and strategy.
+globs:
+  - "**/*"
+---
+
+# MinyanPays — multi-AI panel
+
+When the user asks for review, testing strategy, or input from “other AIs” / Copilot / Gemini / external assistants:
+
+1. **Default playbook:** Point them (and yourself) to **`docs/MULTI_AI_DEVELOPMENT_WORKFLOW.md`** — three lanes (Security/API, Product/directive, QA/ops), canonical doc paths, safe-sharing rules.
+
+2. **Before suggesting production steps:** Remind that **`VITE_API_BASE_URL`** is baked at **static build** time; **`ADMIN_PASSWORD`** / **`RABBI_PASSWORD`** live on the API service — never echo real secrets.
+
+3. **After substantive changes:** Offer to update **`PROJECT_STATUS.md`** and, if the backlog shifted, **`docs/CLAUDE_REVIEW_REPORT.md`**.
+
+4. **Scope:** MinyanPays attendance/payouts only unless the user explicitly expands scope — see **`docs/MINYANPAYS_COMPLETION_DIRECTIVE.md`** exclusions.

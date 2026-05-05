@@ -6,6 +6,8 @@ Planning and documentation for **minyan attendance**, **first-9 incentives**, **
 
 **Start here:** [PLAN.md](./PLAN.md) · **Programmer handoff (architecture, schema, API, issues):** [docs/PROGRAMMER_HANDOFF.md](./docs/PROGRAMMER_HANDOFF.md)
 
+**Multiple AI reviewers (Copilot, Gemini, Claude, etc.):** [docs/MULTI_AI_DEVELOPMENT_WORKFLOW.md](./docs/MULTI_AI_DEVELOPMENT_WORKFLOW.md) — lanes, prompts, cadence, safe sharing.
+
 **Mobile:** Web layout is tuned for iPhone-width screens with a bottom navigation bar.
 
 **Database:** Local SQLite by default; free cloud Postgres via [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md).

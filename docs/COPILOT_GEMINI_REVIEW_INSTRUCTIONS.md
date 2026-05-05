@@ -1,5 +1,7 @@
 # Instructions for GitHub Copilot & Google Gemini — Review & Test MinyanPays
 
+**Parent playbook (3+ AIs, lanes, cadence):** [MULTI_AI_DEVELOPMENT_WORKFLOW.md](./MULTI_AI_DEVELOPMENT_WORKFLOW.md).
+
 Use this document when you ask **Copilot** (in VS Code / Cursor / GitHub) or **Gemini** (web app, Android Studio, or **Gemini CLI**) to **review**, **reason about**, or **suggest tests** for this repository.
 
 ---
