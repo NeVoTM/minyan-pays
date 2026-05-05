@@ -1,5 +1,6 @@
 import { Router, type Request } from "express";
 import type { User } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { todayDateKeyInZone } from "../lib/dates.js";
@@ -29,10 +30,10 @@ type ResolveMemberResult =
 const pendingMsg =
   "This account is pending admin approval. You cannot check in until approved.";
 
-/** INSECURE — PIN not verified; phone + approved member only. */
 async function resolveVerifiedMember(
   organizationId: string,
-  phone: string
+  phone: string,
+  pinRaw?: string
 ): Promise<ResolveMemberResult> {
   const user = await prisma.user.findFirst({
     where: { phone, role: "MEMBER", organizationId },
@@ -47,6 +48,17 @@ async function resolveVerifiedMember(
   if (!user.isApproved) {
     return { ok: false, status: 403, error: pendingMsg };
   }
+  const pin = pinRaw?.trim();
+  if (!pin) {
+    return { ok: false, status: 401, error: "Invalid PIN" };
+  }
+  if (!user.pinHash) {
+    return { ok: false, status: 401, error: "PIN not set for this account." };
+  }
+  const ok = await bcrypt.compare(pin, user.pinHash);
+  if (!ok) {
+    return { ok: false, status: 401, error: "Invalid PIN" };
+  }
   return { ok: true, user };
 }
 
@@ -57,10 +69,17 @@ const punchIdentityBody = z
   })
   .superRefine((d, ctx) => {
     const phoneOk = (d.phone?.replace(/\D/g, "").length ?? 0) >= 10;
+    const pinOk = (d.pin?.trim().length ?? 0) >= 4;
     if (!phoneOk) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Enter a valid phone number.",
+      });
+    }
+    if (!pinOk) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter your PIN.",
       });
     }
   });
@@ -73,10 +92,17 @@ const punchOutBody = z
   })
   .superRefine((d, ctx) => {
     const phoneOk = (d.phone?.replace(/\D/g, "").length ?? 0) >= 10;
+    const pinOk = (d.pin?.trim().length ?? 0) >= 4;
     if (!phoneOk) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Enter a valid phone number.",
+      });
+    }
+    if (!pinOk) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter your PIN.",
       });
     }
   });
@@ -87,18 +113,29 @@ async function resolveMemberByPunchIdentity(
 ): Promise<ResolveMemberResult> {
   if (data.phone) {
     const phone = normalizePhone(data.phone);
-    return resolveVerifiedMember(orgId, phone);
+    return resolveVerifiedMember(orgId, phone, data.pin);
   }
   return { ok: false, status: 400, error: "Invalid request." };
 }
 
 async function resolveVerifiedMemberAnyOrganization(
-  phone: string
+  phone: string,
+  pinRaw?: string
 ): Promise<ResolveMemberResult[]> {
+  const pin = pinRaw?.trim();
+  if (!pin) {
+    return [{ ok: false, status: 401, error: "Invalid PIN" }];
+  }
   const users = await prisma.user.findMany({
     where: { phone, role: "MEMBER", isApproved: true },
   });
-  return users.map((user) => ({ ok: true as const, user }));
+  const checks = await Promise.all(
+    users.map(async (user) => {
+      const ok = user.pinHash ? await bcrypt.compare(pin, user.pinHash) : false;
+      return ok ? ({ ok: true as const, user } as ResolveMemberResult) : null;
+    })
+  );
+  return checks.filter((row): row is ResolveMemberResult => row !== null);
 }
 
 async function findLatestOpenAttendanceForUsers(userIds: string[]) {
@@ -220,7 +257,6 @@ punchRouter.post("/in", async (req, res) => {
   });
 });
 
-/** Public punch-out: phone identifies member (PIN checks disabled). */
 punchRouter.post("/out-location-default", async (req, res) => {
   const bodySchema = z.object({
     phone: z.string(),
@@ -233,7 +269,7 @@ punchRouter.post("/out-location-default", async (req, res) => {
   }
 
   const phone = normalizePhone(parsed.data.phone);
-  const matches = await resolveVerifiedMemberAnyOrganization(phone);
+  const matches = await resolveVerifiedMemberAnyOrganization(phone, parsed.data.pin);
   const matchedUsers = matches.flatMap((m) => (m.ok ? [m.user] : []));
   const openAttendance = await findLatestOpenAttendanceForUsers(
     matchedUsers.map((u) => u.id)
