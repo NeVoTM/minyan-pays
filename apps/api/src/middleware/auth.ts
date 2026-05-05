@@ -6,16 +6,25 @@ export type JwtPayload = {
   sub: string;
   role: "ADMIN" | "MEMBER" | "RABBI";
   organizationId: string;
+  /** Admin logged in with bootstrap password; must set a real password before other admin APIs. */
+  adminMustChangePassword?: boolean;
 };
 
-export function signAdminToken(organizationId: string): string {
+export function signAdminToken(
+  organizationId: string,
+  opts?: { adminMustChangePassword?: boolean }
+): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
-  return jwt.sign(
-    { sub: "admin", role: "ADMIN", organizationId },
-    secret,
-    { expiresIn: "24h" }
-  );
+  const payload: JwtPayload = {
+    sub: "admin",
+    role: "ADMIN",
+    organizationId,
+  };
+  if (opts?.adminMustChangePassword) {
+    payload.adminMustChangePassword = true;
+  }
+  return jwt.sign(payload, secret, { expiresIn: "24h" });
 }
 
 export function signRabbiToken(organizationId: string): string {
@@ -41,11 +50,21 @@ export function signMemberToken(userId: string, organizationId: string): string 
 export function verifyToken(token: string): JwtPayload {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
-  const p = jwt.verify(token, secret) as JwtPayload;
+  const p = jwt.verify(token, secret) as JwtPayload & {
+    adminMustChangePassword?: boolean;
+  };
   if (!p.organizationId) {
     throw new Error("Invalid token: missing organization");
   }
-  return p;
+  const out: JwtPayload = {
+    sub: p.sub,
+    role: p.role,
+    organizationId: p.organizationId,
+  };
+  if (p.adminMustChangePassword === true) {
+    out.adminMustChangePassword = true;
+  }
+  return out;
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction) {

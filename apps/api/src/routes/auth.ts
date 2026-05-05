@@ -9,6 +9,7 @@ import {
   signMemberToken,
   signRabbiToken,
 } from "../middleware/auth.js";
+import { getBootstrapAdminPlaintext } from "../lib/bootstrapAdminPassword.js";
 import {
   getOrganizationBySlug,
   normalizeOrgSlug,
@@ -39,17 +40,14 @@ authRouter.post("/admin", async (req, res) => {
     return;
   }
   const submitted = parsed.data.password.trim();
-  const expected = process.env.ADMIN_PASSWORD?.trim();
-  if (!submitted || !expected) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  if (!timingSafeEqualString(submitted, expected)) {
+  if (!submitted) {
     res.status(401).json({ error: "Invalid password" });
     return;
   }
 
-  let org = null;
+  const orgSelect = { id: true, slug: true, adminPasswordHash: true } as const;
+  let org: { id: string; slug: string; adminPasswordHash: string | null } | null =
+    null;
   const rawSlug = parsed.data.organizationSlug?.trim();
   if (rawSlug) {
     const slug = normalizeOrgSlug(rawSlug);
@@ -57,19 +55,46 @@ authRouter.post("/admin", async (req, res) => {
       res.status(400).json({ error: "Invalid organization slug." });
       return;
     }
-    org = await getOrganizationBySlug(slug);
+    org = await prisma.organization.findUnique({
+      where: { slug },
+      select: orgSelect,
+    });
     if (!org) {
       res.status(404).json({ error: "Unknown organization." });
       return;
     }
   } else {
-    org = await prisma.organization.findFirst({ orderBy: { slug: "asc" } });
+    org = await prisma.organization.findFirst({
+      orderBy: { slug: "asc" },
+      select: orgSelect,
+    });
     if (!org) {
       res.status(404).json({ error: "No organization configured." });
       return;
     }
   }
-  res.json({ token: signAdminToken(org.id), organizationSlug: org.slug });
+
+  let adminMustChangePassword = false;
+  if (org.adminPasswordHash) {
+    const ok = await bcrypt.compare(submitted, org.adminPasswordHash);
+    if (!ok) {
+      res.status(401).json({ error: "Invalid password" });
+      return;
+    }
+  } else {
+    const bootstrap = getBootstrapAdminPlaintext();
+    if (!timingSafeEqualString(submitted, bootstrap)) {
+      res.status(401).json({ error: "Invalid password" });
+      return;
+    }
+    adminMustChangePassword = true;
+  }
+
+  res.json({
+    token: signAdminToken(org.id, { adminMustChangePassword }),
+    organizationSlug: org.slug,
+    mustChangePassword: adminMustChangePassword,
+  });
 });
 
 authRouter.post("/rabbi", async (req, res) => {

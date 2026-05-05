@@ -29,19 +29,24 @@ export function AdminLogin() {
       return
     }
     try {
-      const r = await api<{ token: string; organizationSlug: string }>(
-        '/api/auth/admin',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            ...(organizationSlug ? { organizationSlug } : {}),
-            password: password.trim(),
-          }),
-        }
-      )
+      const r = await api<{
+        token: string
+        organizationSlug: string
+        mustChangePassword?: boolean
+      }>('/api/auth/admin', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...(organizationSlug ? { organizationSlug } : {}),
+          password: password.trim(),
+        }),
+      })
       setOrganizationSlug(r.organizationSlug)
       localStorage.setItem(KEY, r.token)
-      nav('/admin/app')
+      if (r.mustChangePassword) {
+        nav('/admin/change-password', { replace: true })
+      } else {
+        nav('/admin/app')
+      }
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('adminLogin.loginFailed'))
     }

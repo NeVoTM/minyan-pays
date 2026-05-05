@@ -71,6 +71,18 @@
     "chooseOrgFirst": "Choose a location first.",
     "loginFailed": "Login failed"
   },
+  "adminChangePassword": {
+    "title": "Set admin password",
+    "subtitle": "You signed in with the one-time default. Choose a new password (at least 8 characters) before using the dashboard.",
+    "newPassword": "New password",
+    "confirm": "Confirm new password",
+    "submit": "Save and continue",
+    "tooShort": "Use at least 8 characters.",
+    "mismatch": "Passwords do not match.",
+    "failed": "Could not update password.",
+    "noSession": "Sign in as admin first.",
+    "backLogin": "Back to admin sign-in"
+  },
   "memberLogin": {
     "title": "Welcome back",
     "subtitle": "Sign in with your phone and PIN (same number you registered).",

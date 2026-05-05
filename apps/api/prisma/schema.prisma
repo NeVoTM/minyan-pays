@@ -67,7 +67,7 @@ model Organization {
   defaultLocale    String           @default("he")
   /** When true, only members with preferredForCheckIn may punch in at this location. */
   checkInOnlyPreferred Boolean      @default(false)
-  /** Legacy; unused while password auth is disabled in API. */
+  /** Set after first admin login (replaces bootstrap password). Null = use bootstrap secret only. */
   adminPasswordHash String?
   /** Per-org rabbi menu password (bcrypt). */
   rabbiPasswordHash String?

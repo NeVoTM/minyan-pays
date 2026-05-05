@@ -1,6 +1,7 @@
 # Render Blueprint — apply in dashboard: New → Blueprint → connect repo.
 # API secrets: DATABASE_URL, JWT_SECRET, WEB_ORIGIN (comma-separated origins),
-# ADMIN_PASSWORD (required for POST /api/auth/admin), RABBI_PASSWORD (fallback if org has no rabbiPasswordHash).
+# ADMIN_BOOTSTRAP_PASSWORD or ADMIN_PASSWORD (optional overrides for default bootstrap 11213Aron when org has no adminPasswordHash).
+# RABBI_PASSWORD (fallback if org has no rabbiPasswordHash).
 # Static site: VITE_API_BASE_URL must be the API origin (e.g. https://minyan-pays.onrender.com) — required at build time.
 # Publish path is relative to rootDir: apps/web → dist means apps/web/dist (not repo-root dist).
 # https://render.com/docs/blueprint-spec

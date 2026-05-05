@@ -1,10 +1,15 @@
-import { Router, type Request } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import { pinHashFromOptionalPin } from "../lib/pinHash.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { authMiddleware, requireAdmin, type JwtPayload } from "../middleware/auth.js";
+import {
+  authMiddleware,
+  requireAdmin,
+  signAdminToken,
+  type JwtPayload,
+} from "../middleware/auth.js";
 import { todayDateKeyInZone } from "../lib/dates.js";
 import {
   computeAllMembersWeekSummary,
@@ -24,6 +29,68 @@ import { normalizeOrgSlug } from "../lib/organizationService.js";
 export const adminRouter = Router();
 adminRouter.use(authMiddleware);
 adminRouter.use(requireAdmin);
+
+const adminChangePasswordBody = z.object({
+  newPassword: z.string().min(8).max(128),
+  currentPassword: z.string().optional(),
+});
+
+/** Set or rotate admin password (bcrypt on Organization). Bootstrap sessions skip current password. */
+adminRouter.post("/account/password", async (req, res) => {
+  const parsed = adminChangePasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const auth = (req as Request & { auth: JwtPayload }).auth;
+  const oid = auth.organizationId;
+  const org = await prisma.organization.findUnique({
+    where: { id: oid },
+    select: { adminPasswordHash: true },
+  });
+  if (!org) {
+    res.status(404).json({ error: "Organization not found" });
+    return;
+  }
+
+  if (auth.adminMustChangePassword !== true) {
+    const cur = parsed.data.currentPassword?.trim();
+    if (!cur) {
+      res.status(400).json({ error: "Current password required" });
+      return;
+    }
+    if (!org.adminPasswordHash) {
+      res.status(400).json({ error: "Invalid state" });
+      return;
+    }
+    const ok = await bcrypt.compare(cur, org.adminPasswordHash);
+    if (!ok) {
+      res.status(401).json({ error: "Invalid current password" });
+      return;
+    }
+  }
+
+  const hash = await bcrypt.hash(parsed.data.newPassword, 10);
+  await prisma.organization.update({
+    where: { id: oid },
+    data: { adminPasswordHash: hash },
+  });
+  res.json({
+    token: signAdminToken(oid, { adminMustChangePassword: false }),
+  });
+});
+
+adminRouter.use((req: Request, res: Response, next: NextFunction) => {
+  const auth = (req as Request & { auth?: JwtPayload }).auth;
+  if (auth?.role === "ADMIN" && auth.adminMustChangePassword === true) {
+    res.status(403).json({
+      error: "Change admin password before continuing.",
+      code: "ADMIN_PASSWORD_CHANGE_REQUIRED",
+    });
+    return;
+  }
+  next();
+});
 
 function orgId(req: Request): string {
   return (req as Request & { auth: JwtPayload }).auth.organizationId;

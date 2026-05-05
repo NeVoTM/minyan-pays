@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { adminTokenMustChangePassword } from '../lib/adminJwt'
 import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
@@ -167,6 +168,13 @@ export function AdminDashboard() {
   const nav = useNavigate()
   const { refreshOrganizations } = useOrg()
   const token = localStorage.getItem(KEY)
+
+  useEffect(() => {
+    if (adminTokenMustChangePassword(token)) {
+      nav('/admin/change-password', { replace: true })
+    }
+  }, [token, nav])
+
   const [members, setMembers] = useState<MemberRow[]>([])
   const [settings, setSettings] = useState<{
     slug: string
@@ -279,7 +287,15 @@ export function AdminDashboard() {
       setTodaySession(sess)
       setErr(null)
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : t('admin.loadFailed'))
+      const msg = e instanceof Error ? e.message : ''
+      if (
+        msg.includes('ADMIN_PASSWORD_CHANGE_REQUIRED') ||
+        msg.includes('Change admin password')
+      ) {
+        nav('/admin/change-password', { replace: true })
+        return
+      }
+      setErr(msg || t('admin.loadFailed'))
     }
   }, [token, nav, t])
 

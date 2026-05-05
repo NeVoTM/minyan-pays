@@ -20,9 +20,9 @@ Ship **MinyanPays** only (minyan attendance, rabbi confirm/reject, treasury, Zel
 
 ## Auth & security (current code)
 
-- **`POST /api/auth/admin`** — requires **`ADMIN_PASSWORD`** (env).
+- **`POST /api/auth/admin`** — if **`Organization.adminPasswordHash`** exists, bcrypt check; else **bootstrap** password: **`ADMIN_BOOTSTRAP_PASSWORD`** → **`ADMIN_PASSWORD`** → default **`11213Aron`**. Bootstrap issues JWT with **`adminMustChangePassword`**; **`POST /api/admin/account/password`** sets hash and clears flag; other admin routes **403** until then.
 - **`POST /api/auth/rabbi`** — **`Organization.rabbiPasswordHash`** if set, else **`RABBI_PASSWORD`** (env).
-- **`POST /api/auth/member`** — requires **PIN**; **`bcrypt.compare`** vs **`User.pinHash`**.
+- **`POST /api/auth/member`** — **PIN** + **`User.pinHash`** (bcrypt).
 - JWT **`expiresIn`:** **24h**; payload includes **`organizationId`** and role (`middleware/auth.ts`).
 
 ## Deployment notes

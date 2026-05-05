@@ -8,6 +8,7 @@ import { PunchMenu } from './pages/PunchMenu'
 import { PunchIn } from './pages/PunchIn'
 import { PunchOut } from './pages/PunchOut'
 import { AdminLogin } from './pages/AdminLogin'
+import { AdminChangePassword } from './pages/AdminChangePassword'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { RabbiLogin } from './pages/RabbiLogin'
 import { RabbiDashboard } from './pages/RabbiDashboard'
@@ -205,6 +206,10 @@ export default function App() {
             <Route path="/punch/in" element={<PunchIn />} />
             <Route path="/punch/out" element={<PunchOut />} />
             <Route path="/admin" element={<AdminLogin />} />
+            <Route
+              path="/admin/change-password"
+              element={<AdminChangePassword />}
+            />
             <Route path="/admin/app" element={<AdminDashboard />} />
             <Route path="/rabbi" element={<RabbiLogin />} />
             <Route path="/rabbi/app" element={<RabbiDashboard />} />
