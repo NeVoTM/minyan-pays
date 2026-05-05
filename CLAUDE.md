@@ -16,8 +16,6 @@
 
 Ship **MinyanPays** only (minyan attendance, rabbi confirm/reject, treasury, Zelle-oriented export). Full backlog: **`docs/MINYANPAYS_COMPLETION_DIRECTIVE.md`**. Architecture: **`docs/PROGRAMMER_HANDOFF.md`**. Status snapshot: **`docs/CLAUDE_REVIEW_REPORT.md`**. First-run Q&A (if CLI not logged in): **`docs/CLAUDE_CODE_FIRST_RUN_SUMMARY.md`**. **Copilot / Gemini:** **`docs/COPILOT_GEMINI_REVIEW_INSTRUCTIONS.md`**.
 
-**Always-on multi-AI review process (3+ platforms):** **`docs/MULTI_AI_DEVELOPMENT_WORKFLOW.md`** (lanes, prompts, cadence, optional `docs/reviews/` notes).
-
 ## Auth & security (current code)
 
 - **`POST /api/auth/admin`** — requires **`ADMIN_PASSWORD`** (env).
