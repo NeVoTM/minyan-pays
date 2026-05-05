@@ -3,6 +3,7 @@
  * DATABASE_URL: postgresql://minyan:minyan@127.0.0.1:5433/minyan_pays
  */
 import EmbeddedPostgres from 'embedded-postgres'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -19,7 +20,11 @@ const pg = new EmbeddedPostgres({
   persistent: true,
 })
 
-await pg.initialise()
+// `initialise()` runs initdb — fails if `.embedded-pg` already has a cluster (non-empty).
+const clusterReady = fs.existsSync(path.join(dataDir, 'PG_VERSION'))
+if (!clusterReady) {
+  await pg.initialise()
+}
 await pg.start()
 try {
   await pg.createDatabase('minyan_pays')
