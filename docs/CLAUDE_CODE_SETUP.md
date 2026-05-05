@@ -64,13 +64,33 @@ You should see `PROGRAMMER_HANDOFF.md`, `CLAUDE_REVIEW_REPORT.md`, `MINYANPAYS_C
 
 ---
 
+## STEP 3b — Login once (required)
+
+If you see **`Not logged in · Please run /login`** when using **`claude -p`** or **`claude`**:
+
+```powershell
+claude auth login
+```
+
+Follow the browser / terminal prompts. Then **`claude auth status`** should show signed in.
+
+---
+
 ## STEP 4 — Launch Claude Code
 
 ```powershell
 claude
 ```
 
-First run may ask for **Anthropic login / API key** — complete in the terminal.
+Or non-interactive one-shot (after login):
+
+```powershell
+claude -p "Read docs/CLAUDE_REVIEW_REPORT.md and summarize Critical vs High issues."
+```
+
+---
+
+**Offline equivalent:** If you cannot log in yet, read **`docs/CLAUDE_CODE_FIRST_RUN_SUMMARY.md`** — same first-run Q&A generated in-repo.
 
 ---
 

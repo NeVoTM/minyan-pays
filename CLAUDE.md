@@ -14,7 +14,7 @@
 
 ## Priority
 
-Ship **MinyanPays** only (minyan attendance, rabbi confirm/reject, treasury, Zelle-oriented export). Full backlog: **`docs/MINYANPAYS_COMPLETION_DIRECTIVE.md`**. Architecture: **`docs/PROGRAMMER_HANDOFF.md`**. Status snapshot: **`docs/CLAUDE_REVIEW_REPORT.md`**.
+Ship **MinyanPays** only (minyan attendance, rabbi confirm/reject, treasury, Zelle-oriented export). Full backlog: **`docs/MINYANPAYS_COMPLETION_DIRECTIVE.md`**. Architecture: **`docs/PROGRAMMER_HANDOFF.md`**. Status snapshot: **`docs/CLAUDE_REVIEW_REPORT.md`**. First-run Q&A (if CLI not logged in): **`docs/CLAUDE_CODE_FIRST_RUN_SUMMARY.md`**.
 
 ## Auth & security (current code)
 
