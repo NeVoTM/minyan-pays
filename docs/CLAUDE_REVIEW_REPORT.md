@@ -13,7 +13,7 @@ This document summarizes:
 - What **remains** to build or verify.
 - **Operational steps** you must perform outside git (Render dashboard, secrets).
 
-Canonical product/tech context remains **`docs/PROGRAMMER_HANDOFF.md`** (`*Last updated: 2026-05-03*`).
+Canonical product/tech context remains **`docs/PROGRAMMER_HANDOFF.md`** (`*Last updated: 2026-05-03*`). The completion directive is **`docs/MINYANPAYS_COMPLETION_DIRECTIVE.md`** (same content as the sprint PDF / pasted directive).
 
 ---
 
