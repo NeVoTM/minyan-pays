@@ -23,5 +23,6 @@
 ## Notes / Context
 
 - **Reviewer report:** Full sprint summary for double-checking (done vs remaining vs ops) — **`docs/CLAUDE_REVIEW_REPORT.md`**.
+- **Claude Code:** CLI installed globally; launch steps — **`docs/CLAUDE_CODE_SETUP.md`**. Sprint directive — **`docs/MINYANPAYS_COMPLETION_DIRECTIVE.md`** (in repo for tooling).
 - Health check returns **`{ ok: true, service: "minyan-pays-api" }`** (not `{ status: "ok" }`).
 - **`lucide-react`** is not in **`apps/web/package.json`** yet — Task 8 / design system will add it.
