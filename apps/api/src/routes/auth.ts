@@ -38,8 +38,8 @@ authRouter.post("/admin", async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const submitted = parsed.data.password;
-  const expected = process.env.ADMIN_PASSWORD;
+  const submitted = parsed.data.password.trim();
+  const expected = process.env.ADMIN_PASSWORD?.trim();
   if (!submitted || !expected) {
     res.status(401).json({ error: "Unauthorized" });
     return;
@@ -96,12 +96,12 @@ authRouter.post("/rabbi", async (req, res) => {
     return;
   }
 
-  const password = parsed.data.password;
+  const password = parsed.data.password.trim();
   let ok = false;
   if (org.rabbiPasswordHash) {
     ok = await bcrypt.compare(password, org.rabbiPasswordHash);
   } else {
-    const fallback = process.env.RABBI_PASSWORD;
+    const fallback = process.env.RABBI_PASSWORD?.trim();
     if (fallback) {
       ok = timingSafeEqualString(password, fallback);
     }
