@@ -23,6 +23,7 @@
   - `.cursor/hooks.json` + `.cursor/hooks/git-reminder.ps1` now add a `beforeSubmitPrompt` reminder when changes are large/stale (10+ changed files or ~1 hour since last commit), prompting a checkpoint commit.
   - Policy is reminder-only and does **not** auto-push.
 - **Documentation updated:** `docs/PROGRAMMER_HANDOFF.md` now includes `## 13. Standing Cursor policies` describing the rule/hook files and behavior.
+- **Hotfix after live retest:** `apps/web/src/components/PunchIdentityForm.tsx` now renders explicit phone + PIN labeled inputs side-by-side (including mobile) so PIN cannot appear missing. `apps/web/src/api.ts` now maps Zod validation payloads (`formErrors`/`fieldErrors`) to human-readable error text instead of raw JSON blobs.
 
 ## What's Next / Blockers
 
