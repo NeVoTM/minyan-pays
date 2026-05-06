@@ -165,9 +165,9 @@ export function PunchIdentityForm({ mode }: Props) {
               ))}
             </select>
           </label>
-          <label className="block">
-            <span className={fieldLabel}>{t('memberLogin.phone')}</span>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className={fieldLabel}>{t('memberLogin.phone')}</span>
               <PhoneInput
                 className={pillInput}
                 value={phoneDigits}
@@ -180,6 +180,9 @@ export function PunchIdentityForm({ mode }: Props) {
                 autoComplete="new-password"
                 inputName={`punch-${mode}-phone-new`}
               />
+            </label>
+            <label className="block">
+              <span className={fieldLabel}>{t('memberLogin.pin')}</span>
               <input
                 type="password"
                 inputMode="numeric"
@@ -187,18 +190,20 @@ export function PunchIdentityForm({ mode }: Props) {
                 className={pillInput}
                 value={pin}
                 onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder={t('memberLogin.pin')}
+                placeholder="••••"
                 aria-label={t('memberLogin.pin')}
                 autoComplete="new-password"
                 name={`punch-${mode}-pin-new`}
               />
-            </div>
+            </label>
+          </div>
+          <div>
             {phoneDigits.length > 10 && (
               <p className="mt-1 text-[11px] text-amber-700">
                 International format: country code - territory code - city code - local tel#
               </p>
             )}
-          </label>
+          </div>
         </div>
 
         {err && (
