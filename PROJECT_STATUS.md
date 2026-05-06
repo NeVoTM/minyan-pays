@@ -27,6 +27,7 @@
 
 ## What's Next / Blockers
 
+- **Deploy source of truth (critical):** This repo has two Git remotes — **`origin`** → `github.com/NeVoTM/minyan-pays` (what **minyanpays.com / Render** typically builds from) and **`cur`** → `github.com/NeVoTM/minyan-pays-cur`. Pushing only to **`cur`** leaves production on old UI until **`git push origin main`** runs (done **2026-05-06** after “no change on web” report). **Habit:** push both, or set Render to the single repo you actually use.
 - **Policy decision locked:** Keep **central-admin model** for now — one admin may manage all locations (`/api/admin/organizations` global list/create accepted behavior).
 - **Local dev habit:** Keep **`npm run db:local`** running in one terminal (or use your own Postgres matching **`DATABASE_URL`**) before **`npm run dev`**. If Vite says port **5173** is in use, open the URL it prints (e.g. **5174**). If **`db:local`** exits with **`postmaster.pid` already exists**, embedded Postgres is already running for that data dir — do not start a second copy; stop the existing process first if you need a clean restart.
 - **Render dashboard (manual):** Set **`VITE_API_BASE_URL`** on the static service to the live API origin (e.g. `https://minyan-pays.onrender.com`), set **`ADMIN_PASSWORD`** / **`RABBI_PASSWORD`** on the API service, **redeploy both** so the browser bundle embeds the API URL and logins work.
