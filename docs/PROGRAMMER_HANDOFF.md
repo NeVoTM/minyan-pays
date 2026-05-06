@@ -182,7 +182,7 @@ Typical (see `apps/api/.env.example`):
 
 - `DATABASE_URL` — PostgreSQL connection string.
 - `JWT_SECRET` — sign JWTs.
-- `ADMIN_PASSWORD` — may be present in examples or older deploy docs; **not wired in `auth.ts` until password checks are re-enabled** (see §3 Security).
+- `ADMIN_PASSWORD` — used as bootstrap fallback when `Organization.adminPasswordHash` is unset (after `ADMIN_BOOTSTRAP_PASSWORD` if present); see §3 Security.
 - `WEB_ORIGIN` — allowed web origin(s), comma-separated for multiple.
 - `MEMBER_VERIFICATION_ECHO_CODE` — optional dev aid for SMS verification JSON.
 - Port: `PORT` (Render injects).
@@ -203,6 +203,14 @@ Use **[PROJECT_STATUS.md](../PROJECT_STATUS.md)** for the live checklist. Standi
 - **Legacy docs:** [PROGRAM-SUMMARY.md](./PROGRAM-SUMMARY.md) still mentions SQLite/AppSettings in places — **false**; use Prisma schema (banner is on **Organization**).
 - **Payment rails:** Real Zelle pushes are not automated via a stable public API; app focuses on ledger + export + processes outside the app ([PLAN.md](../PLAN.md)).
 
+### Debugging issues
+
+- **Punch form PIN field was missing in public flow UI:** Backend already enforced PIN on punch endpoints, but `PunchIdentityForm` only showed/sent phone + location. Fix: add inline PIN input on the same row as phone and include `pin` in `/api/punch/in`, `/api/punch/out-public`, and `/api/punch/out-location-default` payloads.
+- **Same PIN omission affected check-out:** Because check-in/check-out share `PunchIdentityForm`, both routes were impacted; verify both `/punch/in` and `/punch/out` after any identity-form UI changes.
+- **Browser autofill pre-populated phone/PIN unexpectedly:** Login/punch fields could start with remembered values. Fix: force blank state on mount and use anti-autofill attributes (`autoComplete="new-password"` + unique `name` values) on phone/PIN inputs.
+- **Page/menu content hidden behind fixed bottom nav on some screens:** App shell used `min-h-dvh` + fixed nav, which could leave lower content inaccessible depending on viewport/scroll behavior. Fix: use viewport-locked shell (`h-dvh max-h-dvh overflow-hidden`) and route scrolling through `<main>` (`min-h-0 overflow-y-auto` + bottom padding).
+- **Regression checklist for similar screens/menus:** when fixing one screen, re-test `Punch in`, `Punch out`, `Member login`, `Member billing`, `Member dashboard`, `Rabbi dashboard`, and `Admin dashboard` for (1) reachable bottom content, (2) scroll works, (3) no hidden controls behind bottom nav, (4) no unintended autofill defaults.
+
 ---
 
 ## 11. Testing and quality
@@ -216,6 +224,15 @@ Use **[PROJECT_STATUS.md](../PROJECT_STATUS.md)** for the live checklist. Standi
 
 - Repo: `NeVoTM/minyan-pays` (private).
 - Production URLs documented in `RENDER_DEPLOYMENT.md` (e.g. API on Render, static site, **minyanpays.com**).
+
+---
+
+## 13. Standing Cursor policies
+
+- **Rule:** `.cursor/rules/standing-debug-policy.mdc` (always apply) enforces cross-screen regression checks and requires logging recurring issues in docs/status.
+- **Hook config:** `.cursor/hooks.json` enables a `beforeSubmitPrompt` hook.
+- **Hook script:** `.cursor/hooks/git-reminder.ps1` reminds when working tree is large/stale (10+ changed files, or ~1+ hour since last commit) and tells the agent to checkpoint with a commit.
+- **Safety:** policy is reminder-only; no auto-push. Push remains explicit/manual by user request.
 
 ---
 

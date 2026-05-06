@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
@@ -23,6 +23,12 @@ export function MemberLogin() {
   const [pinDigits, setPinDigits] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const nav = useNavigate()
+
+  useEffect(() => {
+    // Force blank defaults on each page load/mount (avoid browser carry-over).
+    setPhoneDigits('')
+    setPinDigits('')
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,7 +87,8 @@ export function MemberLogin() {
               value={phoneDigits}
               onChange={setPhoneDigits}
               required
-              autoComplete="off"
+              autoComplete="new-password"
+              inputName="member-login-phone-new"
             />
           </label>
           <label className="block">
@@ -89,8 +96,8 @@ export function MemberLogin() {
             <input
               type="password"
               inputMode="numeric"
-              autoComplete="current-password"
-              name="pin"
+              autoComplete="new-password"
+              name="member-login-pin-new"
               className={pillInput}
               value={pinDigits}
               onChange={(e) =>

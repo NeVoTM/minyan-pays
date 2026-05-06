@@ -1,0 +1,23 @@
+---
+description: Standing UI debug and regression policy
+alwaysApply: true
+---
+
+# Standing Debug Policy
+
+When fixing a UI or flow issue:
+
+- Re-test similar screens/menus that share the same layout or component patterns.
+- For menu/layout issues, verify `Punch in`, `Punch out`, `Member login`, `Member billing`, `Member dashboard`, `Rabbi dashboard`, and `Admin dashboard`.
+- Confirm: page scroll works, bottom content is reachable, controls are not hidden by fixed nav, and defaults/autofill are correct.
+
+When a new recurring issue is discovered:
+
+- Append it under `Debugging issues` in `docs/PROGRAMMER_HANDOFF.md`.
+- Add a short entry in `PROJECT_STATUS.md` with what changed and what to re-test next.
+
+Commit hygiene policy:
+
+- If changes are substantial, propose a commit.
+- If there are many edits (around 10+ files) or long elapsed time (~1 hour), remind to checkpoint with a commit.
+- Never auto-push without explicit user instruction.

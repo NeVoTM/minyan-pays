@@ -118,7 +118,7 @@ export default function App() {
     return (
       <BrowserRouter>
         <div
-          className="flex min-h-dvh flex-col overflow-x-hidden bg-[#f3f4f6] text-slate-900"
+          className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f3f4f6] text-slate-900"
           dir={isRtl ? 'rtl' : 'ltr'}
         >
           {deployBanner && (
@@ -144,7 +144,7 @@ export default function App() {
               <LangToggle />
             </div>
           </header>
-          <main className="mx-auto w-full max-w-md min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 sm:px-4">
+          <main className="mx-auto w-full max-w-md min-w-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 sm:px-4">
             {organizations.length === 0 ? (
               deployBanner ? null : (
                 <p className="text-center text-sm text-slate-600">
@@ -166,7 +166,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div
-        className="flex min-h-dvh flex-col overflow-x-hidden bg-[#f3f4f6] text-slate-900"
+        className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f3f4f6] text-slate-900"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {deployBanner && (
@@ -199,7 +199,7 @@ export default function App() {
           </div>
         </header>
         <RabbiBanner text={pub?.rabbiBanner} />
-        <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+        <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(7rem+env(safe-area-inset-bottom))]">
           <Routes>
             <Route path="/" element={<Navigate to="/punch" replace />} />
             <Route path="/punch" element={<PunchMenu />} />

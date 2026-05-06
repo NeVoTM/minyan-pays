@@ -34,6 +34,7 @@ export function PunchIdentityForm({ mode }: Props) {
   const { organizations, organizationSlug } = useOrg()
   const { setPunchInHeaderTitle } = usePunchHeader()
   const [phoneDigits, setPhoneDigits] = useState('')
+  const [pin, setPin] = useState('')
   const [locationSlug, setLocationSlug] = useState<string>('')
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -59,6 +60,7 @@ export function PunchIdentityForm({ mode }: Props) {
   useEffect(() => {
     if (mode !== 'out') return
     if (phoneDigits.length < 10) return
+    if (pin.trim().length < 4) return
     void (async () => {
       try {
         const r = await api<{
@@ -67,7 +69,7 @@ export function PunchIdentityForm({ mode }: Props) {
           locationAddress: string | null
         }>('/api/punch/out-location-default', {
           method: 'POST',
-          body: JSON.stringify({ phone: phoneDigits }),
+          body: JSON.stringify({ phone: phoneDigits, pin }),
           orgSlug: null,
         })
         setLocationSlug(r.organizationSlug)
@@ -75,9 +77,9 @@ export function PunchIdentityForm({ mode }: Props) {
         /* keep manual selection */
       }
     })()
-  }, [mode, phoneDigits])
+  }, [mode, phoneDigits, pin])
 
-  const canSubmit = phoneDigits.length >= 10
+  const canSubmit = phoneDigits.length >= 10 && pin.trim().length >= 4
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -87,8 +89,13 @@ export function PunchIdentityForm({ mode }: Props) {
       setErr(t('punchCommon.phoneRequired'))
       return
     }
+    if (pin.trim().length < 4) {
+      setErr(t('memberLogin.pinInvalid'))
+      return
+    }
     const body: Record<string, string> = {
       phone: phoneDigits,
+      pin,
       organizationSlug: locationSlug,
     }
 
@@ -118,6 +125,7 @@ export function PunchIdentityForm({ mode }: Props) {
         setMsg(t('punchOut.success', { name: r.displayName, when }))
       }
       setPhoneDigits('')
+      setPin('')
     } catch (e: unknown) {
       setMsg(null)
       setErr(e instanceof Error ? e.message : t('punchOut.error'))
@@ -159,17 +167,32 @@ export function PunchIdentityForm({ mode }: Props) {
           </label>
           <label className="block">
             <span className={fieldLabel}>{t('memberLogin.phone')}</span>
-            <PhoneInput
-              className={pillInput}
-              value={phoneDigits}
-              onChange={(d) => {
-                setPhoneDigits(d)
-              }}
-              maxDigits={15}
-              formatMode="intl"
-              placeholder="123-456-7890"
-              autoComplete="off"
-            />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <PhoneInput
+                className={pillInput}
+                value={phoneDigits}
+                onChange={(d) => {
+                  setPhoneDigits(d)
+                }}
+                maxDigits={15}
+                formatMode="intl"
+                placeholder="123-456-7890"
+                autoComplete="new-password"
+                inputName={`punch-${mode}-phone-new`}
+              />
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className={pillInput}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder={t('memberLogin.pin')}
+                aria-label={t('memberLogin.pin')}
+                autoComplete="new-password"
+                name={`punch-${mode}-pin-new`}
+              />
+            </div>
             {phoneDigits.length > 10 && (
               <p className="mt-1 text-[11px] text-amber-700">
                 International format: country code - territory code - city code - local tel#

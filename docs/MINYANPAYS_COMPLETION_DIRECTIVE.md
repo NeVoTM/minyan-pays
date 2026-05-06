@@ -79,8 +79,8 @@ In Render dashboard → your API web service:
 
 File: `apps/api/src/routes/auth.ts`
 
-The handoff doc states password and PIN checks are currently **disabled**.
-Restore all three before any real users touch this:
+Historical note: this section was written when auth checks were disabled.
+Current code has restored credential enforcement (admin/rabbi/member). Keep this section as security intent and re-verify behavior before launch:
 
 ### 2a. Admin login
 ```typescript
