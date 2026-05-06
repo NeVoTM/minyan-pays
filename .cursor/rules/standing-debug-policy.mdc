@@ -5,10 +5,36 @@ alwaysApply: true
 
 # Standing Debug Policy
 
+## MinyanPays screens (minyanpays.com)
+
+Numbered list matches `apps/web/src/App.tsx` routes and pre-route shells. Base URL: `https://minyanpays.com`.
+
+1. **App loading** — full-page spinner while org list loads (no path yet).
+2. **Empty locations** — message when no organizations exist (dev/setup); same shell as org flow, no slug selected.
+3. **Choose location** — org picker (`OrgPicker`) when locations exist but none selected yet (no React Router path; before main app shell).
+4. **`/`** — redirects to `/punch` (no standalone UI).
+5. **Punch menu** — `https://minyanpays.com/punch` — check-in/out hub.
+6. **Punch in** — `https://minyanpays.com/punch/in` — public check-in (phone + PIN).
+7. **Punch out** — `https://minyanpays.com/punch/out` — public check-out (phone + PIN).
+8. **Admin login** — `https://minyanpays.com/admin`.
+9. **Admin change password** — `https://minyanpays.com/admin/change-password` — forced first-time password change.
+10. **Admin dashboard** — `https://minyanpays.com/admin/app` — hub (today, member, rabbi, location) + modals.
+11. **Rabbi login** — `https://minyanpays.com/rabbi`.
+12. **Rabbi dashboard** — `https://minyanpays.com/rabbi/app` — tabs (today, members, payouts, banner) + member edit overlay.
+13. **Member hub** — `https://minyanpays.com/member` — join / view member entry.
+14. **Member login** — `https://minyanpays.com/member/login`.
+15. **Member signup** — `https://minyanpays.com/member/signup`.
+16. **Member dashboard (balance)** — `https://minyanpays.com/member/app`.
+17. **Member profile** — `https://minyanpays.com/member/profile`.
+18. **Member billing** — `https://minyanpays.com/member/billing`.
+19. **Unknown path** — any other path redirects to `/punch` (catch-all).
+
+*Note:* Admin and Rabbi dashboards open **modals/overlays** (add/edit member, rabbi, location, etc.) without changing the URL — regression tests should exercise those flows from screens **10** and **12**.
+
 When fixing a UI or flow issue:
 
-- Re-test similar screens/menus that share the same layout or component patterns.
-- For menu/layout issues, verify `Punch in`, `Punch out`, `Member login`, `Member billing`, `Member dashboard`, `Rabbi dashboard`, and `Admin dashboard`.
+- Re-test **similar** numbered screens (same shell: punch trio, member trio, auth pair, dashboards with bottom nav).
+- For layout/scroll/bottom-nav issues, spot-check **5–7**, **13–18**, **10**, and **12** at minimum.
 - Confirm: page scroll works, bottom content is reachable, controls are not hidden by fixed nav, and defaults/autofill are correct.
 
 When a new recurring issue is discovered:

@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-06*
+*Last updated: 2026-05-08*
 
 ## Current Task / Goal
 
@@ -19,7 +19,7 @@
 - **Global scroll/menu visibility fix:** `apps/web/src/App.tsx` now uses a viewport-locked shell (`h-dvh max-h-dvh overflow-hidden`) with scroll delegated to `main` (`min-h-0 overflow-y-auto`, larger bottom safe-area padding) so pages like Member Billing can scroll fully above the fixed bottom navigation.
 - **Debug handoff notes added:** `docs/PROGRAMMER_HANDOFF.md` now includes `### Debugging issues` with this chat’s recurring problems (missing PIN in punch flows, autofill defaults, scroll hidden behind bottom nav) and a cross-screen regression checklist.
 - **Standing policies added (Cursor):**
-  - `.cursor/rules/standing-debug-policy.mdc` (always-apply rule) now enforces cross-screen/menu regression checks and requires documenting recurring bugs.
+  - `.cursor/rules/standing-debug-policy.mdc` (always-apply rule) now enforces cross-screen/menu regression checks and requires documenting recurring bugs; includes a **numbered inventory of all minyanpays.com screens** (routes + pre-route shells) for regression targeting.
   - `.cursor/hooks.json` + `.cursor/hooks/git-reminder.ps1` now add a `beforeSubmitPrompt` reminder when changes are large/stale (10+ changed files or ~1 hour since last commit), prompting a checkpoint commit.
   - Policy is reminder-only and does **not** auto-push.
 - **Documentation updated:** `docs/PROGRAMMER_HANDOFF.md` now includes `## 13. Standing Cursor policies` describing the rule/hook files and behavior.
