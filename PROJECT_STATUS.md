@@ -24,6 +24,7 @@
   - Policy is reminder-only and does **not** auto-push.
 - **Documentation updated:** `docs/PROGRAMMER_HANDOFF.md` now includes `## 13. Standing Cursor policies` describing the rule/hook files and behavior.
 - **Hotfix after live retest:** `apps/web/src/components/PunchIdentityForm.tsx` now renders explicit phone + PIN labeled inputs side-by-side (including mobile) so PIN cannot appear missing. `apps/web/src/api.ts` now maps Zod validation payloads (`formErrors`/`fieldErrors`) to human-readable error text instead of raw JSON blobs.
+- **iPhone viewport / scroll shell:** Removed `body` safe-area padding + full-viewport inner height combo that could make the first paint **taller/wider than the visible screen** until Safari reflowed. `html`/`body`/`#root` now use a flex height chain with `overflow-x: hidden`, safe-area only on the top chrome wrapper in `App.tsx`, and `main` uses `app-scroll-main` (`-webkit-overflow-scrolling: touch`, `overscroll-behavior-y: contain`) with extra bottom padding above the fixed tab bar (`pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))]`). `index.html` viewport adds `interactive-widget=resizes-content` for mobile keyboard behavior.
 
 ## What's Next / Blockers
 

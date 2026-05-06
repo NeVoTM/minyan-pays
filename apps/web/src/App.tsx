@@ -108,7 +108,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-[#f3f4f6] text-slate-600">
+      <div className="flex w-full flex-1 flex-col items-center justify-center bg-[#f3f4f6] text-slate-600">
         …
       </div>
     )
@@ -118,33 +118,35 @@ export default function App() {
     return (
       <BrowserRouter>
         <div
-          className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f3f4f6] text-slate-900"
+          className="flex w-full flex-1 min-h-0 flex-col overflow-hidden bg-[#f3f4f6] text-slate-900"
           dir={isRtl ? 'rtl' : 'ltr'}
         >
-          {deployBanner && (
-            <div
-              role="status"
-              className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-950 sm:px-4"
-            >
-              {deployBanner === 'missingVite'
-                ? t('app.deployMissingApiBase')
-                : t('app.deployBadResponse')}
-            </div>
-          )}
-          <header className="shrink-0 border-b border-slate-200/80 bg-white px-3 py-3 shadow-sm sm:px-4">
-            <div className="mx-auto flex max-w-md min-w-0 items-start justify-between gap-2 sm:gap-3">
-              <div className="min-w-0">
-                <span className="block text-lg font-bold tracking-tight text-blue-600">
-                  {t('app.title')}
-                </span>
-                <span className="text-[11px] font-medium text-slate-500 sm:text-xs">
-                  {t('app.subtitle')}
-                </span>
+          <div className="shrink-0 bg-white pt-[env(safe-area-inset-top,0px)]">
+            {deployBanner && (
+              <div
+                role="status"
+                className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-950 sm:px-4"
+              >
+                {deployBanner === 'missingVite'
+                  ? t('app.deployMissingApiBase')
+                  : t('app.deployBadResponse')}
               </div>
-              <LangToggle />
-            </div>
-          </header>
-          <main className="mx-auto w-full max-w-md min-w-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 sm:px-4">
+            )}
+            <header className="border-b border-slate-200/80 px-3 py-3 shadow-sm sm:px-4">
+              <div className="mx-auto flex max-w-md min-w-0 items-start justify-between gap-2 sm:gap-3">
+                <div className="min-w-0">
+                  <span className="block text-lg font-bold tracking-tight text-blue-600">
+                    {t('app.title')}
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-500 sm:text-xs">
+                    {t('app.subtitle')}
+                  </span>
+                </div>
+                <LangToggle />
+              </div>
+            </header>
+          </div>
+          <main className="app-scroll-main mx-auto w-full max-w-md min-w-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 sm:px-4">
             {organizations.length === 0 ? (
               deployBanner ? null : (
                 <p className="text-center text-sm text-slate-600">
@@ -166,40 +168,42 @@ export default function App() {
   return (
     <BrowserRouter>
       <div
-        className="flex h-dvh max-h-dvh flex-col overflow-hidden bg-[#f3f4f6] text-slate-900"
+        className="flex w-full flex-1 min-h-0 flex-col overflow-hidden bg-[#f3f4f6] text-slate-900"
         dir={isRtl ? 'rtl' : 'ltr'}
       >
-        {deployBanner && (
-          <div
-            role="status"
-            className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-950 sm:px-4"
-          >
-            {deployBanner === 'missingVite'
-              ? t('app.deployMissingApiBase')
-              : t('app.deployBadResponse')}
-          </div>
-        )}
-        <header className="shrink-0 border-b border-slate-200/80 bg-white px-3 py-3 shadow-sm sm:px-4">
-          <div className="mx-auto flex max-w-md min-w-0 items-start justify-between gap-2 sm:gap-3">
-            <div className="min-w-0">
-              <Link
-                to="/"
-                className="block truncate text-lg font-bold tracking-tight text-blue-600"
-              >
-                {punchInHeaderTitle ?? t('app.title')}
-              </Link>
-              <span className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
-                {t('app.subtitle')}
-              </span>
+        <div className="shrink-0 bg-white pt-[env(safe-area-inset-top,0px)]">
+          {deployBanner && (
+            <div
+              role="status"
+              className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-center text-sm text-amber-950 sm:px-4"
+            >
+              {deployBanner === 'missingVite'
+                ? t('app.deployMissingApiBase')
+                : t('app.deployBadResponse')}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <LangToggle />
-              <ClockBar />
+          )}
+          <header className="border-b border-slate-200/80 px-3 py-3 shadow-sm sm:px-4">
+            <div className="mx-auto flex max-w-md min-w-0 items-start justify-between gap-2 sm:gap-3">
+              <div className="min-w-0">
+                <Link
+                  to="/"
+                  className="block truncate text-lg font-bold tracking-tight text-blue-600"
+                >
+                  {punchInHeaderTitle ?? t('app.title')}
+                </Link>
+                <span className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
+                  {t('app.subtitle')}
+                </span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <LangToggle />
+                <ClockBar />
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        </div>
         <RabbiBanner text={pub?.rabbiBanner} />
-        <main className="mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(7rem+env(safe-area-inset-bottom))]">
+        <main className="app-scroll-main mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))]">
           <Routes>
             <Route path="/" element={<Navigate to="/punch" replace />} />
             <Route path="/punch" element={<PunchMenu />} />

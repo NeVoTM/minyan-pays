@@ -36,6 +36,7 @@ When fixing a UI or flow issue:
 - Re-test **similar** numbered screens (same shell: punch trio, member trio, auth pair, dashboards with bottom nav).
 - For layout/scroll/bottom-nav issues, spot-check **5–7**, **13–18**, **10**, and **12** at minimum.
 - Confirm: page scroll works, bottom content is reachable, controls are not hidden by fixed nav, and defaults/autofill are correct.
+- **iPhone (Safari / PWA):** cold-open each numbered screen **1–19** (and open modals on **10** / **12**). Expect **no horizontal overflow** on first paint, **no “too tall until rotate/resize”** layout, and **scroll to the true bottom** so the last control is not under the fixed bottom nav (use safe-area + padding assumptions in `App.tsx` / `index.css`).
 
 When a new recurring issue is discovered:
 
