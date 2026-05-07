@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { BackLink } from '../components/BackLink'
 import { PunchIdentityForm } from '../components/PunchIdentityForm'
 import {
   cardShell,
@@ -12,12 +11,9 @@ export function PunchOut() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3">
-        <BackLink to="/" />
-        <div>
-          <h1 className={pageTitle}>{t('punchOut.title')}</h1>
-          <p className={pageSubtitle}>{t('punchOut.subtitle')}</p>
-        </div>
+      <div>
+        <h1 className={pageTitle}>{t('punchOut.title')}</h1>
+        <p className={pageSubtitle}>{t('punchOut.subtitle')}</p>
       </div>
 
       <div className={cardShell}>

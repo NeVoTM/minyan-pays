@@ -19,6 +19,8 @@ export type OrganizationRow = {
   synagogueName: string
   locationAddress?: string | null
   defaultLocale: string
+  checkInLatitude?: number | null
+  checkInLongitude?: number | null
 }
 
 export type OrgDeployBanner = 'missingVite' | 'badResponse' | null

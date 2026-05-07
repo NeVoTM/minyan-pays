@@ -2,12 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
-import {
-  cardShell,
-  pageSubtitle,
-  pageTitle,
-  primaryBtn,
-} from '../lib/uiClasses'
+import { cardShell, pageTitle, primaryBtn } from '../lib/uiClasses'
 
 const KEY = 'minyan_member_token'
 
@@ -99,9 +94,6 @@ export function MemberDashboard() {
           <BackLink to="/" />
           <div>
             <h1 className={pageTitle}>Your balance</h1>
-            <p className={pageSubtitle}>
-              {data?.detail.settings.synagogueName ?? '…'}
-            </p>
           </div>
         </div>
         <button

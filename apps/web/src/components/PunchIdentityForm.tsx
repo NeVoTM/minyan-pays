@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { PhoneInput } from './PhoneInput'
-import { useOrg } from '../context/OrgContext'
+import { useOrg, type OrganizationRow } from '../context/OrgContext'
 import { usePunchHeader } from '../context/PunchHeaderContext'
 import {
   fieldLabel,
@@ -18,6 +18,8 @@ type PunchInResp = {
   displayName: string
   punchInAt: string
   punchInStatus: string
+  organizationSlug?: string
+  synagogueName?: string
 }
 
 type PunchOutResp = {
@@ -29,9 +31,40 @@ type Props = {
   mode: Mode
 }
 
+function distanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+function nearestOrgSlug(
+  lat: number,
+  lng: number,
+  orgs: OrganizationRow[]
+): string | null {
+  let best: { slug: string; d: number } | null = null
+  for (const o of orgs) {
+    if (o.checkInLatitude == null || o.checkInLongitude == null) continue
+    const d = distanceKm(lat, lng, o.checkInLatitude, o.checkInLongitude)
+    if (!best || d < best.d) best = { slug: o.slug, d }
+  }
+  return best?.slug ?? null
+}
+
 export function PunchIdentityForm({ mode }: Props) {
   const { t } = useTranslation()
-  const { organizations, organizationSlug } = useOrg()
+  const { organizations, organizationSlug, setOrganizationSlug } = useOrg()
   const { setPunchInHeaderTitle } = usePunchHeader()
   const [phoneDigits, setPhoneDigits] = useState('')
   const [pin, setPin] = useState('')
@@ -39,14 +72,42 @@ export function PunchIdentityForm({ mode }: Props) {
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [gpsSuggested, setGpsSuggested] = useState(false)
+  const locationManualRef = useRef(false)
 
   useEffect(() => {
     if (!locationSlug) {
-      setLocationSlug(
-        organizationSlug ?? organizations[0]?.slug ?? ''
-      )
+      setLocationSlug(organizationSlug ?? organizations[0]?.slug ?? '')
     }
   }, [organizationSlug, organizations, locationSlug])
+
+  useEffect(() => {
+    if (organizations.length === 0) return
+    const anyCoords = organizations.some(
+      (o) => o.checkInLatitude != null && o.checkInLongitude != null
+    )
+    if (!anyCoords || !navigator.geolocation) return
+    if (locationManualRef.current) return
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (locationManualRef.current) return
+        const slug = nearestOrgSlug(
+          pos.coords.latitude,
+          pos.coords.longitude,
+          organizations
+        )
+        if (slug) {
+          setLocationSlug(slug)
+          setGpsSuggested(true)
+        }
+      },
+      () => {
+        /* denied or unavailable — keep dropdown default */
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 12_000 }
+    )
+  }, [organizations])
 
   useEffect(() => {
     if (mode !== 'in') return
@@ -72,7 +133,10 @@ export function PunchIdentityForm({ mode }: Props) {
           body: JSON.stringify({ phone: phoneDigits, pin }),
           orgSlug: null,
         })
-        setLocationSlug(r.organizationSlug)
+        if (!locationManualRef.current) {
+          setLocationSlug(r.organizationSlug)
+          setGpsSuggested(false)
+        }
       } catch {
         /* keep manual selection */
       }
@@ -108,6 +172,7 @@ export function PunchIdentityForm({ mode }: Props) {
           body: JSON.stringify(body),
           orgSlug: locationSlug || null,
         })
+        if (r.organizationSlug) setOrganizationSlug(r.organizationSlug)
         setMsg(
           t('punchIn.success', {
             name: r.displayName,
@@ -155,7 +220,11 @@ export function PunchIdentityForm({ mode }: Props) {
             <select
               className={pillInput}
               value={locationSlug}
-              onChange={(e) => setLocationSlug(e.target.value)}
+              onChange={(e) => {
+                locationManualRef.current = true
+                setGpsSuggested(false)
+                setLocationSlug(e.target.value)
+              }}
             >
               {organizations.map((o) => (
                 <option key={o.slug} value={o.slug}>
@@ -165,6 +234,11 @@ export function PunchIdentityForm({ mode }: Props) {
               ))}
             </select>
           </label>
+          {gpsSuggested && (
+            <p className="text-[11px] text-slate-500">
+              {t('punchCommon.locationSuggestedGps')}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <span className={fieldLabel}>{t('memberLogin.phone')}</span>

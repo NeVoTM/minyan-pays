@@ -80,35 +80,38 @@ export function MemberLogin() {
             autoComplete="off"
             aria-hidden
           />
-          <label className="block">
-            <span className={fieldLabel}>{t('memberLogin.phone')}</span>
-            <PhoneInput
-              className={pillInput}
-              value={phoneDigits}
-              onChange={setPhoneDigits}
-              required
-              autoComplete="new-password"
-              inputName="member-login-phone-new"
-            />
-          </label>
-          <label className="block">
-            <span className={fieldLabel}>{t('memberLogin.pin')}</span>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="new-password"
-              name="member-login-pin-new"
-              className={pillInput}
-              value={pinDigits}
-              onChange={(e) =>
-                setPinDigits(e.target.value.replace(/\D/g, '').slice(0, 12))
-              }
-              required
-              minLength={4}
-              maxLength={12}
-              placeholder="••••"
-            />
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block min-w-0">
+              <span className={fieldLabel}>{t('memberLogin.phone')}</span>
+              <PhoneInput
+                className={pillInput}
+                value={phoneDigits}
+                onChange={setPhoneDigits}
+                required
+                autoComplete="new-password"
+                inputName="member-login-phone-new"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className={fieldLabel}>{t('memberLogin.pin')}</span>
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                name="member-login-pin-new"
+                className={pillInput}
+                value={pinDigits}
+                onChange={(e) =>
+                  setPinDigits(e.target.value.replace(/\D/g, '').slice(0, 12))
+                }
+                required
+                minLength={4}
+                maxLength={12}
+                placeholder="••••"
+                aria-label={t('memberLogin.pin')}
+              />
+            </label>
+          </div>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">
               {err}

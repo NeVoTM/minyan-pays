@@ -194,6 +194,8 @@ export function AdminDashboard() {
     weeklyBonusCents: number
     firstNineSlots: number
     checkInOnlyPreferred?: boolean
+    checkInLatitude?: number | null
+    checkInLongitude?: number | null
   } | null>(null)
   const [allLocations, setAllLocations] = useState<AdminLocationRow[]>([])
   const [showAddLocation, setShowAddLocation] = useState(false)
@@ -209,6 +211,8 @@ export function AdminDashboard() {
   const [locationLocaleDraft, setLocationLocaleDraft] = useState<
     'en' | 'he' | 'es' | 'ru' | 'fr'
   >('he')
+  const [locationCheckInLatDraft, setLocationCheckInLatDraft] = useState('')
+  const [locationCheckInLngDraft, setLocationCheckInLngDraft] = useState('')
   const [locationSetupMsg, setLocationSetupMsg] = useState<string | null>(null)
   const [rabbis, setRabbis] = useState<RabbiProfile[]>([])
   const [rabbiEditId, setRabbiEditId] = useState<string | null>(null)
@@ -268,6 +272,8 @@ export function AdminDashboard() {
           weeklyBonusCents: number
           firstNineSlots: number
           checkInOnlyPreferred?: boolean
+          checkInLatitude?: number | null
+          checkInLongitude?: number | null
         }>('/api/admin/settings', { token }),
         api<MemberRow[]>('/api/admin/members', { token }),
         api<RabbiProfile[]>('/api/admin/rabbis', { token }),
@@ -281,6 +287,12 @@ export function AdminDashboard() {
       setLocationEmailDraft(st.locationEmail ?? '')
       setLocationWebsiteDraft(st.locationWebsite ?? '')
       setLocationLocaleDraft(st.defaultLocale ?? 'he')
+      setLocationCheckInLatDraft(
+        st.checkInLatitude != null ? String(st.checkInLatitude) : ''
+      )
+      setLocationCheckInLngDraft(
+        st.checkInLongitude != null ? String(st.checkInLongitude) : ''
+      )
       setRabbis(rb)
       setMembers(m)
       setAllLocations(locs)
@@ -516,6 +528,31 @@ export function AdminDashboard() {
       setLocationSetupMsg(t('admin.locationNameRequired'))
       return
     }
+    const latT = locationCheckInLatDraft.trim()
+    const lngT = locationCheckInLngDraft.trim()
+    let checkInLatitude: number | null | undefined
+    let checkInLongitude: number | null | undefined
+    if (!latT && !lngT) {
+      checkInLatitude = null
+      checkInLongitude = null
+    } else {
+      if (!latT || !lngT) {
+        setLocationSetupMsg(t('admin.checkInCoordsPair'))
+        return
+      }
+      const lat = Number(latT)
+      const lng = Number(lngT)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        setLocationSetupMsg(t('admin.checkInCoordsInvalid'))
+        return
+      }
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        setLocationSetupMsg(t('admin.checkInCoordsInvalid'))
+        return
+      }
+      checkInLatitude = lat
+      checkInLongitude = lng
+    }
     try {
       await api('/api/admin/settings', {
         method: 'PATCH',
@@ -527,6 +564,8 @@ export function AdminDashboard() {
           locationEmail: locationEmailDraft.trim() || null,
           locationWebsite: locationWebsiteDraft.trim() || null,
           defaultLocale: locationLocaleDraft,
+          checkInLatitude,
+          checkInLongitude,
         }),
       })
       setLocationPanelOpen(false)
@@ -727,13 +766,6 @@ export function AdminDashboard() {
         <h1 className="text-lg font-semibold leading-tight sm:text-xl">
           {t('admin.title')}
         </h1>
-        <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
-          {t('admin.subHub', {
-            members: members.length,
-            rabbis: rabbis.length,
-            locations: allLocations.length,
-          })}
-        </p>
       </div>
       {err && <p className="text-xs text-red-600">{err}</p>}
       {memberMsg && <p className="text-xs text-slate-600">{memberMsg}</p>}
@@ -1163,6 +1195,29 @@ export function AdminDashboard() {
                   <option value="fr">{t('lang.fr')}</option>
                 </select>
               </label>
+              <p className="text-[11px] text-slate-500">{t('admin.checkInCoordsHelp')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <label className={lbl}>
+                  {t('admin.checkInLatitude')}
+                  <input
+                    className={inp}
+                    inputMode="decimal"
+                    value={locationCheckInLatDraft}
+                    onChange={(e) => setLocationCheckInLatDraft(e.target.value)}
+                    placeholder="25.7617"
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.checkInLongitude')}
+                  <input
+                    className={inp}
+                    inputMode="decimal"
+                    value={locationCheckInLngDraft}
+                    onChange={(e) => setLocationCheckInLngDraft(e.target.value)}
+                    placeholder="-80.1918"
+                  />
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="submit"

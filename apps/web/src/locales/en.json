@@ -98,6 +98,7 @@
   },
   "punchCommon": {
     "locationLabel": "Location",
+    "locationSuggestedGps": "Suggested from your location — you can change it below.",
     "phoneRequired": "Enter a valid phone number.",
     "phonePinTitle": "Mobile phone + PIN",
     "smartCodeLabel": "Smart code (QR)",
@@ -109,14 +110,14 @@
     "needOne": "Enter punch-in code, or phone + PIN, or smart code / QR."
   },
   "punchIn": {
-    "title": "Punch in",
+    "title": "Check-In",
     "subtitle": "Use your mobile phone (registered number).",
     "submit": "Check-in",
     "sending": "Sending…",
     "success": "Recorded for {{name}}. Status: {{status}}. Wait for rabbi confirmation."
   },
   "punchOut": {
-    "title": "Punch out",
+    "title": "Check-Out",
     "subtitle": "After the Rabbi confirms your punch-in, record punch-out.",
     "phone": "Mobile phone",
     "or": "or",
@@ -212,7 +213,11 @@
     "navAria": "Admin sections",
     "home": "← Home",
     "logout": "Log out",
-    "subHub": "Choose Today's check-ins, Member, Rabbi, or Location. Use Add, View, or Edit where available.",
+    "checkInCoordsHelp": "Optional GPS anchor for the member check-in screen: nearest location is suggested; members can still pick another site.",
+    "checkInLatitude": "Check-in latitude (decimal)",
+    "checkInLongitude": "Check-in longitude (decimal)",
+    "checkInCoordsInvalid": "Enter valid latitude (−90…90) and longitude (−180…180), or leave both blank.",
+    "checkInCoordsPair": "Enter both latitude and longitude, or clear both.",
     "hubToday": "Today's check-ins",
     "hubMember": "Member",
     "hubRabbi": "Rabbi",
@@ -418,8 +423,9 @@
     "subtitle": "Select your location, then continue. Check-in review and payouts apply only to that location.",
     "locationLabel": "Location",
     "locationHelp": "Each rabbi signs in to one location. Switch location here if you serve more than one site.",
-    "password": "Rabbi password",
-    "passwordRequired": "Enter the rabbi password.",
+    "password": "Rabbi password (PIN)",
+    "passwordPinHelp": "The rabbi password set in Admin for this location (often a numeric PIN). It is not your personal member PIN unless the admin set it that way.",
+    "passwordRequired": "Enter the rabbi password (PIN).",
     "submit": "Sign in",
     "chooseOrgFirst": "Choose a location first.",
     "loginFailed": "Login failed"

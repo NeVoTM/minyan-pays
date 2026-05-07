@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import type { User } from "@prisma/client";
+import type { Organization, User } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
@@ -17,7 +17,7 @@ import {
 } from "../middleware/auth.js";
 import {
   getOrganizationBySlug,
-  requireOrganizationFromRequest,
+  getOrgSlugFromRequest,
   normalizeOrgSlug,
 } from "../lib/organizationService.js";
 
@@ -27,45 +27,12 @@ type ResolveMemberResult =
   | { ok: true; user: User }
   | { ok: false; status: number; error: string };
 
-const pendingMsg =
-  "This account is pending admin approval. You cannot check in until approved.";
-
-async function resolveVerifiedMember(
-  organizationId: string,
-  phone: string,
-  pinRaw?: string
-): Promise<ResolveMemberResult> {
-  const user = await prisma.user.findFirst({
-    where: { phone, role: "MEMBER", organizationId },
-  });
-  if (!user) {
-    return {
-      ok: false,
-      status: 401,
-      error: "No member found with this phone for this location.",
-    };
-  }
-  if (!user.isApproved) {
-    return { ok: false, status: 403, error: pendingMsg };
-  }
-  const pin = pinRaw?.trim();
-  if (!pin) {
-    return { ok: false, status: 401, error: "Invalid PIN" };
-  }
-  if (!user.pinHash) {
-    return { ok: false, status: 401, error: "PIN not set for this account." };
-  }
-  const ok = await bcrypt.compare(pin, user.pinHash);
-  if (!ok) {
-    return { ok: false, status: 401, error: "Invalid PIN" };
-  }
-  return { ok: true, user };
-}
-
 const punchIdentityBody = z
   .object({
     phone: z.string().optional(),
     pin: z.string().optional(),
+    /** When the same phone+PIN exists at multiple orgs, this disambiguates. */
+    organizationSlug: z.string().optional(),
   })
   .superRefine((d, ctx) => {
     const phoneOk = (d.phone?.replace(/\D/g, "").length ?? 0) >= 10;
@@ -106,17 +73,6 @@ const punchOutBody = z
       });
     }
   });
-
-async function resolveMemberByPunchIdentity(
-  orgId: string,
-  data: z.infer<typeof punchIdentityBody>
-): Promise<ResolveMemberResult> {
-  if (data.phone) {
-    const phone = normalizePhone(data.phone);
-    return resolveVerifiedMember(orgId, phone, data.pin);
-  }
-  return { ok: false, status: 400, error: "Invalid request." };
-}
 
 async function resolveVerifiedMemberAnyOrganization(
   phone: string,
@@ -163,17 +119,128 @@ async function findLatestOpenAttendanceForUsers(userIds: string[]) {
   });
 }
 
-punchRouter.post("/in", async (req, res) => {
-  const orgRes = await requireOrganizationFromRequest(req);
-  if ("error" in orgRes) {
-    res.status(orgRes.status).json({ error: orgRes.error });
-    return;
-  }
-  const { org } = orgRes;
+type MemberWithOrgSlug = User & { organization: Pick<Organization, "slug"> };
 
+async function resolveApprovedMembersByPhoneAndPin(
+  phone: string,
+  pinRaw: string
+): Promise<MemberWithOrgSlug[]> {
+  const pin = pinRaw.trim();
+  const users = await prisma.user.findMany({
+    where: { phone, role: "MEMBER", isApproved: true },
+    include: { organization: { select: { slug: true } } },
+  });
+  const out: MemberWithOrgSlug[] = [];
+  for (const u of users) {
+    if (!u.pinHash) continue;
+    if (await bcrypt.compare(pin, u.pinHash)) {
+      out.push(u);
+    }
+  }
+  return out;
+}
+
+function pickMemberFromMatches(
+  matched: MemberWithOrgSlug[],
+  preferredSlug: string | null
+): ResolveMemberResult {
+  if (matched.length === 0) {
+    return {
+      ok: false,
+      status: 401,
+      error:
+        "No member found with this phone and PIN. Check your number or sign in under Member.",
+    };
+  }
+  if (matched.length === 1) {
+    return { ok: true, user: matched[0]! };
+  }
+  if (!preferredSlug) {
+    return {
+      ok: false,
+      status: 400,
+      error:
+        "This phone is registered at more than one location. Pick your location in the list, then try again.",
+    };
+  }
+  const narrowed = matched.filter((u) => u.organization.slug === preferredSlug);
+  if (narrowed.length !== 1) {
+    return {
+      ok: false,
+      status: 401,
+      error:
+        "No registration matches this phone and PIN for the selected location.",
+    };
+  }
+  return { ok: true, user: narrowed[0]! };
+}
+
+async function assertNoBlockingOpenAttendance(
+  selected: User,
+  matched: MemberWithOrgSlug[]
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  const ids = matched.map((m) => m.id);
+  const open = await prisma.attendance.findFirst({
+    where: {
+      userId: { in: ids },
+      punchOutAt: null,
+    },
+    include: {
+      session: {
+        include: {
+          organization: { select: { synagogueName: true } },
+        },
+      },
+    },
+  });
+  if (!open) return { ok: true };
+  if (open.userId !== selected.id) {
+    return {
+      ok: false,
+      status: 409,
+      error: `This phone already has an active check-in at ${open.session.organization.synagogueName}. Punch out there before checking in at another site.`,
+    };
+  }
+  return {
+    ok: false,
+    status: 409,
+    error:
+      "You already have an open check-in. Punch out or ask the rabbi to close it before checking in again.",
+  };
+}
+
+punchRouter.post("/in", async (req, res) => {
   const parsed = punchIdentityBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const phone = normalizePhone(parsed.data.phone!);
+  const pin = parsed.data.pin!;
+  const preferredSlug =
+    normalizeOrgSlug(parsed.data.organizationSlug) ??
+    getOrgSlugFromRequest(req);
+
+  const matched = await resolveApprovedMembersByPhoneAndPin(phone, pin);
+  const picked = pickMemberFromMatches(matched, preferredSlug);
+  if (!picked.ok) {
+    res.status(picked.status).json({ error: picked.error });
+    return;
+  }
+  const user = picked.user;
+
+  const org = await prisma.organization.findUnique({
+    where: { id: user.organizationId },
+  });
+  if (!org) {
+    res.status(404).json({ error: "Organization not found." });
+    return;
+  }
+
+  const block = await assertNoBlockingOpenAttendance(user, matched);
+  if (!block.ok) {
+    res.status(block.status).json({ error: block.error });
     return;
   }
 
@@ -192,21 +259,11 @@ punchRouter.post("/in", async (req, res) => {
     return;
   }
 
-  const resolved = await resolveMemberByPunchIdentity(org.id, parsed.data);
-  if (!resolved.ok) {
-    res.status(resolved.status).json({ error: resolved.error });
-    return;
-  }
-  const user = resolved.user;
-
   const orgPolicy = await prisma.organization.findUnique({
     where: { id: org.id },
     select: { checkInOnlyPreferred: true },
   });
-  if (
-    orgPolicy?.checkInOnlyPreferred &&
-    !user.preferredForCheckIn
-  ) {
+  if (orgPolicy?.checkInOnlyPreferred && !user.preferredForCheckIn) {
     res.status(403).json({
       error:
         "This location only accepts check-ins from preferred members. Ask the rabbi to add you to the preferred list.",
@@ -254,6 +311,8 @@ punchRouter.post("/in", async (req, res) => {
     displayName: fullName(user.firstName, user.lastName),
     punchInAt: attendance.punchInAt.toISOString(),
     punchInStatus: attendance.punchInStatus,
+    organizationSlug: org.slug,
+    synagogueName: org.synagogueName,
   });
 });
 
@@ -296,45 +355,26 @@ punchRouter.post("/out-public", async (req, res) => {
     return;
   }
 
-  let org = null as Awaited<ReturnType<typeof getOrganizationBySlug>>;
-  const bodyOrgSlug = normalizeOrgSlug(parsed.data.organizationSlug);
-  if (bodyOrgSlug) {
-    org = await getOrganizationBySlug(bodyOrgSlug);
-  } else {
-    const orgRes = await requireOrganizationFromRequest(req);
-    if (!("error" in orgRes)) {
-      org = orgRes.org;
-    }
-  }
+  const phone = normalizePhone(parsed.data.phone ?? "");
+  const pin = parsed.data.pin!;
+  const preferredSlug =
+    normalizeOrgSlug(parsed.data.organizationSlug) ??
+    getOrgSlugFromRequest(req);
 
-  let resolved = null as ResolveMemberResult | null;
-  if (org) {
-    resolved = await resolveMemberByPunchIdentity(org.id, parsed.data);
-    if (!resolved.ok) {
-      res.status(resolved.status).json({ error: resolved.error });
-      return;
-    }
-  } else {
-    const phone = normalizePhone(parsed.data.phone ?? "");
-    const matches = await resolveVerifiedMemberAnyOrganization(phone);
-    const matchedUsers = matches.flatMap((m) => (m.ok ? [m.user] : []));
-    const openAttendance = await findLatestOpenAttendanceForUsers(
-      matchedUsers.map((u) => u.id)
-    );
-    if (!openAttendance?.session.organization) {
-      res.status(404).json({ error: "No linked check-in location found." });
-      return;
-    }
-    org = await getOrganizationBySlug(openAttendance.session.organization.slug);
-    if (!org) {
-      res.status(404).json({ error: "Unknown organization." });
-      return;
-    }
-    resolved = await resolveMemberByPunchIdentity(org.id, parsed.data);
-    if (!resolved.ok) {
-      res.status(resolved.status).json({ error: resolved.error });
-      return;
-    }
+  const matched = await resolveApprovedMembersByPhoneAndPin(phone, pin);
+  const picked = pickMemberFromMatches(matched, preferredSlug);
+  if (!picked.ok) {
+    res.status(picked.status).json({ error: picked.error });
+    return;
+  }
+  const user = picked.user;
+
+  const org = await prisma.organization.findUnique({
+    where: { id: user.organizationId },
+  });
+  if (!org) {
+    res.status(404).json({ error: "Organization not found." });
+    return;
   }
 
   const dateKey = todayDateKeyInZone(org.timezone);
@@ -352,7 +392,7 @@ punchRouter.post("/out-public", async (req, res) => {
 
   const att = await prisma.attendance.findUnique({
     where: {
-      userId_sessionId: { userId: resolved.user.id, sessionId: session.id },
+      userId_sessionId: { userId: user.id, sessionId: session.id },
     },
   });
   if (!att) {
@@ -379,7 +419,7 @@ punchRouter.post("/out-public", async (req, res) => {
   });
 
   res.json({
-    displayName: fullName(resolved.user.firstName, resolved.user.lastName),
+    displayName: fullName(user.firstName, user.lastName),
     punchOutAt: updated.punchOutAt!.toISOString(),
   });
 });

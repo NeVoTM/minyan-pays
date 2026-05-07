@@ -8,7 +8,6 @@ import {
   fieldLabel,
   pageSubtitle,
   pageTitle,
-  pinInput,
   pillInput,
   primaryBtn,
 } from '../lib/uiClasses'
@@ -54,6 +53,7 @@ export function MemberProfile() {
 
   async function sendCode() {
     setMsg(null)
+    setDevCode(null)
     try {
       const r = await api<{ ok: boolean; devCode?: string }>(
         '/api/me/profile/verification/send',
@@ -63,8 +63,14 @@ export function MemberProfile() {
           body: JSON.stringify({ purpose: 'PROFILE_CHANGE' }),
         }
       )
-      setDevCode(r.devCode ?? null)
-      setMsg('Verification code sent by text message.')
+      if (r.devCode) {
+        setDevCode(r.devCode)
+        setMsg(
+          'Development / echo mode: no SMS was sent. Use the code shown below.'
+        )
+      } else {
+        setMsg('We sent a 6-digit code to your phone by text. It may take a minute.')
+      }
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : 'Send failed')
     }
@@ -128,7 +134,10 @@ export function MemberProfile() {
   const sectionHint = 'mt-0.5 text-xs text-slate-500'
 
   return (
-    <form className="space-y-4" onSubmit={save}>
+    <form
+      className="space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(8rem+env(safe-area-inset-bottom,0px))]"
+      onSubmit={save}
+    >
       <div className="flex items-start gap-3">
         <BackLink to="/member/app" />
         <div>
@@ -167,19 +176,22 @@ export function MemberProfile() {
         </p>
         <label className="mt-3 block min-w-0">
           <span className={fieldLabel}>New login PIN (optional)</span>
-          <div className="relative mt-0.5">
+          <div className="relative mt-2">
             <input
-              className={`${pinInput} w-full pr-12`}
+              className={`${pillInput} pr-14`}
               type={showNewPin ? 'text' : 'password'}
+              inputMode="numeric"
               autoComplete="new-password"
               value={newPin}
               onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 12))}
               placeholder={form.hasPin ? 'Change PIN' : 'Set PIN'}
+              aria-label="New login PIN"
             />
             <button
               type="button"
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100"
+              className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-lg bg-slate-100/90 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200/80 hover:bg-slate-200/90"
               onClick={() => setShowNewPin((v) => !v)}
+              aria-pressed={showNewPin}
             >
               {showNewPin ? 'Hide' : 'Show'}
             </button>
@@ -259,21 +271,24 @@ export function MemberProfile() {
       <div className={cardShell}>
         <p className={sectionKicker}>Save</p>
         <p className={sectionTitle}>Verify &amp; submit</p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="text-xs leading-snug text-slate-600">
-            Security verification is required before saving profile changes.
-          </span>
-          <input
-            className={`${pillInput} !mt-0 w-[9.5rem] shrink-0 sm:w-40`}
-            placeholder="Enter 6-digit code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          />
+        <p className="text-xs leading-snug text-slate-600">
+          Security verification is required before saving profile changes.
+        </p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <label className="block min-w-0 sm:w-40">
+            <span className={fieldLabel}>Code from text</span>
+            <input
+              className={pillInput}
+              placeholder="6-digit code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            />
+          </label>
           <button
             type="button"
-            className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="w-full shrink-0 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
             onClick={() => void sendCode()}
           >
             Send code

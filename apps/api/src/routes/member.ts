@@ -11,6 +11,10 @@ import {
   type JwtPayload,
 } from "../middleware/auth.js";
 import { memberSelfUpdateSchema } from "../lib/memberSchemas.js";
+import {
+  isTwilioReady,
+  sendProfileVerificationSms,
+} from "../lib/smsVerification.js";
 
 export const memberRouter = Router();
 memberRouter.use(authMiddleware);
@@ -201,7 +205,13 @@ memberRouter.post("/profile/verification/send", async (req, res) => {
   }
   const code = generateCode();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-  await prisma.memberChangeCode.create({
+
+  const echoCode =
+    process.env.NODE_ENV !== "production" ||
+    process.env.MEMBER_VERIFICATION_ECHO_CODE === "1" ||
+    process.env.MEMBER_VERIFICATION_ECHO_CODE === "true";
+
+  const created = await prisma.memberChangeCode.create({
     data: {
       userId: user.id,
       purpose: "PROFILE_CHANGE",
@@ -210,18 +220,39 @@ memberRouter.post("/profile/verification/send", async (req, res) => {
     },
   });
 
-  // Placeholder SMS transport (configure provider later).
-  console.log(`[SMS-VERIFY] send to ${user.phone}: ${code}`);
+  if (echoCode) {
+    console.log(`[SMS-VERIFY] dev echo to ${user.phone}: ${code}`);
+    res.json({
+      ok: true,
+      expiresAt: expiresAt.toISOString(),
+      devCode: code,
+    });
+    return;
+  }
 
-  const echoCode =
-    process.env.NODE_ENV !== "production" ||
-    process.env.MEMBER_VERIFICATION_ECHO_CODE === "1" ||
-    process.env.MEMBER_VERIFICATION_ECHO_CODE === "true";
+  if (!isTwilioReady()) {
+    await prisma.memberChangeCode.delete({ where: { id: created.id } });
+    res.status(503).json({
+      error:
+        "Text verification is not set up on this server yet. Ask your administrator to configure Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER), or use a staging build with MEMBER_VERIFICATION_ECHO_CODE.",
+    });
+    return;
+  }
+
+  const sent = await sendProfileVerificationSms(user.phone, code);
+  if (!sent.ok) {
+    await prisma.memberChangeCode.delete({ where: { id: created.id } });
+    console.error(`[SMS-VERIFY] Twilio failed for ${user.phone}: ${sent.error}`);
+    res.status(502).json({
+      error:
+        "Could not send the verification text. Check the phone number on your account and try again, or contact support.",
+    });
+    return;
+  }
 
   res.json({
     ok: true,
     expiresAt: expiresAt.toISOString(),
-    ...(echoCode ? { devCode: code } : {}),
   });
 });
 

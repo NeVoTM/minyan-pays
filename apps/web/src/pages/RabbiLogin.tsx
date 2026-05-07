@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
-import { BackLink } from '../components/BackLink'
 import { useOrg } from '../context/OrgContext'
 import {
   cardShell,
@@ -71,12 +70,9 @@ export function RabbiLogin() {
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-full space-y-6 text-center sm:text-left">
-      <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
-        <BackLink to="/" />
-        <div className="min-w-0">
-          <h1 className={pageTitle}>{t('rabbiLogin.title')}</h1>
-          <p className={pageSubtitle}>{t('rabbiLogin.subtitle')}</p>
-        </div>
+      <div className="min-w-0">
+        <h1 className={pageTitle}>{t('rabbiLogin.title')}</h1>
+        <p className={pageSubtitle}>{t('rabbiLogin.subtitle')}</p>
       </div>
 
       <div className={cardShell}>
@@ -120,6 +116,9 @@ export function RabbiLogin() {
               required
               minLength={1}
             />
+            <span className="mt-1 block text-[11px] text-slate-500">
+              {t('rabbiLogin.passwordPinHelp')}
+            </span>
           </label>
           {err && (
             <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-100">

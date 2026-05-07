@@ -43,6 +43,7 @@
   },
   "punchCommon": {
     "locationLabel": "Lugar",
+    "locationSuggestedGps": "Sugerido según su ubicación — puede cambiarlo abajo.",
     "phoneRequired": "Introduzca un número de teléfono válido.",
     "phonePinTitle": "Teléfono móvil + PIN",
     "smartCodeLabel": "Código inteligente (QR)",
@@ -93,7 +94,7 @@
     "loginFailed": "Error al iniciar sesión"
   },
   "punchIn": {
-    "title": "Entrada",
+    "title": "Check-In",
     "subtitle": "Use el teléfono con el que está registrado.",
     "code": "Código de entrada",
     "submit": "Marcar llegada",
@@ -101,7 +102,7 @@
     "success": "Registrado para {{name}}. Estado: {{status}}. Espere confirmación del rabino."
   },
   "punchOut": {
-    "title": "Salida",
+    "title": "Check-Out",
     "subtitle": "Tras confirmar su entrada, use las mismas opciones que en la entrada.",
     "phone": "Teléfono móvil",
     "or": "o",
@@ -196,7 +197,11 @@
     "navAria": "Secciones de administración",
     "home": "← Inicio",
     "logout": "Salir",
-    "subHub": "Elija Registros de hoy, Miembro, Rabino o Ubicación. Use Añadir, Ver o Editar según corresponda.",
+    "checkInCoordsHelp": "Opcional: coordenadas GPS para sugerir el lugar más cercano en el registro; el miembro puede elegir otro.",
+    "checkInLatitude": "Latitud (decimal)",
+    "checkInLongitude": "Longitud (decimal)",
+    "checkInCoordsInvalid": "Introduzca latitud (−90…90) y longitud (−180…180) válidas, o deje ambas vacías.",
+    "checkInCoordsPair": "Complete latitud y longitud, o borre ambas.",
     "hubToday": "Registros de hoy",
     "hubMember": "Miembro",
     "hubRabbi": "Rabino",
@@ -349,7 +354,9 @@
     "subtitle": "Elija su lugar y continúe. Las aprobaciones y pagos son solo para ese lugar.",
     "locationLabel": "Lugar",
     "locationHelp": "Cada rabino inicia sesión en un lugar. Cambie aquí si atiende varios sitios.",
-    "password": "Contraseña del rabino",
+    "password": "Contraseña del rabino (PIN)",
+    "passwordPinHelp": "Contraseña del rabino configurada en administración para este lugar (a menudo un PIN numérico). No es su PIN de miembro salvo que el admin lo haya definido así.",
+    "passwordRequired": "Introduzca la contraseña del rabino (PIN).",
     "submit": "Entrar",
     "chooseOrgFirst": "Elija primero un lugar.",
     "loginFailed": "Error al iniciar sesión"

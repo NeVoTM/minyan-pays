@@ -43,6 +43,7 @@
   },
   "punchCommon": {
     "locationLabel": "Lieu",
+    "locationSuggestedGps": "Suggéré d’après votre position — vous pouvez le modifier ci-dessous.",
     "phoneRequired": "Entrez un numéro de téléphone valide.",
     "phonePinTitle": "Mobile + PIN",
     "smartCodeLabel": "Code intelligent (QR)",
@@ -93,7 +94,7 @@
     "loginFailed": "Échec de la connexion"
   },
   "punchIn": {
-    "title": "Entrée",
+    "title": "Check-In",
     "subtitle": "Utilisez le téléphone enregistré sur votre compte.",
     "code": "Code d’entrée",
     "submit": "Marquer l’arrivée",
@@ -101,7 +102,7 @@
     "success": "Enregistré pour {{name}}. Statut : {{status}}. Attendez la confirmation du rabbin."
   },
   "punchOut": {
-    "title": "Sortie",
+    "title": "Check-Out",
     "subtitle": "Après confirmation, utilisez les mêmes options qu’à l’entrée.",
     "phone": "Mobile",
     "or": "ou",
@@ -196,7 +197,11 @@
     "navAria": "Sections d’administration",
     "home": "← Accueil",
     "logout": "Déconnexion",
-    "subHub": "Choisissez Présences du jour, Membre, Rabbin ou Lieu. Utilisez Ajouter, Voir ou Modifier selon le cas.",
+    "checkInCoordsHelp": "Coordonnées GPS facultatives : le lieu le plus proche est suggéré à l’enregistrement ; le membre peut en choisir un autre.",
+    "checkInLatitude": "Latitude (décimal)",
+    "checkInLongitude": "Longitude (décimal)",
+    "checkInCoordsInvalid": "Saisissez une latitude (−90…90) et une longitude (−180…180) valides, ou laissez les deux vides.",
+    "checkInCoordsPair": "Renseignez latitude et longitude, ou effacez les deux.",
     "hubToday": "Présences du jour",
     "hubMember": "Membre",
     "hubRabbi": "Rabbin",
@@ -349,7 +354,9 @@
     "subtitle": "Choisissez le lieu, puis continuez. Les actions ne concernent que ce lieu.",
     "locationLabel": "Lieu",
     "locationHelp": "Chaque rabbin se connecte à un lieu. Changez ici si vous en gérez plusieurs.",
-    "password": "Mot de passe rabbin",
+    "password": "Mot de passe rabbin (PIN)",
+    "passwordPinHelp": "Mot de passe rabbin défini dans l’admin pour ce lieu (souvent un PIN numérique). Ce n’est pas votre PIN membre, sauf si l’admin l’a configuré ainsi.",
+    "passwordRequired": "Saisissez le mot de passe rabbin (PIN).",
     "submit": "Connexion",
     "chooseOrgFirst": "Choisissez d’abord un lieu.",
     "loginFailed": "Échec de la connexion"

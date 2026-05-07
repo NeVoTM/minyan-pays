@@ -794,6 +794,8 @@ const orgSettingsPublicSelect = {
   timezone: true,
   defaultLocale: true,
   checkInOnlyPreferred: true,
+  checkInLatitude: true,
+  checkInLongitude: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -820,6 +822,8 @@ adminRouter.patch("/settings", async (req, res) => {
     minReserveCents: z.number().int().min(0).optional(),
     timezone: z.string().min(1).max(80).optional(),
     defaultLocale: z.enum(["en", "he", "es", "ru", "fr"]).optional(),
+    checkInLatitude: z.number().gte(-90).lte(90).nullable().optional(),
+    checkInLongitude: z.number().gte(-180).lte(180).nullable().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {

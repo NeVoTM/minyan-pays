@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Link, Navigate, Route, Routes } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ClockBar } from './components/ClockBar'
 import { MobileNav } from './components/MobileNav'
@@ -35,6 +42,13 @@ type PublicConfig = {
   rabbiBanner: string | null
   defaultLocale: string
   timezone: string
+}
+
+/** Rabbi banner only on public check-in / check-out (not member login, balance, profile, etc.). */
+function PunchOnlyRabbiBanner({ text }: { text: string | null | undefined }) {
+  const { pathname } = useLocation()
+  if (pathname !== '/punch/in' && pathname !== '/punch/out') return null
+  return <RabbiBanner text={text} />
 }
 
 function OrgPicker() {
@@ -108,7 +122,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex w-full flex-1 flex-col items-center justify-center bg-[#f3f4f6] text-slate-600">
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden bg-[#f3f4f6] text-slate-600">
         …
       </div>
     )
@@ -146,7 +160,7 @@ export default function App() {
               </div>
             </header>
           </div>
-          <main className="app-scroll-main mx-auto w-full max-w-md min-w-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 sm:px-4">
+          <main className="app-scroll-main mx-auto w-full max-w-md min-w-0 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:px-4">
             {organizations.length === 0 ? (
               deployBanner ? null : (
                 <p className="text-center text-sm text-slate-600">
@@ -202,8 +216,8 @@ export default function App() {
             </div>
           </header>
         </div>
-        <RabbiBanner text={pub?.rabbiBanner} />
-        <main className="app-scroll-main mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))]">
+        <PunchOnlyRabbiBanner text={pub?.rabbiBanner} />
+        <main className="app-scroll-main mx-auto w-full max-w-md min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 py-4 text-sm sm:px-4 sm:py-5 sm:text-[15px] pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] sm:pb-[calc(9rem+env(safe-area-inset-bottom,0px))]">
           <Routes>
             <Route path="/" element={<Navigate to="/punch" replace />} />
             <Route path="/punch" element={<PunchMenu />} />
