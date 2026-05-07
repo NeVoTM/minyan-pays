@@ -1,6 +1,6 @@
 # Minyan-Pays — Programmer Handoff (single source of truth)
 
-*Last updated: 2026-05-03*
+*Last updated: 2026-05-06*
 
 This file is the **one document** to share with a developer: product intent, **actual** architecture, data model, API map, design notes, and known gaps. Use it with the repo; where code and docs conflict, **code wins** (especially `apps/api/prisma/schema.prisma` and route files under `apps/api/src/routes/`).
 
@@ -152,7 +152,7 @@ Prefix **`/api`** on all paths below.
 
 - `GET /profile`, `PATCH /profile`
 - `GET /balance`, `GET /charities`
-- `POST /profile/verification/send` — SMS verification (**Twilio not wired**; dev may echo code — see env `MEMBER_VERIFICATION_ECHO_CODE`)
+- `POST /profile/verification/send` — SMS verification (Twilio transport is wired when env vars are set; dev may echo code — see env `MEMBER_VERIFICATION_ECHO_CODE`)
 - `POST /balance/cashout-request`, `POST /balance/donate`
 
 ### Rabbi (authenticated) — `/api/rabbi`
@@ -184,6 +184,7 @@ Typical (see `apps/api/.env.example`):
 - `JWT_SECRET` — sign JWTs.
 - `ADMIN_PASSWORD` — used as bootstrap fallback when `Organization.adminPasswordHash` is unset (after `ADMIN_BOOTSTRAP_PASSWORD` if present); see §3 Security.
 - `WEB_ORIGIN` — allowed web origin(s), comma-separated for multiple.
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` — enables real profile verification SMS on production.
 - `MEMBER_VERIFICATION_ECHO_CODE` — optional dev aid for SMS verification JSON.
 - Port: `PORT` (Render injects).
 
@@ -197,7 +198,7 @@ Web:
 
 Use **[PROJECT_STATUS.md](../PROJECT_STATUS.md)** for the live checklist. Standing items often include:
 
-- **SMS:** Profile verification codes log or echo unless Twilio (or similar) is configured.
+- **SMS:** Real profile verification SMS requires Twilio env vars; otherwise production returns 503 (dev/staging can use echo mode).
 - **i18n parity:** Some locales may lag English/Hebrew for new rabbi/admin strings.
 - **Deploy:** Run migrations against production DB when schema changes.
 - **Legacy docs:** [PROGRAM-SUMMARY.md](./PROGRAM-SUMMARY.md) still mentions SQLite/AppSettings in places — **false**; use Prisma schema (banner is on **Organization**).
@@ -205,12 +206,10 @@ Use **[PROJECT_STATUS.md](../PROJECT_STATUS.md)** for the live checklist. Standi
 
 ### Debugging issues
 
-- **Punch form PIN field was missing in public flow UI:** Backend already enforced PIN on punch endpoints, but `PunchIdentityForm` only showed/sent phone + location. Fix: add inline PIN input on the same row as phone and include `pin` in `/api/punch/in`, `/api/punch/out-public`, and `/api/punch/out-location-default` payloads.
-- **Same PIN omission affected check-out:** Because check-in/check-out share `PunchIdentityForm`, both routes were impacted; verify both `/punch/in` and `/punch/out` after any identity-form UI changes.
-- **Browser autofill pre-populated phone/PIN unexpectedly:** Login/punch fields could start with remembered values. Fix: force blank state on mount and use anti-autofill attributes (`autoComplete="new-password"` + unique `name` values) on phone/PIN inputs.
-- **Page/menu content hidden behind fixed bottom nav on some screens:** App shell used `min-h-dvh` + fixed nav, which could leave lower content inaccessible depending on viewport/scroll behavior. Fix: use viewport-locked shell (`h-dvh max-h-dvh overflow-hidden`) and route scrolling through `<main>` (`min-h-0 overflow-y-auto` + bottom padding).
-- **iPhone first paint larger than visible / horizontal drift, fixed after rotate:** Often `body` safe-area padding **plus** a child set to `100dvh` / `100vh` double-counted height vs the visible viewport. Fix: flex column chain on `html` / `body` / `#root`, `overflow-x: hidden`, move notch safe-area to the header wrapper only, avoid `h-dvh` on the outer shell; use `app-scroll-main` on `<main>` with iOS momentum scrolling and generous `pb` above `MobileNav`.
-- **Regression checklist for similar screens/menus:** when fixing one screen, re-test `Punch in`, `Punch out`, `Member login`, `Member billing`, `Member dashboard`, `Rabbi dashboard`, and `Admin dashboard` for (1) reachable bottom content, (2) scroll works, (3) no hidden controls behind bottom nav, (4) no unintended autofill defaults.
+- **Public punch identity mismatch:** UI omitted PIN while backend required it. Fix: inline PIN on shared punch form and include `pin` in `/api/punch/in`, `/api/punch/out-public`, and `/api/punch/out-location-default`.
+- **Autofill-created false positives:** Browser remembered phone/PIN and prefilled auth forms unexpectedly. Fix: blank state on mount + anti-autofill attributes (`autoComplete="new-password"` and unique names).
+- **Bottom-nav clipping / scroll chain bugs (mobile + laptop):** Root/document scroll competed with `main` scroll; fixed nav hid last controls. Fix: lock app shell to viewport (`html/body/#root` height/max-height + hidden overflow), make `main` the only scroll region, and add route-safe bottom padding.
+- **Regression strategy:** after any layout/identity-form fix, re-test punch, member, rabbi, and admin flows for bottom reachability, no hidden controls, and correct auth field defaults.
 
 ---
 
@@ -231,6 +230,7 @@ Use **[PROJECT_STATUS.md](../PROJECT_STATUS.md)** for the live checklist. Standi
 ## 13. Standing Cursor policies
 
 - **Rule:** `.cursor/rules/standing-debug-policy.mdc` (always apply) enforces cross-screen regression checks and requires logging recurring issues in docs/status.
+- **Rule addition (testing mode):** during daily testing, review `docs/` for staleness/duplication, update `PROJECT_STATUS.md`, and collapse duplicate debug notes into one canonical entry.
 - **Hook config:** `.cursor/hooks.json` enables a `beforeSubmitPrompt` hook.
 - **Hook script:** `.cursor/hooks/git-reminder.ps1` reminds when working tree is large/stale (10+ changed files, or ~1+ hour since last commit) and tells the agent to checkpoint with a commit.
 - **Safety:** policy is reminder-only; no auto-push. Push remains explicit/manual by user request.

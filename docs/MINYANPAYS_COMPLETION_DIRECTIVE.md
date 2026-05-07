@@ -5,6 +5,16 @@
 
 ---
 
+## STATUS NOTE (May 2026)
+
+This directive is a **backlog and scope lock**, not a literal "current incident" runbook.
+
+- Task 1 deploy blank-page incident is already fixed in code.
+- Task 2 auth incident is already fixed in code.
+- Keep this file for remaining roadmap items (Tasks 3+), and use `PROJECT_STATUS.md` for current execution state.
+
+---
+
 ## SCOPE LOCK
 
 This sprint is **MinyanPays only**. Do not build reflections, voice input, prize store,
@@ -14,10 +24,10 @@ When complete, a rabbi in Crown Heights can run his shul on this.
 
 ---
 
-## CURRENT PROBLEM (confirmed)
+## CURRENT PROBLEM (historical reference)
 
-**minyanpays.com loads a blank page** — only the text "minyan-pays" is visible.
-The React app is not mounting. Fix this before anything else.
+Historical incident for context: production previously showed only "minyan-pays" due to deploy/config issues.
+This section is retained as postmortem context; check `PROJECT_STATUS.md` before re-running these steps.
 
 ---
 
@@ -64,7 +74,7 @@ This must point to the live API service URL, not localhost.
 ### 1e. Verify API service is running
 In Render dashboard → your API web service:
 - Check logs for startup errors
-- Hit `https://[api-url].onrender.com/api/health` — should return `{ status: "ok" }`
+- Hit `https://[api-url].onrender.com/api/health` — should return JSON including `ok: true` (for example `{ "ok": true, "service": "minyan-pays-api" }`)
 - If it's sleeping (free tier), wake it up
 
 ### 1f. After fixes — smoke test

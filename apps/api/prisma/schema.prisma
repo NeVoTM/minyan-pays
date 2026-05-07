@@ -244,6 +244,9 @@ model Attendance {
   punchInStatus      PunchStatus   @default(PENDING)
   punchInConfirmedAt DateTime?
   punchOutAt         DateTime?
+  canceledAt         DateTime?
+  canceledByRole     String?
+  canceledReason     String?
 
   @@unique([userId, sessionId])
 }

@@ -38,6 +38,14 @@ type SessionResp = {
     wouldBeFirstNine: boolean
     user: SessionUser
   }[]
+  canceledAttendances: {
+    id: string
+    punchInAt: string
+    canceledAt: string | null
+    canceledByRole: string | null
+    canceledReason: string | null
+    user: { id: string; displayName: string; phone: string }
+  }[]
 }
 
 type WeekRow = {
@@ -55,6 +63,17 @@ type WeekReport = {
   weekSundayKey: string
   dateKeysInWeek: string[]
   rows: WeekRow[]
+  canceledAttendances: {
+    id: string
+    userId: string
+    displayName: string
+    phone: string
+    dateKey: string
+    punchInAt: string
+    canceledAt: string | null
+    canceledByRole: string | null
+    canceledReason: string | null
+  }[]
 }
 
 type RabbiMemberDetail = {
@@ -339,6 +358,23 @@ export function RabbiDashboard() {
       body: '{}',
     })
     await load()
+  }
+
+  async function cancelAttendance(id: string) {
+    if (!token) return
+    const reason = window.prompt(
+      'Reason for cancellation (optional):',
+      'Member left / changed plans'
+    )
+    if (reason === null) return
+    await api(`/api/rabbi/attendance/${id}/cancel`, {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ reason: reason.trim() || undefined }),
+    })
+    setMsg('Check-in canceled. It will not count toward payout.')
+    await load()
+    if (tab === 'payouts') await loadWeek()
   }
 
   async function savePayouts() {
@@ -698,6 +734,16 @@ export function RabbiDashboard() {
                       </button>
                     </>
                   )}
+                  {(a.punchInStatus === 'PENDING' ||
+                    a.punchInStatus === 'CONFIRMED') && (
+                    <button
+                      type="button"
+                      className="w-full rounded-lg border border-rose-300 bg-rose-50 py-2.5 text-[11px] font-semibold text-rose-900"
+                      onClick={() => void cancelAttendance(a.id)}
+                    >
+                      Cancel check-in
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
@@ -706,6 +752,35 @@ export function RabbiDashboard() {
             <p className="text-xs text-slate-500">
               {t('admin.noPunchInsToday')}
             </p>
+          )}
+          {session.canceledAttendances.length > 0 && (
+            <div className="mt-4 border-t border-slate-200 pt-3">
+              <h3 className="text-xs font-semibold text-slate-700">
+                Canceled check-ins
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {session.canceledAttendances.map((a) => (
+                  <li
+                    key={a.id}
+                    className="rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-2 text-[11px]"
+                  >
+                    <p className="font-medium text-slate-900">{a.user.displayName}</p>
+                    <p className="text-slate-600">
+                      Check-in: {formatPunchInAt(a.punchInAt, session.timezone)}
+                    </p>
+                    <p className="text-slate-600">
+                      Canceled by {a.canceledByRole ?? 'UNKNOWN'}
+                      {a.canceledAt
+                        ? ` at ${formatPunchInAt(a.canceledAt, session.timezone)}`
+                        : ''}
+                    </p>
+                    {a.canceledReason && (
+                      <p className="text-slate-500">Reason: {a.canceledReason}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}
@@ -826,6 +901,27 @@ export function RabbiDashboard() {
               >
                 {t('rabbi.savePayouts')}
               </button>
+              {weekReport.canceledAttendances.length > 0 && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                  <h3 className="text-xs font-semibold text-slate-700">
+                    Canceled check-ins (excluded from payout)
+                  </h3>
+                  <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto pr-0.5 text-[11px]">
+                    {weekReport.canceledAttendances.map((c) => (
+                      <li key={c.id} className="rounded border border-slate-200 bg-white p-2">
+                        <p className="font-medium text-slate-900">{c.displayName}</p>
+                        <p className="text-slate-600">
+                          {c.dateKey} · {c.phone}
+                        </p>
+                        <p className="text-slate-500">
+                          {c.canceledByRole ?? 'UNKNOWN'}
+                          {c.canceledReason ? ` — ${c.canceledReason}` : ''}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
           )}
         </div>

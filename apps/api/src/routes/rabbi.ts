@@ -8,7 +8,11 @@ import {
   requireRabbi,
   type JwtPayload,
 } from "../middleware/auth.js";
-import { todayDateKeyInZone } from "../lib/dates.js";
+import {
+  todayDateKeyInZone,
+  weekSundayKeyFromDateKey,
+  weekMinyanDateKeys,
+} from "../lib/dates.js";
 import {
   computeAllMembersWeekSummary,
   getOrganizationSettings,
@@ -40,6 +44,11 @@ function trimOrNull(s: string | undefined | null): string | null {
 const weekKeyParam = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD (any day in the week)");
+
+function weekReportDateKeys(anyDayInWeek: string, tz: string): string[] {
+  const sundayKey = weekSundayKeyFromDateKey(anyDayInWeek, tz);
+  return weekMinyanDateKeys(sundayKey, tz);
+}
 
 rabbiRouter.get("/settings", async (req, res) => {
   const oid = orgId(req);
@@ -352,12 +361,14 @@ rabbiRouter.get("/session/today", async (req, res) => {
     });
   }
   const settings = await getOrganizationSettings(oid);
-  const firstMap = rankFirstNine(session.attendances, settings.firstNineSlots);
+  const activeAttendances = session.attendances.filter((a) => !a.canceledAt);
+  const canceledAttendances = session.attendances.filter((a) => !!a.canceledAt);
+  const firstMap = rankFirstNine(activeAttendances, settings.firstNineSlots);
   res.json({
     dateKey,
     timezone: org.timezone,
     sessionId: session.id,
-    attendances: session.attendances.map((a) => ({
+    attendances: activeAttendances.map((a) => ({
       id: a.id,
       punchInAt: a.punchInAt.toISOString(),
       punchInStatus: a.punchInStatus,
@@ -377,6 +388,18 @@ rabbiRouter.get("/session/today", async (req, res) => {
         stateRegion: a.user.stateRegion,
         postalCode: a.user.postalCode,
         email: a.user.email,
+      },
+    })),
+    canceledAttendances: canceledAttendances.map((a) => ({
+      id: a.id,
+      punchInAt: a.punchInAt.toISOString(),
+      canceledAt: a.canceledAt?.toISOString() ?? null,
+      canceledByRole: a.canceledByRole ?? null,
+      canceledReason: a.canceledReason ?? null,
+      user: {
+        id: a.user.id,
+        displayName: fullName(a.user.firstName, a.user.lastName),
+        phone: a.user.phone,
       },
     })),
   });
@@ -405,7 +428,7 @@ rabbiRouter.post("/attendance/:id/confirm", async (req, res) => {
       session: { include: { attendances: { include: { user: true } } } },
     },
   });
-  if (!att || att.punchInStatus !== "PENDING") {
+  if (!att || att.canceledAt || att.punchInStatus !== "PENDING") {
     res.status(400).json({ error: "Not pending" });
     return;
   }
@@ -430,7 +453,7 @@ rabbiRouter.post("/attendance/:id/reject", async (req, res) => {
   const att = await prisma.attendance.findFirst({
     where: { id, session: { organizationId: oid } },
   });
-  if (!att || att.punchInStatus !== "PENDING") {
+  if (!att || att.canceledAt || att.punchInStatus !== "PENDING") {
     res.status(400).json({ error: "Not pending" });
     return;
   }
@@ -439,6 +462,49 @@ rabbiRouter.post("/attendance/:id/reject", async (req, res) => {
     data: { punchInStatus: "REJECTED" },
   });
   res.json({ id: updated.id, punchInStatus: updated.punchInStatus });
+});
+
+const cancelAttendanceSchema = z.object({
+  reason: z.string().trim().max(200).optional(),
+});
+
+/** Rabbi may cancel a check-in (soft-delete) if member left/changed plans. */
+rabbiRouter.post("/attendance/:id/cancel", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = cancelAttendanceSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const att = await prisma.attendance.findFirst({
+    where: { id: req.params.id, session: { organizationId: oid } },
+    include: { user: { select: { firstName: true, lastName: true } } },
+  });
+  if (!att) {
+    res.status(404).json({ error: "Attendance not found" });
+    return;
+  }
+  if (att.canceledAt) {
+    res.status(409).json({ error: "Already canceled." });
+    return;
+  }
+  const updated = await prisma.attendance.update({
+    where: { id: att.id },
+    data: {
+      canceledAt: new Date(),
+      canceledByRole: "RABBI",
+      canceledReason: parsed.data.reason || "Canceled by rabbi",
+      punchInStatus: "REJECTED",
+      punchInConfirmedAt: null,
+      punchOutAt: null,
+    },
+  });
+  res.json({
+    id: updated.id,
+    canceledAt: updated.canceledAt?.toISOString() ?? null,
+    canceledByRole: updated.canceledByRole,
+    displayName: fullName(att.user.firstName, att.user.lastName),
+  });
 });
 
 /** Week earnings + paid status (WeeklyPayout.paidAt). */
@@ -479,6 +545,26 @@ rabbiRouter.get("/reports/week/:weekKey", async (req, res) => {
     }
   }
 
+  const canceledAttendances = await prisma.attendance.findMany({
+    where: {
+      canceledAt: { not: null },
+      session: {
+        organizationId: oid,
+        dateKey: { in: weekReportDateKeys(parsed.data, org.timezone) },
+      },
+    },
+    select: {
+      id: true,
+      punchInAt: true,
+      canceledAt: true,
+      canceledByRole: true,
+      canceledReason: true,
+      session: { select: { dateKey: true } },
+      user: { select: { id: true, firstName: true, lastName: true, phone: true } },
+    },
+    orderBy: [{ canceledAt: "desc" }],
+  });
+
   res.json({
     weekSundayKey,
     dateKeysInWeek: [...dateKeysInWeek].sort(),
@@ -490,6 +576,17 @@ rabbiRouter.get("/reports/week/:weekKey", async (req, res) => {
         storedAmountCents: p?.amountCents ?? null,
       };
     }),
+    canceledAttendances: canceledAttendances.map((a) => ({
+      id: a.id,
+      userId: a.user.id,
+      displayName: fullName(a.user.firstName, a.user.lastName),
+      phone: a.user.phone,
+      dateKey: a.session.dateKey,
+      punchInAt: a.punchInAt.toISOString(),
+      canceledAt: a.canceledAt?.toISOString() ?? null,
+      canceledByRole: a.canceledByRole ?? null,
+      canceledReason: a.canceledReason ?? null,
+    })),
   });
 });
 

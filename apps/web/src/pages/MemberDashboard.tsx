@@ -40,6 +40,7 @@ export function MemberDashboard() {
   const [data, setData] = useState<Balance | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [punchOutLoading, setPunchOutLoading] = useState(false)
+  const [cancelLoading, setCancelLoading] = useState(false)
   const [punchMsg, setPunchMsg] = useState<string | null>(null)
   const [actionAmount, setActionAmount] = useState('')
   const [charities, setCharities] = useState<{ id: string; name: string }[]>([])
@@ -82,6 +83,32 @@ export function MemberDashboard() {
       setPunchMsg(e instanceof Error ? e.message : 'Error')
     } finally {
       setPunchOutLoading(false)
+    }
+  }
+
+  async function cancelTodayCheckIn() {
+    if (!token) return
+    const reason = window.prompt(
+      'Reason for canceling this check-in (optional):',
+      'Need to leave / changed plans'
+    )
+    if (reason === null) return
+    setCancelLoading(true)
+    setPunchMsg(null)
+    try {
+      await api('/api/me/checkin/cancel-today', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ reason: reason.trim() || undefined }),
+      })
+      setPunchMsg(
+        'Your check-in was canceled and removed from payout calculation. Rabbi has been notified in the canceled list.'
+      )
+      await load()
+    } catch (e: unknown) {
+      setPunchMsg(e instanceof Error ? e.message : 'Error')
+    } finally {
+      setCancelLoading(false)
     }
   }
 
@@ -163,6 +190,14 @@ export function MemberDashboard() {
           onClick={() => void punchOut()}
         >
           {punchOutLoading ? 'Saving…' : 'Punch out (after minyan)'}
+        </button>
+        <button
+          type="button"
+          disabled={cancelLoading}
+          className="mt-2 w-full rounded-full border border-rose-300 bg-rose-50 py-3 text-sm font-semibold text-rose-900 transition hover:bg-rose-100 disabled:opacity-50"
+          onClick={() => void cancelTodayCheckIn()}
+        >
+          {cancelLoading ? 'Canceling…' : 'Cancel today check-in'}
         </button>
         {punchMsg && (
           <p className="mt-3 text-sm text-slate-600">{punchMsg}</p>

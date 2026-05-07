@@ -1,12 +1,13 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-08*
+*Last updated: 2026-05-06*
 
 ## Current Task / Goal
 
 **Completion directive** (`MINYANPAYS_COMPLETION_DIRECTIVE`): ship MinyanPays only — deployment fix, secure auth, three tefillos, first-nine UX, Zelle export, member balance wallet UI, rabbi/admin polish, kiosk, demo seed, i18n. **In progress:** Tasks 1–2 landed in code; Tasks 3+ not started in this pass.
 
 **Latest user-facing pass:** public check-in/out no longer ties member identity to the selected location (phone + PIN resolve the org); duplicate open check-ins across sites blocked; GPS-suggested location (when admins set coordinates); punch/rabbi menu back controls removed; admin hub blurb removed; Check-In / Check-Out screen titles; rabbi login copy clarifies PIN. **Member UX (May 2026):** member login phone+PIN one row; balance page no longer shows org name under “Your balance”; rabbi banner only on **`/punch/in`** and **`/punch/out`**; profile PIN Show/Hide fixed (removed `-webkit-text-security` clash); profile save section layout + extra bottom padding; profile verification SMS via **Twilio** when env vars set (otherwise clear 503/502 or dev echo). **Laptop scroll:** `html`/`body`/`#root` locked to **`100dvh`** with **`overflow: hidden`** so only **`main`** scrolls (avoids document scroll + fixed tab bar clipping long pages like Rabbi dashboard); slightly larger **`main`** bottom padding on **`sm+`**.
+**Latest feature pass (attendance cancellation):** Rabbi can cancel check-ins (soft-delete) and members can cancel today's check-in; canceled records are excluded from first-nine/payout calculations and listed separately at the bottom of rabbi Today and weekly payout screens.
 
 ## What's Done
 
@@ -33,6 +34,8 @@
 - **Member flows:** **`MemberLogin`** phone + PIN **`grid-cols-2`** like check-in. **`MemberDashboard`** drops synagogue subtitle under “Your balance”. **`App.tsx`** **`PunchOnlyRabbiBanner`** limits **`RabbiBanner`** to **`/punch/in`** and **`/punch/out`**. **`MemberProfile`** new-PIN field uses **`pillInput`** + **`type` toggle** (not **`pinInput`**, which forced disc glyphs even when “Show”); save card stack + **`pb-[calc(10rem+…)]`** on form for tab bar clearance.
 - **Profile verification SMS:** **`apps/api/src/lib/smsVerification.ts`** sends via Twilio REST when **`TWILIO_ACCOUNT_SID`**, **`TWILIO_AUTH_TOKEN`**, **`TWILIO_PHONE_NUMBER`** are set; otherwise production returns **503** (no fake “sent”); dev / **`MEMBER_VERIFICATION_ECHO_CODE`** still returns **`devCode`**.
 - **Desktop/laptop bottom clip:** **`apps/web/src/index.css`** — `html`/`body`/`#root` use **`height/max-height: 100dvh`** and **`overflow: hidden`** so the flex shell has a definite viewport height and **`main.app-scroll-main`** is the sole vertical scroll (fixes Rabbi/Admin long lists where the fixed **`MobileNav`** hid the last items on laptop only). **`App.tsx`** increases **`main`** **`pb-[calc(8.5rem…)]`** / **`sm:pb-[calc(9rem…)]`** for tab-bar clearance; loading shell **`min-h-0 overflow-hidden`**; org-picker **`main`** extra bottom padding for long lists / safe-area (no tab bar there).
+- **Docs/rules hygiene pass:** Updated `docs/PROGRAMMER_HANDOFF.md` (Twilio status, env vars, deduped debugging section), `docs/MINYANPAYS_COMPLETION_DIRECTIVE.md` (historical note + current health response), `docs/AI_VERIFICATION_CHECKLIST.md` (removed chat-specific answer templates), `docs/COPILOT_GEMINI_REVIEW_INSTRUCTIONS.md` (current review goals), and `.cursor/rules/standing-debug-policy.mdc` (daily testing-mode doc review + de-dup rule). Added `docs/DOCS_INDEX.md` as the canonical docs map to keep fewer overlapping docs.
+- **Attendance cancellation flow:** Added `Attendance.canceledAt/canceledByRole/canceledReason` in Prisma schema; new endpoints `POST /api/rabbi/attendance/:id/cancel` and `POST /api/me/checkin/cancel-today`; `rabbi/session/today` and weekly report now return `canceledAttendances`; earnings logic now excludes canceled records (`canceledAt: null` guards). Web updates: Rabbi Today card gets **Cancel check-in** action and bottom canceled list; Rabbi Payouts tab shows canceled list excluded from payout; Member Dashboard gets **Cancel today check-in** action.
 
 ## What's Next / Blockers
 

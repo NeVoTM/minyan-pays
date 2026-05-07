@@ -145,6 +145,7 @@ With valid `apps/api/.env` (human configures; you only describe):
 ## Doc consistency
 
 - `docs/MINYANPAYS_COMPLETION_DIRECTIVE.md` **Task 2** may still describe auth as “disabled”; compare to **`auth.ts`** and **`PROGRAMMER_HANDOFF.md`**. Call out **stale** lines.
+- Ensure `docs/DOCS_INDEX.md` still matches reality; if docs overlap, keep one canonical source and convert duplicates to pointers.
 
 ---
 
@@ -167,62 +168,7 @@ Reply in this structure:
 
 ---
 
-## Answer for Gemini
+## Notes
 
-Use this as the current source of truth:
-
-- Production auth is working. Admin login and password change succeeded at `https://minyanpays.com/admin`.
-- Auth is enabled in code (not open/disabled):
-  - Admin: bcrypt hash if set, otherwise bootstrap fallback path.
-  - Rabbi: bcrypt hash or env fallback.
-  - Member: PIN verified with bcrypt.
-- Security hardening was added after review:
-  - `apps/api/src/routes/punch.ts` now enforces PIN verification in public punch identity flows (phone-only acceptance removed).
-  - `apps/api/src/env.ts` now fails startup when `DATABASE_URL` or `JWT_SECRET` is missing (except test mode).
-- Live API checks pass:
-  - `https://minyan-pays.onrender.com/api/health`
-  - `https://minyan-pays.onrender.com/api/public/organizations`
-
-Please treat any older text claiming "auth disabled" as stale and superseded.
-
-## Answer for Copilot
-
-Thanks for the review. Here is what was verified and actioned:
-
-- Confirmed: docs drift existed; some documents still implied disabled auth.
-- Confirmed and fixed: remaining auth gap in public punch flow.
-  - Updated `apps/api/src/routes/punch.ts` to require valid PIN (`bcrypt`) for public punch identity checks.
-- Added required env guard:
-  - Updated `apps/api/src/env.ts` to throw on missing `DATABASE_URL` or `JWT_SECRET` (non-test).
-- Validation completed:
-  - `npm run build --workspace apps/api` passes.
-  - Negative auth checks return `401` for wrong admin password and wrong member PIN.
-- Production confirmation:
-  - Successful admin login + password change at `https://minyanpays.com/admin`.
-
-Please update prior conclusions to "auth enforced" and mark the phone-only punch bypass as resolved.
-
-## Copilot PDF reconciliation (May 2026)
-
-This section maps Copilot PDF findings to current repo state so external reviewers do not repeat stale items.
-
-### Done now
-
-- **Public punch auth gap closed**: `apps/api/src/routes/punch.ts` now requires PIN verification (`bcrypt`) for public punch identity flows.
-- **Startup env validation added**: `apps/api/src/env.ts` now fails startup when `DATABASE_URL` or `JWT_SECRET` is missing (except test mode).
-- **Negative auth checks verified**:
-  - wrong admin password -> `401`
-  - wrong member PIN -> `401`
-- **Production auth smoke confirmed**: admin login + password change succeeded on `https://minyanpays.com/admin`.
-- **Route protection + org-scope artifact added**: see `docs/SECURITY_ROUTE_AUDIT.md` for full route inventory and cross-tenant review notes.
-
-### Still open (needs explicit follow-up)
-
-- **Docs harmonization across all files**: key docs were updated, but legacy wording may still exist in older summaries or backlog docs and should be aligned in one cleanup pass.
-- **Static route status behavior on production `/admin`**: page renders app shell but HTTP status can show `404` due to static rewrite behavior; functionally acceptable for SPA, but should be normalized for cleaner monitoring/SEO semantics.
-
-### N/A or advisory (not strict blockers by themselves)
-
-- **`ADMIN_PASSWORD` as startup-required env**: not always required by design because admin may authenticate via stored `Organization.adminPasswordHash` or bootstrap override path; requiring it unconditionally would block valid deployments.
-- **UI style suggestions (card/icon/button consistency)** from Copilot PDF are product/UX enhancements, not security/auth correctness blockers.
-- **Render dashboard automation from this agent session**: direct deploy clicks and private dashboard actions are account-scoped and cannot be completed solely from local repo tools; treated as operator step, not code defect.
+- Historical chat-specific response templates were removed from this checklist to avoid duplication/drift.
+- Keep this file as a reusable review template; put time-sensitive outcomes in `PROJECT_STATUS.md`.

@@ -43,6 +43,16 @@ When a new recurring issue is discovered:
 - Append it under `Debugging issues` in `docs/PROGRAMMER_HANDOFF.md`.
 - Add a short entry in `PROJECT_STATUS.md` with what changed and what to re-test next.
 
+Daily testing-mode doc hygiene:
+
+- In testing mode (daily cadence), review active docs before ending work:
+  - `docs/PROGRAMMER_HANDOFF.md`
+  - `docs/AI_VERIFICATION_CHECKLIST.md`
+  - `docs/COPILOT_GEMINI_REVIEW_INSTRUCTIONS.md`
+  - `PROJECT_STATUS.md`
+- Remove or merge duplicate debugging bullets; keep one canonical wording per issue.
+- If a doc is redundant, mark it as reference/archival and point to the canonical file instead of copying content.
+
 Commit hygiene policy:
 
 - If changes are substantial, propose a commit.

@@ -14,13 +14,13 @@ Use this document when you ask **Copilot** (in VS Code / Cursor / GitHub) or **G
 
 | Order | File | Purpose |
 |-------|------|---------|
-| 1 | `CLAUDE.md` | Short project context at repo root |
-| 2 | `docs/PROGRAMMER_HANDOFF.md` | Architecture, auth, schema pointers |
-| 3 | `docs/CLAUDE_REVIEW_REPORT.md` | What is done vs remaining vs ops |
-| 4 | `docs/MINYANPAYS_COMPLETION_DIRECTIVE.md` | Full sprint backlog & checklist |
-| 5 | `docs/CLAUDE_CODE_FIRST_RUN_SUMMARY.md` | Severity-ranked gaps |
+| 1 | `docs/DOCS_INDEX.md` | Canonical doc map (what to trust vs reference) |
+| 2 | `PROJECT_STATUS.md` | Latest implementation + blockers |
+| 3 | `docs/PROGRAMMER_HANDOFF.md` | Architecture, auth, schema pointers |
+| 4 | `docs/AI_VERIFICATION_CHECKLIST.md` | Required review/test output format |
+| 5 | `docs/MINYANPAYS_COMPLETION_DIRECTIVE.md` | Scope lock + remaining backlog |
 
-**Recent changes (high level):** Production deploy UX (`VITE_API_BASE_URL`, org fetch hardening); restored auth (`apps/api/src/routes/auth.ts`, JWT 24h); login UI passwords/PIN; `docs/` updates.
+**Recent changes (high level):** production deploy UX (`VITE_API_BASE_URL`, org fetch hardening), restored auth (`apps/api/src/routes/auth.ts`, JWT 24h), punch cross-location identity resolution, GPS location suggestion, Twilio-backed profile verification SMS, and desktop scroll-chain fixes.
 
 ---
 
@@ -32,16 +32,19 @@ Copy everything inside the box:
 You are reviewing the MinyanPays monorepo (React+Vite web in apps/web, Express+Prisma API in apps/api).
 
 Goals:
-1) Cross-check docs/CLAUDE_REVIEW_REPORT.md and docs/MINYANPAYS_COMPLETION_DIRECTIVE.md against the actual code — flag stale doc claims.
+1) Cross-check PROJECT_STATUS.md + docs/PROGRAMMER_HANDOFF.md + docs/MINYANPAYS_COMPLETION_DIRECTIVE.md against the actual code — flag stale doc claims.
 2) Review apps/api/src/routes/auth.ts and apps/api/src/middleware/auth.ts for credential and JWT handling; note any cross-tenant risks if routes skip org checks.
-3) Review apps/web/src/context/OrgContext.tsx and apps/web/src/lib/apiBase.ts for production API URL behavior.
-4) List concrete test steps (commands + what to click) to validate admin, rabbi, and member login after setting ADMIN_PASSWORD and VITE_API_BASE_URL locally.
+3) Review apps/api/src/routes/punch.ts and apps/web/src/components/PunchIdentityForm.tsx for public check-in/out identity behavior (phone+PIN and location selection expectations).
+4) Review apps/web/src/App.tsx + src/index.css for scroll behavior under fixed bottom nav on laptop and iPhone.
+5) Review apps/api/src/routes/member.ts + src/lib/smsVerification.ts for profile verification send-code behavior and fallback handling.
+6) List concrete test steps (commands + what to click) to validate admin/rabbi/member login plus member profile verification flow after env setup.
 5) Do NOT invent secrets; reference apps/api/.env.example for variable names only.
 
 Output format:
 - Summary (5 bullets)
 - Doc vs code mismatches
 - Security notes (Critical / High / Medium)
+- UX/flow notes (especially check-in/out, profile send-code, scroll)
 - Recommended npm/prisma commands to run locally
 - Anything still ambiguous that needs a human to verify on Render production
 ```
@@ -133,4 +136,4 @@ Database operations require a valid **`DATABASE_URL`** (local or cloud); do not 
 
 ---
 
-*Add this file to review bundles so Copilot/Gemini share the same instructions.*
+*Use this together with `docs/AI_VERIFICATION_CHECKLIST.md` (canonical review template/output contract).*

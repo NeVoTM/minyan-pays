@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { getMemberBalanceDetail } from "../lib/earnings.js";
 import { fullName } from "../lib/memberDisplay.js";
+import { todayDateKeyInZone } from "../lib/dates.js";
 import {
   authMiddleware,
   requireApprovedMember,
@@ -53,6 +54,15 @@ const donateSchema = z
   .refine((v) => v.amountCents || v.percentage, {
     message: "Provide amountCents or percentage",
   });
+
+const cancelCheckInSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .default("Member canceled check-in"),
+});
 
 function authFrom(req: Request) {
   return (req as Request & { auth: JwtPayload }).auth;
@@ -388,4 +398,61 @@ memberRouter.post("/balance/donate", async (req, res) => {
     },
   });
   res.json({ ok: true, amountCents: requested });
+});
+
+/** Member can cancel today's check-in (if plans changed). */
+memberRouter.post("/checkin/cancel-today", async (req, res) => {
+  const auth = authFrom(req);
+  const parsed = cancelCheckInSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const org = await prisma.organization.findUnique({
+    where: { id: auth.organizationId },
+    select: { id: true, timezone: true },
+  });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
+  const dateKey = todayDateKeyInZone(org.timezone);
+  const session = await prisma.minyanSession.findUnique({
+    where: { organizationId_dateKey: { organizationId: org.id, dateKey } },
+    select: { id: true },
+  });
+  if (!session) {
+    res.status(404).json({ error: "No check-in found for today." });
+    return;
+  }
+
+  const att = await prisma.attendance.findUnique({
+    where: { userId_sessionId: { userId: auth.sub, sessionId: session.id } },
+  });
+  if (!att) {
+    res.status(404).json({ error: "No check-in found for today." });
+    return;
+  }
+  if (att.canceledAt) {
+    res.status(409).json({ error: "Check-in already canceled." });
+    return;
+  }
+
+  const updated = await prisma.attendance.update({
+    where: { id: att.id },
+    data: {
+      canceledAt: new Date(),
+      canceledByRole: "MEMBER",
+      canceledReason: parsed.data.reason || "Member canceled check-in",
+      punchInStatus: "REJECTED",
+      punchInConfirmedAt: null,
+      punchOutAt: null,
+    },
+  });
+  res.json({
+    ok: true,
+    canceledAt: updated.canceledAt?.toISOString() ?? null,
+    message: "Check-in canceled and removed from payout calculations.",
+  });
 });

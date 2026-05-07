@@ -69,7 +69,7 @@ export function rankFirstNine(
   slots: number
 ): Map<string, boolean> {
   const confirmed = attendances
-    .filter((a) => a.punchInStatus === "CONFIRMED")
+    .filter((a) => a.punchInStatus === "CONFIRMED" && !a.canceledAt)
     .sort((a, b) => a.punchInAt.getTime() - b.punchInAt.getTime());
   const map = new Map<string, boolean>();
   confirmed.slice(0, slots).forEach((a) => map.set(a.userId, true));
@@ -110,7 +110,12 @@ export async function computeUserWeekEarnings(
       continue;
     }
     const mine = session.attendances.find((a) => a.userId === userId);
-    if (!mine || mine.punchInStatus !== "CONFIRMED" || !mine.punchOutAt) {
+    if (
+      !mine ||
+      mine.canceledAt ||
+      mine.punchInStatus !== "CONFIRMED" ||
+      !mine.punchOutAt
+    ) {
       dailyLines.push({ dateKey, amountCents: 0, firstNine: false });
       continue;
     }
@@ -141,6 +146,7 @@ export async function getMemberBalanceDetail(
     where: {
       userId,
       punchInStatus: "CONFIRMED",
+      canceledAt: null,
       session: { organizationId },
     },
     include: { session: true },
