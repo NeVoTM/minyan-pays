@@ -51,6 +51,10 @@ model Organization {
   kind             OrganizationKind @default(SYNAGOGUE)
   synagogueName    String
   locationAddress  String?
+  /** Optional structured address parts (city, state, ZIP) for the location. */
+  locationCity        String?
+  locationState       String?
+  locationPostalCode  String?
   locationPhone    String?
   locationEmail    String?
   locationWebsite  String?
@@ -77,6 +81,7 @@ model Organization {
 
   users          User[]
   rabbis         Rabbi[]
+  shamoshim      Shamosh[]
   minyanSessions MinyanSession[]
   treasury       Treasury?
   charities      Charity[]
@@ -97,8 +102,32 @@ model Rabbi {
   postalCode     String?
   phone          String?
   email          String?
+  /** Exactly one main rabbi per location can manage other rabbis/shamoshim. Additional rabbis only approve check-ins. */
+  isMain         Boolean      @default(false)
+  /** Per-rabbi login (8 alphanumeric). Plain copy intentionally kept so admin can read it back. */
+  passwordHash   String?
+  passwordPlain  String?      @unique
+  shamoshim      Shamosh[]
 
   @@index([organizationId, name])
+}
+
+/** Helper (shamosh) that approves check-ins for a single rabbi at a location. */
+model Shamosh {
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rabbiId        String
+  rabbi          Rabbi        @relation(fields: [rabbiId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String?
+  email          String?
+  passwordHash   String?
+  passwordPlain  String?      @unique
+
+  @@index([organizationId, rabbiId])
 }
 
 model User {

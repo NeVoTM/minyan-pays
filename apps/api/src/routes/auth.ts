@@ -122,6 +122,38 @@ authRouter.post("/rabbi", async (req, res) => {
   }
 
   const password = parsed.data.password.trim();
+
+  const rabbiRow = await prisma.rabbi.findFirst({
+    where: { organizationId: org.id, passwordPlain: password },
+    select: { id: true, isMain: true },
+  });
+  if (rabbiRow) {
+    res.json({
+      token: signRabbiToken(org.id, {
+        rabbiKind: rabbiRow.isMain ? "MAIN" : "ADDITIONAL",
+        rabbiId: rabbiRow.id,
+      }),
+      rabbiKind: rabbiRow.isMain ? "MAIN" : "ADDITIONAL",
+    });
+    return;
+  }
+
+  const shamoshRow = await prisma.shamosh.findFirst({
+    where: { organizationId: org.id, passwordPlain: password },
+    select: { id: true, rabbiId: true },
+  });
+  if (shamoshRow) {
+    res.json({
+      token: signRabbiToken(org.id, {
+        rabbiKind: "SHAMOSH",
+        rabbiId: shamoshRow.rabbiId,
+        shamoshId: shamoshRow.id,
+      }),
+      rabbiKind: "SHAMOSH",
+    });
+    return;
+  }
+
   let ok = false;
   if (org.rabbiPasswordHash) {
     ok = await bcrypt.compare(password, org.rabbiPasswordHash);
@@ -136,7 +168,10 @@ authRouter.post("/rabbi", async (req, res) => {
     return;
   }
 
-  res.json({ token: signRabbiToken(org.id) });
+  res.json({
+    token: signRabbiToken(org.id, { rabbiKind: "LEGACY" }),
+    rabbiKind: "LEGACY",
+  });
 });
 
 authRouter.post("/member", async (req, res) => {

@@ -25,6 +25,12 @@ import {
 } from "../lib/memberDuplicates.js";
 import { memberFieldsSchema, memberUpdateSchema } from "../lib/memberSchemas.js";
 import { normalizeOrgSlug } from "../lib/organizationService.js";
+import {
+  assertRabbiPasswordUnique,
+  generateUniqueRabbiPassword,
+  isValidRabbiPassword,
+} from "../lib/rabbiPasswords.js";
+import { geocodeAddress } from "../lib/geocode.js";
 
 export const adminRouter = Router();
 adminRouter.use(authMiddleware);
@@ -124,6 +130,20 @@ const rabbiProfileSchema = z.object({
   postalCode: z.union([z.string().max(30), z.null()]).optional(),
   phone: z.union([z.string().max(40), z.null()]).optional(),
   email: z.union([z.string().email(), z.null()]).optional(),
+  isMain: z.boolean().optional(),
+  /** Plain text — admin keeps this readable. Validated as 8 alphanumeric characters when provided. */
+  password: z.union([z.string().trim().max(64), z.null()]).optional(),
+  /** When true, server generates a fresh unique 8-char password (overrides `password`). */
+  generatePassword: z.boolean().optional(),
+});
+
+const shamoshProfileSchema = z.object({
+  rabbiId: z.string().min(1),
+  name: z.string().trim().min(1).max(120),
+  phone: z.union([z.string().max(40), z.null()]).optional(),
+  email: z.union([z.string().email(), z.null()]).optional(),
+  password: z.union([z.string().trim().max(64), z.null()]).optional(),
+  generatePassword: z.boolean().optional(),
 });
 
 /** All locations (for treasurer overview). */
@@ -695,14 +715,63 @@ adminRouter.delete("/attendance/:id", async (req, res) => {
   res.status(204).send();
 });
 
+const rabbiAdminSelect = {
+  id: true,
+  name: true,
+  address: true,
+  city: true,
+  stateRegion: true,
+  postalCode: true,
+  phone: true,
+  email: true,
+  isMain: true,
+  passwordPlain: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const shamoshAdminSelect = {
+  id: true,
+  rabbiId: true,
+  name: true,
+  phone: true,
+  email: true,
+  passwordPlain: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 adminRouter.get("/rabbis", async (req, res) => {
   const oid = orgId(req);
   const rabbis = await prisma.rabbi.findMany({
     where: { organizationId: oid },
-    orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ isMain: "desc" }, { name: "asc" }, { createdAt: "asc" }],
+    select: rabbiAdminSelect,
   });
   res.json(rabbis);
 });
+
+async function resolveRabbiPasswordForWrite(
+  d: z.infer<typeof rabbiProfileSchema>,
+  excludeRabbiId?: string
+): Promise<{ plain: string | null; hash: string | null } | null> {
+  if (d.generatePassword) {
+    const plain = await generateUniqueRabbiPassword();
+    return { plain, hash: await bcrypt.hash(plain, 10) };
+  }
+  if (d.password === undefined) return null;
+  if (d.password === null || d.password === "") {
+    return { plain: null, hash: null };
+  }
+  const trimmed = d.password.trim();
+  if (!isValidRabbiPassword(trimmed)) {
+    throw new Error(
+      "Password must be exactly 8 letters/numbers (a–z, A–Z, 0–9)."
+    );
+  }
+  await assertRabbiPasswordUnique(trimmed, { excludeRabbiId });
+  return { plain: trimmed, hash: await bcrypt.hash(trimmed, 10) };
+}
 
 adminRouter.post("/rabbis", async (req, res) => {
   const oid = orgId(req);
@@ -712,19 +781,35 @@ adminRouter.post("/rabbis", async (req, res) => {
     return;
   }
   const d = parsed.data;
-  const rabbi = await prisma.rabbi.create({
-    data: {
-      organizationId: oid,
-      name: d.name.trim(),
-      address: trimOrNull(d.address),
-      city: trimOrNull(d.city),
-      stateRegion: trimOrNull(d.stateRegion),
-      postalCode: trimOrNull(d.postalCode),
-      phone: normalizeOptionalUsPhone(d.phone ?? null),
-      email: trimOrNull(d.email),
-    },
-  });
-  res.status(201).json(rabbi);
+  try {
+    if (d.isMain === true) {
+      await prisma.rabbi.updateMany({
+        where: { organizationId: oid, isMain: true },
+        data: { isMain: false },
+      });
+    }
+    const pw = await resolveRabbiPasswordForWrite(d);
+    const rabbi = await prisma.rabbi.create({
+      data: {
+        organizationId: oid,
+        name: d.name.trim(),
+        address: trimOrNull(d.address),
+        city: trimOrNull(d.city),
+        stateRegion: trimOrNull(d.stateRegion),
+        postalCode: trimOrNull(d.postalCode),
+        phone: normalizeOptionalUsPhone(d.phone ?? null),
+        email: trimOrNull(d.email),
+        isMain: d.isMain === true,
+        passwordPlain: pw?.plain ?? null,
+        passwordHash: pw?.hash ?? null,
+      },
+      select: rabbiAdminSelect,
+    });
+    res.status(201).json(rabbi);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Create failed";
+    res.status(400).json({ error: msg });
+  }
 });
 
 adminRouter.patch("/rabbis/:id", async (req, res) => {
@@ -743,9 +828,15 @@ adminRouter.patch("/rabbis/:id", async (req, res) => {
     return;
   }
   const d = parsed.data;
-  const rabbi = await prisma.rabbi.update({
-    where: { id: existing.id },
-    data: {
+  try {
+    if (d.isMain === true) {
+      await prisma.rabbi.updateMany({
+        where: { organizationId: oid, isMain: true, NOT: { id: existing.id } },
+        data: { isMain: false },
+      });
+    }
+    const pw = await resolveRabbiPasswordForWrite(d, existing.id);
+    const updateData: Prisma.RabbiUpdateInput = {
       name: d.name.trim(),
       address: trimOrNull(d.address),
       city: trimOrNull(d.city),
@@ -753,9 +844,22 @@ adminRouter.patch("/rabbis/:id", async (req, res) => {
       postalCode: trimOrNull(d.postalCode),
       phone: normalizeOptionalUsPhone(d.phone ?? null),
       email: trimOrNull(d.email),
-    },
-  });
-  res.json(rabbi);
+    };
+    if (d.isMain !== undefined) updateData.isMain = d.isMain;
+    if (pw) {
+      updateData.passwordPlain = pw.plain;
+      updateData.passwordHash = pw.hash;
+    }
+    const rabbi = await prisma.rabbi.update({
+      where: { id: existing.id },
+      data: updateData,
+      select: rabbiAdminSelect,
+    });
+    res.json(rabbi);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Update failed";
+    res.status(400).json({ error: msg });
+  }
 });
 
 adminRouter.delete("/rabbis/:id", async (req, res) => {
@@ -772,6 +876,175 @@ adminRouter.delete("/rabbis/:id", async (req, res) => {
   res.status(204).send();
 });
 
+async function resolveShamoshPasswordForWrite(
+  d: z.infer<typeof shamoshProfileSchema>,
+  excludeShamoshId?: string
+): Promise<{ plain: string | null; hash: string | null } | null> {
+  if (d.generatePassword) {
+    const plain = await generateUniqueRabbiPassword();
+    return { plain, hash: await bcrypt.hash(plain, 10) };
+  }
+  if (d.password === undefined) return null;
+  if (d.password === null || d.password === "") {
+    return { plain: null, hash: null };
+  }
+  const trimmed = d.password.trim();
+  if (!isValidRabbiPassword(trimmed)) {
+    throw new Error(
+      "Password must be exactly 8 letters/numbers (a–z, A–Z, 0–9)."
+    );
+  }
+  await assertRabbiPasswordUnique(trimmed, { excludeShamoshId });
+  return { plain: trimmed, hash: await bcrypt.hash(trimmed, 10) };
+}
+
+adminRouter.get("/shamoshim", async (req, res) => {
+  const oid = orgId(req);
+  const rows = await prisma.shamosh.findMany({
+    where: { organizationId: oid },
+    orderBy: [{ rabbiId: "asc" }, { name: "asc" }],
+    select: shamoshAdminSelect,
+  });
+  res.json(rows);
+});
+
+adminRouter.post("/shamoshim", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = shamoshProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const rabbi = await prisma.rabbi.findFirst({
+    where: { id: d.rabbiId, organizationId: oid },
+    select: { id: true },
+  });
+  if (!rabbi) {
+    res.status(400).json({ error: "Selected rabbi is not in this location." });
+    return;
+  }
+  try {
+    const pw = await resolveShamoshPasswordForWrite(d);
+    const created = await prisma.shamosh.create({
+      data: {
+        organizationId: oid,
+        rabbiId: rabbi.id,
+        name: d.name.trim(),
+        phone: normalizeOptionalUsPhone(d.phone ?? null),
+        email: trimOrNull(d.email),
+        passwordPlain: pw?.plain ?? null,
+        passwordHash: pw?.hash ?? null,
+      },
+      select: shamoshAdminSelect,
+    });
+    res.status(201).json(created);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Create failed";
+    res.status(400).json({ error: msg });
+  }
+});
+
+adminRouter.patch("/shamoshim/:id", async (req, res) => {
+  const oid = orgId(req);
+  const parsed = shamoshProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const existing = await prisma.shamosh.findFirst({
+    where: { id: req.params.id, organizationId: oid },
+    select: { id: true },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Shamosh not found" });
+    return;
+  }
+  const d = parsed.data;
+  const rabbi = await prisma.rabbi.findFirst({
+    where: { id: d.rabbiId, organizationId: oid },
+    select: { id: true },
+  });
+  if (!rabbi) {
+    res.status(400).json({ error: "Selected rabbi is not in this location." });
+    return;
+  }
+  try {
+    const pw = await resolveShamoshPasswordForWrite(d, existing.id);
+    const updateData: Prisma.ShamoshUpdateInput = {
+      name: d.name.trim(),
+      phone: normalizeOptionalUsPhone(d.phone ?? null),
+      email: trimOrNull(d.email),
+      rabbi: { connect: { id: rabbi.id } },
+    };
+    if (pw) {
+      updateData.passwordPlain = pw.plain;
+      updateData.passwordHash = pw.hash;
+    }
+    const updated = await prisma.shamosh.update({
+      where: { id: existing.id },
+      data: updateData,
+      select: shamoshAdminSelect,
+    });
+    res.json(updated);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Update failed";
+    res.status(400).json({ error: msg });
+  }
+});
+
+adminRouter.delete("/shamoshim/:id", async (req, res) => {
+  const oid = orgId(req);
+  const existing = await prisma.shamosh.findFirst({
+    where: { id: req.params.id, organizationId: oid },
+    select: { id: true },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Shamosh not found" });
+    return;
+  }
+  await prisma.shamosh.delete({ where: { id: existing.id } });
+  res.status(204).send();
+});
+
+const geocodeQuerySchema = z.object({
+  address: z.string().max(300).optional(),
+  city: z.string().max(120).optional(),
+  state: z.string().max(120).optional(),
+  postalCode: z.string().max(30).optional(),
+});
+
+/** Generate a unique 8-char alphanumeric rabbi/shamosh password (without saving). */
+adminRouter.get("/passwords/generate", async (_req, res) => {
+  try {
+    const password = await generateUniqueRabbiPassword();
+    res.json({ password });
+  } catch (e: unknown) {
+    res.status(500).json({
+      error: e instanceof Error ? e.message : "Could not generate password",
+    });
+  }
+});
+
+/** Server-side address → lat/lng (Nominatim). Used by admin Location panel to pre-fill check-in coordinates. */
+adminRouter.get("/geocode", async (req, res) => {
+  const parsed = geocodeQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const result = await geocodeAddress(parsed.data);
+  if (!result) {
+    res.status(404).json({ error: "Address not found." });
+    return;
+  }
+  res.json({
+    latitude: result.latitude,
+    longitude: result.longitude,
+    displayName: result.displayName,
+  });
+});
+
 const orgSettingsPublicSelect = {
   id: true,
   slug: true,
@@ -779,6 +1052,9 @@ const orgSettingsPublicSelect = {
   kind: true,
   synagogueName: true,
   locationAddress: true,
+  locationCity: true,
+  locationState: true,
+  locationPostalCode: true,
   locationPhone: true,
   locationEmail: true,
   locationWebsite: true,
@@ -805,6 +1081,9 @@ adminRouter.patch("/settings", async (req, res) => {
   const schema = z.object({
     synagogueName: z.string().optional(),
     locationAddress: z.union([z.string().max(300), z.null()]).optional(),
+    locationCity: z.union([z.string().max(120), z.null()]).optional(),
+    locationState: z.union([z.string().max(120), z.null()]).optional(),
+    locationPostalCode: z.union([z.string().max(30), z.null()]).optional(),
     locationPhone: z.union([z.string().max(40), z.null()]).optional(),
     locationEmail: z.union([z.string().email(), z.null()]).optional(),
     locationWebsite: z.union([z.string().url(), z.null()]).optional(),
@@ -824,23 +1103,53 @@ adminRouter.patch("/settings", async (req, res) => {
     defaultLocale: z.enum(["en", "he", "es", "ru", "fr"]).optional(),
     checkInLatitude: z.number().gte(-90).lte(90).nullable().optional(),
     checkInLongitude: z.number().gte(-180).lte(180).nullable().optional(),
+    /** When true, after applying address fields, the server geocodes the location and stores lat/lng (overrides any explicit lat/lng in the same request). */
+    autoGeocode: z.boolean().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const updateData: Prisma.OrganizationUpdateInput = {
-    ...parsed.data,
-  };
-  if (parsed.data.locationPhone !== undefined) {
-    updateData.locationPhone = normalizeOptionalUsPhone(parsed.data.locationPhone);
+  const data = { ...parsed.data };
+  const autoGeocode = data.autoGeocode === true;
+  delete (data as { autoGeocode?: boolean }).autoGeocode;
+
+  const updateData: Prisma.OrganizationUpdateInput = { ...data };
+  if (data.locationPhone !== undefined) {
+    updateData.locationPhone = normalizeOptionalUsPhone(data.locationPhone);
   }
   delete (updateData as { rabbiPassword?: string | null }).rabbiPassword;
-  if (parsed.data.rabbiPassword !== undefined) {
-    updateData.rabbiPasswordHash = parsed.data.rabbiPassword
-      ? await bcrypt.hash(parsed.data.rabbiPassword, 10)
+  if (data.rabbiPassword !== undefined) {
+    updateData.rabbiPasswordHash = data.rabbiPassword
+      ? await bcrypt.hash(data.rabbiPassword, 10)
       : null;
+  }
+
+  if (autoGeocode) {
+    const existing = await prisma.organization.findUnique({
+      where: { id: oid },
+      select: {
+        locationAddress: true,
+        locationCity: true,
+        locationState: true,
+        locationPostalCode: true,
+      },
+    });
+    const merged = {
+      address: data.locationAddress !== undefined ? data.locationAddress : existing?.locationAddress ?? null,
+      city: data.locationCity !== undefined ? data.locationCity : existing?.locationCity ?? null,
+      state: data.locationState !== undefined ? data.locationState : existing?.locationState ?? null,
+      postalCode:
+        data.locationPostalCode !== undefined
+          ? data.locationPostalCode
+          : existing?.locationPostalCode ?? null,
+    };
+    const geo = await geocodeAddress(merged);
+    if (geo) {
+      updateData.checkInLatitude = geo.latitude;
+      updateData.checkInLongitude = geo.longitude;
+    }
   }
 
   const s = await prisma.organization.update({

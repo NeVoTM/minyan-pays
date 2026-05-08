@@ -54,6 +54,8 @@ type RabbiProfile = {
   postalCode: string | null
   phone: string | null
   email: string | null
+  isMain: boolean
+  passwordPlain: string | null
 }
 
 type TodayAttendance = {
@@ -104,7 +106,15 @@ function rabbiOneLine(r: RabbiProfile): string {
   const addr = [r.address, r.city, r.stateRegion, r.postalCode]
     .filter(Boolean)
     .join(', ')
-  return [r.name, r.phone ?? '—', r.email ?? '—', addr || '—'].join(' · ')
+  const role = r.isMain ? 'MAIN' : 'rabbi'
+  return [
+    r.name,
+    role,
+    r.phone ?? '—',
+    r.email ?? '—',
+    addr || '—',
+    r.passwordPlain ? `pw:${r.passwordPlain}` : 'no-pw',
+  ].join(' · ')
 }
 
 function locationOneLine(loc: AdminLocationRow): string {
@@ -181,6 +191,9 @@ export function AdminDashboard() {
     name: string
     synagogueName?: string
     locationAddress?: string | null
+    locationCity?: string | null
+    locationState?: string | null
+    locationPostalCode?: string | null
     locationPhone?: string | null
     locationEmail?: string | null
     locationWebsite?: string | null
@@ -205,6 +218,9 @@ export function AdminDashboard() {
   const [addLocMsg, setAddLocMsg] = useState<string | null>(null)
   const [locationNameDraft, setLocationNameDraft] = useState('')
   const [locationAddressDraft, setLocationAddressDraft] = useState('')
+  const [locationCityDraft, setLocationCityDraft] = useState('')
+  const [locationStateDraft, setLocationStateDraft] = useState('')
+  const [locationPostalCodeDraft, setLocationPostalCodeDraft] = useState('')
   const [locationPhoneDraft, setLocationPhoneDraft] = useState('')
   const [locationEmailDraft, setLocationEmailDraft] = useState('')
   const [locationWebsiteDraft, setLocationWebsiteDraft] = useState('')
@@ -223,7 +239,9 @@ export function AdminDashboard() {
   const [rabbiZipDraft, setRabbiZipDraft] = useState('')
   const [rabbiPhoneDraft, setRabbiPhoneDraft] = useState('')
   const [rabbiEmailDraft, setRabbiEmailDraft] = useState('')
+  const [rabbiIsMainDraft, setRabbiIsMainDraft] = useState(false)
   const [rabbiPasswordDraft, setRabbiPasswordDraft] = useState('')
+  const [rabbiPasswordVisible, setRabbiPasswordVisible] = useState(false)
   const [rabbiSetupMsg, setRabbiSetupMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
@@ -259,6 +277,9 @@ export function AdminDashboard() {
           name: string
           synagogueName?: string
           locationAddress?: string | null
+          locationCity?: string | null
+          locationState?: string | null
+          locationPostalCode?: string | null
           locationPhone?: string | null
           locationEmail?: string | null
           locationWebsite?: string | null
@@ -283,6 +304,9 @@ export function AdminDashboard() {
       setSettings(st)
       setLocationNameDraft(st.synagogueName ?? '')
       setLocationAddressDraft(st.locationAddress ?? '')
+      setLocationCityDraft(st.locationCity ?? '')
+      setLocationStateDraft(st.locationState ?? '')
+      setLocationPostalCodeDraft(st.locationPostalCode ?? '')
       setLocationPhoneDraft(st.locationPhone ?? '')
       setLocationEmailDraft(st.locationEmail ?? '')
       setLocationWebsiteDraft(st.locationWebsite ?? '')
@@ -553,6 +577,15 @@ export function AdminDashboard() {
       checkInLatitude = lat
       checkInLongitude = lng
     }
+    const cityT = locationCityDraft.trim()
+    const stateT = locationStateDraft.trim()
+    const zipT = locationPostalCodeDraft.replace(/\D/g, '').slice(0, 5)
+    const addressChanged =
+      (settings?.locationAddress ?? '') !== locationAddressDraft.trim() ||
+      (settings?.locationCity ?? '') !== cityT ||
+      (settings?.locationState ?? '') !== stateT ||
+      (settings?.locationPostalCode ?? '') !== zipT
+    const autoGeocode = !latT && !lngT && (cityT || zipT) && addressChanged
     try {
       await api('/api/admin/settings', {
         method: 'PATCH',
@@ -560,12 +593,16 @@ export function AdminDashboard() {
         body: JSON.stringify({
           synagogueName: trimmedName,
           locationAddress: locationAddressDraft.trim() || null,
+          locationCity: cityT || null,
+          locationState: stateT || null,
+          locationPostalCode: zipT || null,
           locationPhone: locationPhoneDraft.trim() || null,
           locationEmail: locationEmailDraft.trim() || null,
           locationWebsite: locationWebsiteDraft.trim() || null,
           defaultLocale: locationLocaleDraft,
           checkInLatitude,
           checkInLongitude,
+          autoGeocode: autoGeocode ? true : undefined,
         }),
       })
       setLocationPanelOpen(false)
@@ -573,6 +610,28 @@ export function AdminDashboard() {
       await load()
     } catch (e: unknown) {
       setLocationSetupMsg(e instanceof Error ? e.message : t('admin.saveFailed'))
+    }
+  }
+
+  async function geocodeFromAddress() {
+    if (!token) return
+    setLocationSetupMsg(null)
+    try {
+      const params = new URLSearchParams()
+      if (locationAddressDraft.trim()) params.set('address', locationAddressDraft.trim())
+      if (locationCityDraft.trim()) params.set('city', locationCityDraft.trim())
+      if (locationStateDraft.trim()) params.set('state', locationStateDraft.trim())
+      const zip = locationPostalCodeDraft.replace(/\D/g, '').slice(0, 5)
+      if (zip) params.set('postalCode', zip)
+      const r = await api<{ latitude: number; longitude: number; displayName: string }>(
+        `/api/admin/geocode?${params.toString()}`,
+        { token }
+      )
+      setLocationCheckInLatDraft(String(r.latitude))
+      setLocationCheckInLngDraft(String(r.longitude))
+      setLocationSetupMsg(t('admin.geocodeSuccess'))
+    } catch {
+      setLocationSetupMsg(t('admin.geocodeFailed'))
     }
   }
 
@@ -586,6 +645,9 @@ export function AdminDashboard() {
         body: JSON.stringify({
           synagogueName: settings.name,
           locationAddress: null,
+          locationCity: null,
+          locationState: null,
+          locationPostalCode: null,
           locationPhone: null,
           locationEmail: null,
           locationWebsite: null,
@@ -608,6 +670,9 @@ export function AdminDashboard() {
     setRabbiZipDraft('')
     setRabbiPhoneDraft('')
     setRabbiEmailDraft('')
+    setRabbiIsMainDraft(false)
+    setRabbiPasswordDraft('')
+    setRabbiPasswordVisible(false)
   }
 
   function beginEditRabbi(r: RabbiProfile) {
@@ -619,6 +684,33 @@ export function AdminDashboard() {
     setRabbiZipDraft(r.postalCode ?? '')
     setRabbiPhoneDraft(r.phone ? phoneDigitsFromE164(r.phone) : '')
     setRabbiEmailDraft(r.email ?? '')
+    setRabbiIsMainDraft(r.isMain === true)
+    setRabbiPasswordDraft(r.passwordPlain ?? '')
+    setRabbiPasswordVisible(false)
+  }
+
+  function isAlphaNum8(s: string): boolean {
+    return /^[A-Za-z0-9]{8}$/.test(s)
+  }
+
+  async function generateRabbiPasswordClient() {
+    if (!token) return
+    try {
+      const r = await api<{ password: string }>('/api/admin/passwords/generate', {
+        token,
+      })
+      setRabbiPasswordDraft(r.password)
+      setRabbiPasswordVisible(true)
+    } catch {
+      const ALPH =
+        'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+      let pw = ''
+      const buf = new Uint32Array(8)
+      crypto.getRandomValues(buf)
+      for (let i = 0; i < 8; i += 1) pw += ALPH[buf[i]! % ALPH.length]
+      setRabbiPasswordDraft(pw)
+      setRabbiPasswordVisible(true)
+    }
   }
 
   async function saveRabbiSetup(e: React.FormEvent) {
@@ -629,12 +721,13 @@ export function AdminDashboard() {
       setRabbiSetupMsg(t('admin.rabbiNameRequired'))
       return
     }
-    if (rabbiPasswordDraft && rabbiPasswordDraft.trim().length < 4) {
+    const pwTrim = rabbiPasswordDraft.trim()
+    if (pwTrim && !isAlphaNum8(pwTrim)) {
       setRabbiSetupMsg(t('admin.rabbiPasswordRule'))
       return
     }
     try {
-      const body = JSON.stringify({
+      const body: Record<string, unknown> = {
         name: rabbiNameDraft.trim(),
         address: rabbiAddressDraft.trim() || null,
         city: rabbiCityDraft.trim() || null,
@@ -642,22 +735,18 @@ export function AdminDashboard() {
         postalCode: rabbiZipDraft.trim() || null,
         phone: rabbiPhoneDraft.trim() || null,
         email: rabbiEmailDraft.trim() || null,
-      })
+        isMain: rabbiIsMainDraft,
+      }
+      if (pwTrim) {
+        body.password = pwTrim
+      } else if (rabbiEditId) {
+        body.password = null
+      }
       await api(rabbiEditId ? `/api/admin/rabbis/${rabbiEditId}` : '/api/admin/rabbis', {
         method: rabbiEditId ? 'PATCH' : 'POST',
         token,
-        body,
+        body: JSON.stringify(body),
       })
-      if (rabbiPasswordDraft.trim()) {
-        await api('/api/admin/settings', {
-          method: 'PATCH',
-          token,
-          body: JSON.stringify({
-            rabbiPassword: rabbiPasswordDraft.trim(),
-          }),
-        })
-      }
-      setRabbiPasswordDraft('')
       resetRabbiForm()
       setRabbiPanelOpen(false)
       setRabbiSetupMsg(t('admin.rabbiSetupSaved'))
@@ -1131,7 +1220,7 @@ export function AdminDashboard() {
               </button>
             </div>
             <form className="grid gap-2" onSubmit={saveLocationSetup}>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 items-start gap-2">
                 <label className={lbl}>
                   {t('admin.locationDisplayName')}
                   <input
@@ -1150,13 +1239,47 @@ export function AdminDashboard() {
                 </label>
               </div>
               <label className={lbl}>
-                {t('admin.address')}
+                {t('admin.addressStreet')}
                 <input
                   className={inp}
                   value={locationAddressDraft}
                   onChange={(e) => setLocationAddressDraft(e.target.value)}
+                  placeholder="100 Main St"
                 />
               </label>
+              <div className="grid grid-cols-3 gap-1">
+                <label className={lbl}>
+                  {t('admin.addressCity')}
+                  <input
+                    className={inp}
+                    value={locationCityDraft}
+                    onChange={(e) => setLocationCityDraft(e.target.value)}
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.addressState')}
+                  <input
+                    className={inp}
+                    value={locationStateDraft}
+                    onChange={(e) => setLocationStateDraft(e.target.value)}
+                    maxLength={4}
+                  />
+                </label>
+                <label className={lbl}>
+                  {t('admin.addressZip')}
+                  <input
+                    className={inp}
+                    inputMode="numeric"
+                    maxLength={5}
+                    value={locationPostalCodeDraft}
+                    onChange={(e) =>
+                      setLocationPostalCodeDraft(
+                        e.target.value.replace(/\D/g, '').slice(0, 5)
+                      )
+                    }
+                  />
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <label className={lbl}>
                   {t('admin.labelEmail')}
@@ -1195,7 +1318,14 @@ export function AdminDashboard() {
                   <option value="fr">{t('lang.fr')}</option>
                 </select>
               </label>
-              <p className="text-[11px] text-slate-500">{t('admin.checkInCoordsHelp')}</p>
+              <p className="text-[11px] text-slate-500">{t('admin.geocodeAutoHelp')}</p>
+              <button
+                type="button"
+                className="rounded-lg border border-sky-300 bg-sky-50 py-2 text-[11px] font-semibold text-sky-900"
+                onClick={() => void geocodeFromAddress()}
+              >
+                {t('admin.geocodeAuto')}
+              </button>
               <div className="grid grid-cols-2 gap-2">
                 <label className={lbl}>
                   {t('admin.checkInLatitude')}
@@ -1217,6 +1347,26 @@ export function AdminDashboard() {
                     placeholder="-80.1918"
                   />
                 </label>
+              </div>
+              <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-2">
+                <p className="text-[11px] font-semibold text-violet-900">
+                  {t('admin.rabbisAtLocationTitle')}
+                </p>
+                {rabbis.length === 0 ? (
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {t('admin.noRabbisYet')}
+                  </p>
+                ) : (
+                  <ul className="mt-1 space-y-0.5 text-[10px] font-mono text-slate-800">
+                    {rabbis.map((r) => (
+                      <li key={r.id}>
+                        {r.isMain ? '★ ' : '• '}
+                        {r.name}
+                        {r.passwordPlain ? ` · pw:${r.passwordPlain}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -1313,26 +1463,67 @@ export function AdminDashboard() {
                   />
                 </label>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <label className={lbl}>
-                  {t('admin.labelEmail')}
+              <label className={lbl}>
+                {t('admin.labelEmail')}
+                <input
+                  type="email"
+                  className={inp}
+                  value={rabbiEmailDraft}
+                  onChange={(e) => setRabbiEmailDraft(e.target.value)}
+                />
+              </label>
+              <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2 text-[11px] text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={rabbiIsMainDraft}
+                  onChange={(e) => setRabbiIsMainDraft(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block font-semibold text-slate-900">
+                    {t('admin.rabbiIsMainLabel')}
+                  </span>
+                  <span className="block text-[10px] text-slate-600">
+                    {t('admin.rabbiIsMainHelp')}
+                  </span>
+                </span>
+              </label>
+              <div>
+                <span className={lbl}>{t('admin.rabbiPasswordLabel')}</span>
+                <div className="mt-0.5 flex gap-1">
                   <input
-                    type="email"
-                    className={inp}
-                    value={rabbiEmailDraft}
-                    onChange={(e) => setRabbiEmailDraft(e.target.value)}
-                  />
-                </label>
-                <label className={lbl}>
-                  {t('admin.rabbiPasswordLabel')}
-                  <input
-                    type="password"
-                    className={inp}
+                    type={rabbiPasswordVisible ? 'text' : 'password'}
+                    className={`${inp} font-mono`}
                     value={rabbiPasswordDraft}
-                    onChange={(e) => setRabbiPasswordDraft(e.target.value)}
+                    onChange={(e) =>
+                      setRabbiPasswordDraft(
+                        e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 8)
+                      )
+                    }
                     autoComplete="new-password"
+                    placeholder={t('admin.rabbiPasswordPlaceholder')}
+                    maxLength={8}
                   />
-                </label>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-[10px] font-medium text-slate-700"
+                    onClick={() => setRabbiPasswordVisible((v) => !v)}
+                  >
+                    {rabbiPasswordVisible
+                      ? t('admin.rabbiPasswordHide')
+                      : t('admin.rabbiPasswordShow')}
+                  </button>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-2 text-[10px] font-semibold text-emerald-900"
+                    onClick={() => void generateRabbiPasswordClient()}
+                  >
+                    {t('admin.rabbiPasswordGenerate')}
+                  </button>
+                </div>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  {t('admin.rabbiPasswordHelp')}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button

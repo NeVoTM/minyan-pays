@@ -8,6 +8,12 @@ export type JwtPayload = {
   organizationId: string;
   /** Admin logged in with bootstrap password; must set a real password before other admin APIs. */
   adminMustChangePassword?: boolean;
+  /** RABBI tokens: which entity logged in. "MAIN" = main rabbi (full panel), "ADDITIONAL" = approve-only rabbi, "SHAMOSH" = approve-only helper, "LEGACY" = pre-multi-rabbi org-level password. */
+  rabbiKind?: "MAIN" | "ADDITIONAL" | "SHAMOSH" | "LEGACY";
+  /** ID of the Rabbi row this token represents (when rabbiKind ∈ MAIN/ADDITIONAL). */
+  rabbiId?: string;
+  /** ID of the Shamosh row this token represents (when rabbiKind = SHAMOSH). For shamoshim, rabbiId is also set to the parent rabbi. */
+  shamoshId?: string;
 };
 
 export function signAdminToken(
@@ -27,14 +33,25 @@ export function signAdminToken(
   return jwt.sign(payload, secret, { expiresIn: "24h" });
 }
 
-export function signRabbiToken(organizationId: string): string {
+export function signRabbiToken(
+  organizationId: string,
+  opts?: {
+    rabbiKind?: "MAIN" | "ADDITIONAL" | "SHAMOSH" | "LEGACY";
+    rabbiId?: string;
+    shamoshId?: string;
+  }
+): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
-  return jwt.sign(
-    { sub: "rabbi", role: "RABBI", organizationId },
-    secret,
-    { expiresIn: "24h" }
-  );
+  const payload: Record<string, unknown> = {
+    sub: opts?.shamoshId ?? opts?.rabbiId ?? "rabbi",
+    role: "RABBI",
+    organizationId,
+  };
+  if (opts?.rabbiKind) payload.rabbiKind = opts.rabbiKind;
+  if (opts?.rabbiId) payload.rabbiId = opts.rabbiId;
+  if (opts?.shamoshId) payload.shamoshId = opts.shamoshId;
+  return jwt.sign(payload, secret, { expiresIn: "24h" });
 }
 
 export function signMemberToken(userId: string, organizationId: string): string {
@@ -52,6 +69,9 @@ export function verifyToken(token: string): JwtPayload {
   if (!secret) throw new Error("JWT_SECRET is required");
   const p = jwt.verify(token, secret) as JwtPayload & {
     adminMustChangePassword?: boolean;
+    rabbiKind?: JwtPayload["rabbiKind"];
+    rabbiId?: string;
+    shamoshId?: string;
   };
   if (!p.organizationId) {
     throw new Error("Invalid token: missing organization");
@@ -64,6 +84,9 @@ export function verifyToken(token: string): JwtPayload {
   if (p.adminMustChangePassword === true) {
     out.adminMustChangePassword = true;
   }
+  if (p.rabbiKind) out.rabbiKind = p.rabbiKind;
+  if (p.rabbiId) out.rabbiId = p.rabbiId;
+  if (p.shamoshId) out.shamoshId = p.shamoshId;
   return out;
 }
 
@@ -95,6 +118,34 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 export function requireRabbi(req: Request, res: Response, next: NextFunction) {
   const a = (req as Request & { auth?: JwtPayload }).auth;
   if (!a || a.role !== "RABBI" || !a.organizationId) {
+    res.status(403).json({ error: "Rabbi only" });
+    return;
+  }
+  next();
+}
+
+/** Main-rabbi-only endpoints (e.g. managing additional rabbis). LEGACY tokens (org-level password) also pass. */
+export function requireMainRabbi(req: Request, res: Response, next: NextFunction) {
+  const a = (req as Request & { auth?: JwtPayload }).auth;
+  if (!a || a.role !== "RABBI" || !a.organizationId) {
+    res.status(403).json({ error: "Rabbi only" });
+    return;
+  }
+  if (a.rabbiKind === "ADDITIONAL" || a.rabbiKind === "SHAMOSH") {
+    res.status(403).json({ error: "Main rabbi only" });
+    return;
+  }
+  next();
+}
+
+/** Rabbi-not-shamosh endpoints (any rabbi may manage their own shamoshim, shamoshim may not). */
+export function requireRabbiNotShamosh(req: Request, res: Response, next: NextFunction) {
+  const a = (req as Request & { auth?: JwtPayload }).auth;
+  if (!a || a.role !== "RABBI" || !a.organizationId) {
+    res.status(403).json({ error: "Rabbi only" });
+    return;
+  }
+  if (a.rabbiKind === "SHAMOSH") {
     res.status(403).json({ error: "Rabbi only" });
     return;
   }
