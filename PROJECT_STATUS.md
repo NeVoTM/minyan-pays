@@ -1,10 +1,10 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Organization.rabbiPasswordPlain + prefill rabbi password on admin edit)
+*Last updated: 2026-05-10* (pushed `83a3bfa` — primary rabbi UI + `rabbiPasswordPlain`)
 
 ## Current Task / Goal
 
-**Admin Location setup — primary rabbi UI (completed locally, not pushed):** The violet card now has a **dropdown** (`primaryRabbiId`, saved with **Save location setup**), read-only **Rabbi details** when one is selected, **Edit** / **Delete** / **Add rabbi** buttons, and the **Setup Rabbi** link to the Rabbi hub. Location list one-line rows include `Rabbi: …` when the API returns `primaryRabbi`. Backend was already shipped (`Organization.primaryRabbiId` + `PATCH /api/admin/settings`); this finishes the web UI.
+**Admin Location setup — primary rabbi UI (in `83a3bfa`):** Violet card: **dropdown** for `primaryRabbiId` (saved with **Save location setup**), read-only **Rabbi details**, **Edit** / **Delete** / **Add rabbi**, **Setup Rabbi** link. List rows show `Rabbi: …`. **`rabbiPasswordPlain`** on Organization so Edit rabbi can prefill the shared menu password after migrate deploy.
 
 **Rabbi dashboard: location header, balance row, shamosh hub + view, edit fix (May 10 2026, `6bec621`).** Pushed to `origin/main`; Render auto-deploy is on so the rebuild should land within ~2 minutes. Smoke-test once the new `assets/index-*.js` hash appears at `https://minyanpays.com/`.
 
