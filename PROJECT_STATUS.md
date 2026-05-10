@@ -1,8 +1,18 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-09*
+*Last updated: 2026-05-10*
 
 ## Current Task / Goal
+
+**Location rabbi password tightened to 8-char letter+digit+special (May 10 2026, `bd489a1`).** Admin → Rabbi modal's password field was only enforcing `min(4)`. Now both server (`apps/api/src/routes/admin.ts` Zod schema for `PATCH /api/admin/settings`) and client (`apps/web/src/pages/AdminDashboard.tsx`) require **exactly 8 chars with at least one letter, one digit, and one special (!@#$%^&*+-_=?)** — matching the existing Shamosh rule. The form gained Show/Hide and Generate buttons + a help line. Deploy verified against production:
+
+- `POST /api/auth/admin` (slug=`dovrey-evrit`, password=`Aron$11213`) → **200 OK** — admin password is unchanged and still works for Dovrey Evrit.
+- `POST /api/auth/admin` (slug=`770`, password=`Aron$11213`) → **401** — `Aron$11213` belongs to `dovrey-evrit`; `770-1` has its own admin password. **If admin login is failing for the user, they are almost certainly on the `770` location in the picker — switch to "Dovrey Evrit" before clicking the admin button.**
+- `PATCH /api/admin/settings` with `rabbiPassword` `abcd1234` (alphanumeric only) → **400** with the new rule message.
+- `PATCH /api/admin/settings` with `ab12!` (5 chars) / `aB7$cd9!x` (9 chars) / `aB7Cd9eF` (no special) / `aBcDeFg!` (no digit) → all **400**.
+- Static bundle on `minyanpays.com` ships the new `rabbiPasswordHelp` / `rabbiPasswordGenerate` strings.
+
+Shamosh password validation already enforced this rule since `209f65f`; this commit closes the gap on the location-level rabbi password.
 
 **Shamosh sub-menu live in production (May 9 2026, `209f65f`).** Re-implemented the multi-helper feature as a smaller, deploy-safe shape after the May 8 attempt got stuck on the Render API service:
 
@@ -83,6 +93,11 @@ After those four steps, login with the simple per-org rabbi password works again
 
 ## What's Next / Blockers
 
+- **Render handoff items still requiring user (Render dashboard) access — re-checked May 10 2026:**
+  - **Twilio env vars** on the API service (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`). Only needed for real SMS on **Member profile → Send code**; without them production returns 503 from the verification endpoint. Not blocking core check-in/admin/rabbi flows.
+  - **`RABBI_PASSWORD` env var** is now optional — the legacy fallback only fires when `Organization.rabbiPasswordHash` is null. Admin → Rabbi can set/rotate the per-location password directly, so the env var can stay set as an emergency backstop or be removed entirely; either way the new admin form is the source of truth.
+  - **Shell access on the API service** (add SSH public key) is no longer needed for routine deploys — the additive Shamosh schema went in via Render's automatic `prisma db push` step in `render.yaml`. Keep this as a future option only if a non-additive migration ever needs to be run by hand.
+  - **Auto-deploy** is **on** for both services; pushes to `origin/main` rebuild within ~2 minutes (verified again on `bd489a1`).
 - **Production DB push for the multi-rabbi schema (critical):** After deploying this branch, run `npx prisma db push --accept-data-loss` on Render (the new `passwordPlain @unique` constraints require the flag). Then the admin user has to:
   1. Open **Admin → Rabbi** and edit the existing rabbi(s) — at minimum check **Main rabbi** on one of them and click **Generate** for the password.
   2. Optionally create additional rabbis (approve-only) under the same location with their own generated passwords.
