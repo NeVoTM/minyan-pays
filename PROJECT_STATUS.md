@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Location modal: Rabbi title is link)
+*Last updated: 2026-05-10* (pushed `13ebac8` to origin + cur)
 
 ## Current Task / Goal
 
