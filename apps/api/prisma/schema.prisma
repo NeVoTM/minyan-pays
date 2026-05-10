@@ -116,6 +116,11 @@ model Shamosh {
   phone          String?
   email          String?
   passwordHash   String
+  // Plaintext mirror of the password so the rabbi UI can show the existing
+  // password on the edit screen (same pattern as the global admin password
+  // and the legacy per-org rabbi password). Only the rabbi who owns the
+  // location can read this; the shamosh themselves never see it back.
+  passwordPlain  String?
 
   @@index([organizationId, rabbiId])
   @@index([organizationId, name])

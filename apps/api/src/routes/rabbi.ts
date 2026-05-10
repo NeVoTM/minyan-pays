@@ -181,6 +181,7 @@ const shamoshSelect = {
   name: true,
   phone: true,
   email: true,
+  passwordPlain: true,
   rabbi: { select: { id: true, name: true } },
 } as const;
 
@@ -241,6 +242,7 @@ rabbiRouter.post("/shamoshim", requireRabbiNotShamosh, async (req, res) => {
         phone: trimOrNull(phone ?? null),
         email: trimOrNull(email ?? null),
         passwordHash,
+        passwordPlain: password,
       },
       select: shamoshSelect,
     });
@@ -288,6 +290,7 @@ rabbiRouter.patch("/shamoshim/:id", requireRabbiNotShamosh, async (req, res) => 
           return;
         }
         data.passwordHash = await bcrypt.hash(pw, 10);
+        data.passwordPlain = pw;
       }
     }
     const updated = await prisma.shamosh.update({
@@ -382,10 +385,34 @@ rabbiRouter.get("/members", async (req, res) => {
       preferredForCheckIn: true,
     },
   });
+
+  // Recorded balance per member: sum of EARNED minus sum of PAID minus sum
+  // of DONATED on MemberLedgerEntry for this org. Posted weekly by the rabbi
+  // on the Payouts tab; matches what the member sees as "owed" once posted.
+  const ledger = await prisma.memberLedgerEntry.groupBy({
+    by: ["userId", "type"],
+    where: {
+      organizationId: oid,
+      userId: { in: users.map((u) => u.id) },
+    },
+    _sum: { amountCents: true },
+  });
+  const balanceByUser = new Map<string, number>();
+  for (const u of users) balanceByUser.set(u.id, 0);
+  for (const row of ledger) {
+    const sign = row.type === "EARNED" ? 1 : -1;
+    const amt = row._sum.amountCents ?? 0;
+    balanceByUser.set(
+      row.userId,
+      (balanceByUser.get(row.userId) ?? 0) + sign * amt
+    );
+  }
+
   res.json(
     users.map((u) => ({
       ...u,
       displayName: fullName(u.firstName, u.lastName),
+      balanceCents: Math.max(0, balanceByUser.get(u.id) ?? 0),
     }))
   );
 });
