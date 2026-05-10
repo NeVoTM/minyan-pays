@@ -258,10 +258,26 @@ export function AdminDashboard() {
   const [editPin, setEditPin] = useState('')
   const [editSaveMsg, setEditSaveMsg] = useState<string | null>(null)
   const [adminHub, setAdminHub] = useState<
-    'today' | 'member' | 'rabbi' | 'location'
+    'today' | 'member' | 'rabbi' | 'location' | 'settings'
   >(
     'today'
   )
+
+  type GlobalPwStatus = {
+    isSet: boolean
+    plain: string | null
+    notifyEmail: string
+    emailConfigured: boolean
+  }
+  const [globalPwStatus, setGlobalPwStatus] = useState<GlobalPwStatus | null>(null)
+  const [globalPwShowCurrent, setGlobalPwShowCurrent] = useState(false)
+  const [globalPwNew, setGlobalPwNew] = useState('')
+  const [globalPwShowNew, setGlobalPwShowNew] = useState(false)
+  const [globalPwReqId, setGlobalPwReqId] = useState<string | null>(null)
+  const [globalPwCode, setGlobalPwCode] = useState('')
+  const [globalPwMsg, setGlobalPwMsg] = useState<string | null>(null)
+  const [globalPwErr, setGlobalPwErr] = useState<string | null>(null)
+  const [globalPwBusy, setGlobalPwBusy] = useState(false)
   const [todaySession, setTodaySession] = useState<SessionResp | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [addMemberOpen, setAddMemberOpen] = useState(false)
@@ -339,6 +355,22 @@ export function AdminDashboard() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const loadGlobalPwStatus = useCallback(async () => {
+    if (!token) return
+    try {
+      const r = await api<GlobalPwStatus>('/api/admin/global-password', { token })
+      setGlobalPwStatus(r)
+    } catch {
+      setGlobalPwStatus(null)
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (adminHub === 'settings' && token) {
+      void loadGlobalPwStatus()
+    }
+  }, [adminHub, token, loadGlobalPwStatus])
 
   function openEdit(m: MemberRow) {
     setSelectedMemberId(m.id)
@@ -706,6 +738,102 @@ export function AdminDashboard() {
     }
   }
 
+  async function bootstrapGlobalPassword() {
+    if (!token) return
+    setGlobalPwErr(null)
+    setGlobalPwMsg(null)
+    const pw = globalPwNew.trim()
+    if (!isValidRabbiPassword(pw)) {
+      setGlobalPwErr(t('admin.globalPwRule'))
+      return
+    }
+    setGlobalPwBusy(true)
+    try {
+      await api('/api/admin/global-password/bootstrap', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ password: pw }),
+      })
+      setGlobalPwNew('')
+      setGlobalPwShowNew(false)
+      setGlobalPwMsg(t('admin.globalPwBootstrapDone'))
+      await loadGlobalPwStatus()
+    } catch (e: unknown) {
+      setGlobalPwErr(e instanceof Error ? e.message : t('admin.saveFailed'))
+    } finally {
+      setGlobalPwBusy(false)
+    }
+  }
+
+  async function requestGlobalPwChange() {
+    if (!token) return
+    setGlobalPwErr(null)
+    setGlobalPwMsg(null)
+    const pw = globalPwNew.trim()
+    if (!isValidRabbiPassword(pw)) {
+      setGlobalPwErr(t('admin.globalPwRule'))
+      return
+    }
+    setGlobalPwBusy(true)
+    try {
+      const r = await api<{
+        requestId: string
+        email: string
+        emailDelivered: boolean
+        emailError: string | null
+        devCode?: string
+      }>('/api/admin/global-password/request-change', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ newPassword: pw }),
+      })
+      setGlobalPwReqId(r.requestId)
+      setGlobalPwCode(r.devCode ?? '')
+      const lines: string[] = []
+      if (r.emailDelivered) {
+        lines.push(t('admin.globalPwCodeSent', { email: r.email }))
+      } else if (r.devCode) {
+        lines.push(t('admin.globalPwDevCode', { code: r.devCode }))
+      } else {
+        lines.push(t('admin.globalPwEmailFailed', { error: r.emailError ?? '' }))
+      }
+      setGlobalPwMsg(lines.join(' '))
+    } catch (e: unknown) {
+      setGlobalPwErr(e instanceof Error ? e.message : t('admin.saveFailed'))
+    } finally {
+      setGlobalPwBusy(false)
+    }
+  }
+
+  async function confirmGlobalPwChange() {
+    if (!token || !globalPwReqId) return
+    setGlobalPwErr(null)
+    setGlobalPwMsg(null)
+    const code = globalPwCode.trim()
+    if (!code) {
+      setGlobalPwErr(t('admin.globalPwCodeRequired'))
+      return
+    }
+    setGlobalPwBusy(true)
+    try {
+      await api('/api/admin/global-password/confirm-change', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ requestId: globalPwReqId, code }),
+      })
+      setGlobalPwReqId(null)
+      setGlobalPwCode('')
+      setGlobalPwNew('')
+      setGlobalPwShowNew(false)
+      setGlobalPwMsg(t('admin.globalPwConfirmedDone'))
+      await loadGlobalPwStatus()
+    } catch (e: unknown) {
+      setGlobalPwErr(e instanceof Error ? e.message : t('admin.saveFailed'))
+    } finally {
+      setGlobalPwBusy(false)
+    }
+  }
+
   async function submitAddLocation(e: React.FormEvent) {
     e.preventDefault()
     if (!token) return
@@ -796,7 +924,7 @@ export function AdminDashboard() {
       {memberMsg && <p className="text-xs text-slate-600">{memberMsg}</p>}
 
       <nav
-        className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4"
+        className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-5"
         aria-label={t('admin.navAria')}
       >
         <button
@@ -855,6 +983,22 @@ export function AdminDashboard() {
           }}
         >
           {t('admin.hubLocation')}
+        </button>
+        <button
+          type="button"
+          className={`min-w-0 rounded-xl border-2 px-2 py-3 text-center text-[10px] font-bold leading-tight whitespace-normal ${
+            adminHub === 'settings'
+              ? 'border-slate-700 bg-slate-700 text-white shadow-md'
+              : 'border-slate-300 bg-slate-100 text-slate-800'
+          }`}
+          onClick={() => {
+            setAdminHub('settings')
+            setMemberMsg(null)
+            setGlobalPwErr(null)
+            setGlobalPwMsg(null)
+          }}
+        >
+          {t('admin.hubSettings')}
         </button>
       </nav>
 
@@ -1173,6 +1317,184 @@ export function AdminDashboard() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {adminHub === 'settings' && (
+        <div className="w-full min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t('admin.globalPwTitle')}
+            </h2>
+            <p className="mt-1 text-[11px] text-slate-600">
+              {t('admin.globalPwHelp')}
+            </p>
+          </div>
+
+          {globalPwStatus === null && (
+            <p className="text-[11px] text-slate-500">{t('admin.loading')}</p>
+          )}
+
+          {globalPwStatus && (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+                <p className="text-[11px] font-semibold text-slate-700">
+                  {t('admin.globalPwCurrentTitle')}
+                </p>
+                {globalPwStatus.isSet ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type={globalPwShowCurrent ? 'text' : 'password'}
+                        readOnly
+                        value={globalPwStatus.plain ?? '••••••••'}
+                        className={inp}
+                      />
+                      <button
+                        type="button"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        onClick={() => setGlobalPwShowCurrent((v) => !v)}
+                      >
+                        {globalPwShowCurrent
+                          ? t('admin.rabbiPasswordHide')
+                          : t('admin.rabbiPasswordShow')}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      {t('admin.globalPwActiveHelp')}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-amber-700">
+                    {t('admin.globalPwUnsetHelp')}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                <p className="text-[11px] font-semibold text-slate-700">
+                  {globalPwStatus.isSet
+                    ? t('admin.globalPwChangeTitle')
+                    : t('admin.globalPwBootstrapTitle')}
+                </p>
+                <label className={lbl}>
+                  {t('admin.globalPwNewLabel')}
+                  <input
+                    type={globalPwShowNew ? 'text' : 'password'}
+                    className={inp}
+                    value={globalPwNew}
+                    onChange={(e) => setGlobalPwNew(e.target.value)}
+                    autoComplete="new-password"
+                    placeholder={t('admin.rabbiPasswordPlaceholder')}
+                  />
+                </label>
+                <p className="text-[10px] text-slate-500">
+                  {t('admin.globalPwRule')}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    onClick={() => setGlobalPwShowNew((v) => !v)}
+                  >
+                    {globalPwShowNew
+                      ? t('admin.rabbiPasswordHide')
+                      : t('admin.rabbiPasswordShow')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-800 hover:bg-violet-100"
+                    onClick={() => {
+                      setGlobalPwNew(generateRabbiPasswordClient())
+                      setGlobalPwShowNew(true)
+                    }}
+                  >
+                    {t('admin.rabbiPasswordGenerate')}
+                  </button>
+                </div>
+
+                {globalPwStatus.isSet ? (
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    {globalPwReqId === null ? (
+                      <button
+                        type="button"
+                        disabled={globalPwBusy || !globalPwNew.trim()}
+                        className="w-full rounded-lg bg-slate-700 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                        onClick={() => void requestGlobalPwChange()}
+                      >
+                        {t('admin.globalPwSendCode', {
+                          email: globalPwStatus.notifyEmail,
+                        })}
+                      </button>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className={lbl}>
+                          {t('admin.globalPwCodeLabel')}
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className={inp}
+                            value={globalPwCode}
+                            onChange={(e) => setGlobalPwCode(e.target.value)}
+                            placeholder="123456"
+                            maxLength={12}
+                          />
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={globalPwBusy || !globalPwCode.trim()}
+                            className="flex-1 rounded-lg bg-emerald-600 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                            onClick={() => void confirmGlobalPwChange()}
+                          >
+                            {t('admin.globalPwConfirmBtn')}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                            onClick={() => {
+                              setGlobalPwReqId(null)
+                              setGlobalPwCode('')
+                              setGlobalPwMsg(null)
+                              setGlobalPwErr(null)
+                            }}
+                          >
+                            {t('common.cancel')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={globalPwBusy || !globalPwNew.trim()}
+                    className="w-full rounded-lg bg-slate-700 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                    onClick={() => void bootstrapGlobalPassword()}
+                  >
+                    {t('admin.globalPwApplyNow')}
+                  </button>
+                )}
+
+                {!globalPwStatus.emailConfigured && (
+                  <p className="rounded-md bg-amber-50 px-2 py-1 text-[10px] text-amber-800">
+                    {t('admin.globalPwEmailNotConfigured')}
+                  </p>
+                )}
+              </div>
+
+              {globalPwMsg && (
+                <p className="rounded-md bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800">
+                  {globalPwMsg}
+                </p>
+              )}
+              {globalPwErr && (
+                <p className="rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-700">
+                  {globalPwErr}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

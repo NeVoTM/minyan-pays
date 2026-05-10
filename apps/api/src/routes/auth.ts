@@ -15,6 +15,7 @@ import {
   getOrganizationBySlug,
   normalizeOrgSlug,
 } from "../lib/organizationService.js";
+import { getGlobalAdminPasswordHash } from "../lib/settings.js";
 
 export const authRouter = Router();
 
@@ -76,19 +77,37 @@ authRouter.post("/admin", async (req, res) => {
   }
 
   let adminMustChangePassword = false;
+  let authenticated = false;
+
+  // Per-organization admin password (highest priority).
   if (org.adminPasswordHash) {
-    const ok = await bcrypt.compare(submitted, org.adminPasswordHash);
-    if (!ok) {
-      res.status(401).json({ error: "Invalid password" });
-      return;
+    if (await bcrypt.compare(submitted, org.adminPasswordHash)) {
+      authenticated = true;
     }
-  } else {
+  }
+
+  // Global admin password — works on every org. Lets one master credential
+  // open any location's admin panel without per-org rotation.
+  if (!authenticated) {
+    const globalHash = await getGlobalAdminPasswordHash();
+    if (globalHash && (await bcrypt.compare(submitted, globalHash))) {
+      authenticated = true;
+    }
+  }
+
+  // Bootstrap fallback — only when this org has no per-org hash. Forces
+  // mustChangePassword so the admin sets a real per-org password right after.
+  if (!authenticated && !org.adminPasswordHash) {
     const bootstrap = getBootstrapAdminPlaintext();
-    if (!timingSafeEqualString(submitted, bootstrap)) {
-      res.status(401).json({ error: "Invalid password" });
-      return;
+    if (timingSafeEqualString(submitted, bootstrap)) {
+      authenticated = true;
+      adminMustChangePassword = true;
     }
-    adminMustChangePassword = true;
+  }
+
+  if (!authenticated) {
+    res.status(401).json({ error: "Invalid password" });
+    return;
   }
 
   res.json({

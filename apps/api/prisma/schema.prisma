@@ -283,3 +283,29 @@ model WeeklyPayout {
 
   @@unique([userId, weekKey])
 }
+
+// Generic key/value store. Used today for the GLOBAL admin password
+// (`globalAdminPasswordHash` + `globalAdminPasswordPlain`) so a single
+// password can authenticate the admin into any organization.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// One row per pending "change global admin password" request. The new
+// password is staged here (hash + plaintext for view feature) until the
+// admin enters the 6-digit code we emailed them.
+model AdminPasswordChangeRequest {
+  id               String    @id @default(cuid())
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  email            String
+  codeHash         String
+  newPasswordHash  String
+  newPasswordPlain String
+  consumedAt       DateTime?
+  attempts         Int       @default(0)
+
+  @@index([expiresAt])
+}

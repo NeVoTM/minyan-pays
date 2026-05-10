@@ -25,6 +25,17 @@ import {
 } from "../lib/memberDuplicates.js";
 import { memberFieldsSchema, memberUpdateSchema } from "../lib/memberSchemas.js";
 import { normalizeOrgSlug } from "../lib/organizationService.js";
+import {
+  adminNotifyEmail,
+  emailConfigured,
+  generate6DigitCode,
+  sendEmail,
+} from "../lib/email.js";
+import {
+  getGlobalAdminPasswordHash,
+  getGlobalAdminPasswordPlain,
+  setGlobalAdminPassword,
+} from "../lib/settings.js";
 
 export const adminRouter = Router();
 adminRouter.use(authMiddleware);
@@ -1002,4 +1013,175 @@ adminRouter.get("/export/week/:weekKey.csv", async (req, res) => {
     `attachment; filename="minyan-payouts-${weekSundayKey}.csv"`
   );
   res.send(body);
+});
+
+// --------------------------------------------------------------------------
+// GLOBAL ADMIN PASSWORD
+//
+// One password that authenticates the admin into every organization. Stored
+// as a Setting key/value pair (hash + plaintext). Two write paths:
+//   1. POST /global-password/bootstrap — first-time setup; refuses once set.
+//   2. POST /global-password/request-change + /confirm-change — every other
+//      change requires a 6-digit code emailed to ADMIN_NOTIFY_EMAIL.
+// --------------------------------------------------------------------------
+
+const GLOBAL_ADMIN_PASSWORD_RE =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?])[A-Za-z0-9!@#$%^&*+\-_=?]{8}$/;
+
+const GLOBAL_ADMIN_PASSWORD_RULE_MSG =
+  "Global admin password must be exactly 8 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?).";
+
+const CODE_EXPIRY_MS = 10 * 60 * 1000;
+const MAX_CODE_ATTEMPTS = 5;
+
+function adminEchoCodeEnabled(): boolean {
+  const v = process.env.ADMIN_PASSWORD_VERIFICATION_ECHO?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** Current global password status — `isSet` and (if set) the plaintext. */
+adminRouter.get("/global-password", async (_req, res) => {
+  const hash = await getGlobalAdminPasswordHash();
+  const plain = hash ? await getGlobalAdminPasswordPlain() : null;
+  res.json({
+    isSet: !!hash,
+    plain: plain ?? null,
+    notifyEmail: adminNotifyEmail(),
+    emailConfigured: emailConfigured(),
+  });
+});
+
+/** First-time setup. Allowed only when no global password exists yet. */
+adminRouter.post("/global-password/bootstrap", async (req, res) => {
+  const schema = z.object({ password: z.string().regex(GLOBAL_ADMIN_PASSWORD_RE) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: GLOBAL_ADMIN_PASSWORD_RULE_MSG });
+    return;
+  }
+  const existing = await getGlobalAdminPasswordHash();
+  if (existing) {
+    res.status(409).json({
+      error:
+        "Global admin password already set. Use the request-change flow to rotate it.",
+    });
+    return;
+  }
+  const plain = parsed.data.password.trim();
+  const hash = await bcrypt.hash(plain, 10);
+  await setGlobalAdminPassword({ hash, plain });
+  res.json({ ok: true });
+});
+
+/** Stage a new global admin password and email a 6-digit code to confirm. */
+adminRouter.post("/global-password/request-change", async (req, res) => {
+  const schema = z.object({ newPassword: z.string().regex(GLOBAL_ADMIN_PASSWORD_RE) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: GLOBAL_ADMIN_PASSWORD_RULE_MSG });
+    return;
+  }
+
+  const echo = adminEchoCodeEnabled();
+  if (!emailConfigured() && !echo) {
+    res.status(503).json({
+      error:
+        "Email transport not configured. Ask your admin to set GMAIL_USER + GMAIL_APP_PASSWORD on Render (or set ADMIN_PASSWORD_VERIFICATION_ECHO=1 for dev).",
+    });
+    return;
+  }
+
+  const code = generate6DigitCode();
+  const codeHash = await bcrypt.hash(code, 10);
+  const newPasswordPlain = parsed.data.newPassword.trim();
+  const newPasswordHash = await bcrypt.hash(newPasswordPlain, 10);
+  const email = adminNotifyEmail();
+
+  // Keep at most one active request per email — invalidate older ones.
+  await prisma.adminPasswordChangeRequest.updateMany({
+    where: { email, consumedAt: null, expiresAt: { gt: new Date() } },
+    data: { expiresAt: new Date(0) },
+  });
+
+  const created = await prisma.adminPasswordChangeRequest.create({
+    data: {
+      email,
+      codeHash,
+      newPasswordHash,
+      newPasswordPlain,
+      expiresAt: new Date(Date.now() + CODE_EXPIRY_MS),
+    },
+    select: { id: true, email: true, expiresAt: true },
+  });
+
+  let emailDelivered: { ok: boolean; error?: string } = { ok: false };
+  if (emailConfigured()) {
+    const subject = "MinyanPays — Confirm admin password change";
+    const text = `Your MinyanPays admin password change code is ${code}.\nIt expires in 10 minutes.\n\nIf you did not request this change, ignore this email.`;
+    const html = `<p>Your MinyanPays admin password change code is <b>${code}</b>.</p><p>It expires in 10 minutes.</p><p style="color:#666">If you did not request this change, ignore this email.</p>`;
+    const r = await sendEmail({ to: email, subject, text, html });
+    emailDelivered = r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  res.json({
+    requestId: created.id,
+    email: created.email,
+    expiresAt: created.expiresAt,
+    emailDelivered: emailDelivered.ok,
+    emailError: emailDelivered.ok ? null : emailDelivered.error ?? null,
+    devCode: echo ? code : undefined,
+  });
+});
+
+/** Verify the 6-digit code and apply the staged global admin password. */
+adminRouter.post("/global-password/confirm-change", async (req, res) => {
+  const schema = z.object({
+    requestId: z.string().min(1),
+    code: z.string().min(4).max(12),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const reqRow = await prisma.adminPasswordChangeRequest.findUnique({
+    where: { id: parsed.data.requestId },
+  });
+  if (!reqRow) {
+    res.status(404).json({ error: "Unknown change request." });
+    return;
+  }
+  if (reqRow.consumedAt) {
+    res.status(409).json({ error: "This change request was already used." });
+    return;
+  }
+  if (reqRow.expiresAt.getTime() <= Date.now()) {
+    res.status(410).json({ error: "Confirmation code expired. Request a new one." });
+    return;
+  }
+  if (reqRow.attempts >= MAX_CODE_ATTEMPTS) {
+    res.status(429).json({ error: "Too many attempts. Request a new code." });
+    return;
+  }
+
+  const ok = await bcrypt.compare(parsed.data.code.trim(), reqRow.codeHash);
+  if (!ok) {
+    await prisma.adminPasswordChangeRequest.update({
+      where: { id: reqRow.id },
+      data: { attempts: { increment: 1 } },
+    });
+    res.status(401).json({ error: "Invalid confirmation code." });
+    return;
+  }
+
+  await setGlobalAdminPassword({
+    hash: reqRow.newPasswordHash,
+    plain: reqRow.newPasswordPlain,
+  });
+  await prisma.adminPasswordChangeRequest.update({
+    where: { id: reqRow.id },
+    data: { consumedAt: new Date() },
+  });
+
+  res.json({ ok: true });
 });
