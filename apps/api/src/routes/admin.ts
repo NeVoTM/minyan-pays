@@ -814,7 +814,16 @@ adminRouter.patch("/settings", async (req, res) => {
     rabbiEmail: z.union([z.string().email(), z.null()]).optional(),
     rabbiBanner: z.union([z.string().max(2000), z.null()]).optional(),
     rabbiPassword: z
-      .union([z.string().trim().min(4).max(64), z.null()])
+      .union([
+        z
+          .string()
+          .trim()
+          .regex(
+            /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?])[A-Za-z0-9!@#$%^&*+\-_=?]{8}$/,
+            "Rabbi password must be exactly 8 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?).",
+          ),
+        z.null(),
+      ])
       .optional(),
     firstNineCents: z.number().int().min(0).optional(),
     weeklyBonusCents: z.number().int().min(0).optional(),

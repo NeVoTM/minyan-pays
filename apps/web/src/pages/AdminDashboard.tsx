@@ -163,6 +163,30 @@ const MODAL_BACKDROP =
 const MODAL_TEXT_BTN =
   'font-medium text-slate-700 underline decoration-slate-400 hover:text-slate-900'
 
+const RABBI_PASSWORD_RE =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?])[A-Za-z0-9!@#$%^&*+\-_=?]{8}$/
+
+function isValidRabbiPassword(s: string): boolean {
+  return RABBI_PASSWORD_RE.test(s)
+}
+
+function generateRabbiPasswordClient(): string {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz'
+  const digits = '23456789'
+  const specials = '!@#$%^&*+-_=?'
+  const all = letters + digits + specials
+  function pick(s: string): string {
+    return s.charAt(Math.floor(Math.random() * s.length))
+  }
+  const chars = [pick(letters), pick(digits), pick(specials)]
+  while (chars.length < 8) chars.push(pick(all))
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[chars[i], chars[j]] = [chars[j]!, chars[i]!]
+  }
+  return chars.join('')
+}
+
 export function AdminDashboard() {
   const { t } = useTranslation()
   const nav = useNavigate()
@@ -224,6 +248,7 @@ export function AdminDashboard() {
   const [rabbiPhoneDraft, setRabbiPhoneDraft] = useState('')
   const [rabbiEmailDraft, setRabbiEmailDraft] = useState('')
   const [rabbiPasswordDraft, setRabbiPasswordDraft] = useState('')
+  const [showRabbiPassword, setShowRabbiPassword] = useState(false)
   const [rabbiSetupMsg, setRabbiSetupMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [memberMsg, setMemberMsg] = useState<string | null>(null)
@@ -629,7 +654,7 @@ export function AdminDashboard() {
       setRabbiSetupMsg(t('admin.rabbiNameRequired'))
       return
     }
-    if (rabbiPasswordDraft && rabbiPasswordDraft.trim().length < 4) {
+    if (rabbiPasswordDraft && !isValidRabbiPassword(rabbiPasswordDraft.trim())) {
       setRabbiSetupMsg(t('admin.rabbiPasswordRule'))
       return
     }
@@ -1362,12 +1387,37 @@ export function AdminDashboard() {
                 <label className={lbl}>
                   {t('admin.rabbiPasswordLabel')}
                   <input
-                    type="password"
+                    type={showRabbiPassword ? 'text' : 'password'}
                     className={inp}
                     value={rabbiPasswordDraft}
                     onChange={(e) => setRabbiPasswordDraft(e.target.value)}
                     autoComplete="new-password"
+                    placeholder={t('admin.rabbiPasswordPlaceholder')}
                   />
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t('admin.rabbiPasswordHelp')}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      onClick={() => setShowRabbiPassword((v) => !v)}
+                    >
+                      {showRabbiPassword
+                        ? t('admin.rabbiPasswordHide')
+                        : t('admin.rabbiPasswordShow')}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-800 hover:bg-violet-100"
+                      onClick={() => {
+                        setRabbiPasswordDraft(generateRabbiPasswordClient())
+                        setShowRabbiPassword(true)
+                      }}
+                    >
+                      {t('admin.rabbiPasswordGenerate')}
+                    </button>
+                  </div>
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-2">
