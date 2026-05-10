@@ -4,6 +4,10 @@
 
 ## Current Task / Goal
 
+**Setup Rabbi moved into Location Edit + auto-generated punch-in code (May 10 2026, `050ef12`).**
+- The Location hub action row is back to three buttons (Add / View / Edit). The fourth "Setup Rabbi" button moved **inside the Location Edit modal** as a violet card with help copy and an "Open Rabbi setup" button — clicking it closes the Edit modal and switches to the Rabbi hub. Matches the user's spec that the rabbi connection belongs inside the Location Edit screen, not the header.
+- Add Member's punch-in code field is **no longer required input**. `memberFieldsSchema.attendanceCode` is now optional with the same preprocess used by public registration; `POST /api/admin/members` calls `generateUniqueAttendanceCode` whenever the field is blank. New `GET /api/admin/attendance-code/generate` endpoint pre-fills the field as soon as the Add Member modal opens, and a small ↻ button lets you regenerate. Verified live: probe POSTs without `attendanceCode` and with `attendanceCode: ""` both returned 201 with server-picked codes (e.g. `DYEXVY`, `ETS4AD`).
+
 **Global admin password live + email-confirmed change flow (May 10 2026, `eff62be`).** One password (`Aron$11213`) now authenticates the admin into every organization, and there is a Settings tab to view / rotate it with a 6-digit code emailed to `elichalfinny@gmail.com`. Production verified after Render rebuild:
 
 - `POST /api/auth/admin` slug=`770`           pwd=`Aron$11213` → **200** (was 401 — fixed via global fallback).
