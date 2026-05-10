@@ -21,9 +21,9 @@ services:
     region: oregon
     plan: free
     rootDir: apps/api
-    # Build has no DB step (matches typical Render split). Schema sync runs in preDeployCommand where DATABASE_URL exists.
-    buildCommand: npm install && npx prisma generate && npm run build
-    # Prisma warns on new unique FKs (e.g. primaryRabbiId); CI has no TTY — flag is required.
+    # db push in build: works even if dashboard pre-deploy is wrong/outdated (DATABASE_URL is available on Render builds).
+    # pre-deploy: second push is a no-op; seed still runs for empty DBs.
+    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build
     preDeployCommand: npx prisma db push --accept-data-loss && npm run db:seed
     startCommand: npm start
     healthCheckPath: /api/health

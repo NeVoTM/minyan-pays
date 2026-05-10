@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Verified: `80e8107` on `main`, API+web build green; Render pre-deploy must use `db push --accept-data-loss` — see `render.yaml` + dashboard)
+*Last updated: 2026-05-10* (Render: `db push --accept-data-loss` in **build + pre-deploy**; `tsx` in API `dependencies` for `db:seed` on prod)
 
 ## Current Task / Goal
 
