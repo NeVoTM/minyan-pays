@@ -26,7 +26,11 @@ export const memberFieldsSchema = z.object({
     (v) => (v == null || v === "" ? undefined : String(v).trim()),
     z.union([z.undefined(), z.string().min(4).max(12)])
   ),
-  attendanceCode: z.string().min(4).max(32),
+  // Optional: when omitted/blank the server generates a unique 6-char code.
+  attendanceCode: z.preprocess(
+    (v) => (v == null || v === "" ? undefined : String(v).trim()),
+    z.union([z.undefined(), z.string().min(4).max(32)])
+  ),
   isMarried: z.boolean().optional(),
   zellePhone: z.string().optional().nullable(),
   wifeZellePhone: z.string().optional().nullable(),

@@ -373,6 +373,16 @@ export function AdminDashboard() {
     }
   }, [token])
 
+  const prefillAttendanceCode = useCallback(async () => {
+    if (!token) return
+    try {
+      const r = await api<{ code: string }>('/api/admin/attendance-code/generate', { token })
+      setAddForm((f) => ({ ...f, attendanceCode: r.code }))
+    } catch {
+      // server will auto-generate on submit if this fails
+    }
+  }, [token])
+
   useEffect(() => {
     if (adminHub === 'settings' && token) {
       void loadGlobalPwStatus()
@@ -1066,6 +1076,7 @@ export function AdminDashboard() {
                 setAddForm(emptyMemberForm())
                 setAddPin('')
                 setAddMemberOpen(true)
+                void prefillAttendanceCode()
               }}
             >
               {t('admin.actionAdd')}
@@ -1284,20 +1295,6 @@ export function AdminDashboard() {
               }}
             >
               {t('admin.actionEdit')}
-            </button>
-            <button
-              type="button"
-              disabled={!settings}
-              className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-[11px] font-semibold text-violet-900 disabled:opacity-40"
-              onClick={() => {
-                if (!settings) return
-                setRabbiSetupMsg(null)
-                setSelectedRabbiId(rabbis[0]?.id ?? null)
-                setAdminHub('rabbi')
-              }}
-              title={t('admin.locationSetupRabbiHelp')}
-            >
-              {t('admin.locationSetupRabbi')}
             </button>
           </div>
           <p className="text-center text-[10px] text-slate-500">
@@ -1608,6 +1605,26 @@ export function AdminDashboard() {
                   />
                 </label>
               </div>
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-2">
+                <p className="text-[11px] font-semibold text-violet-900">
+                  {t('admin.locationSetupRabbi')}
+                </p>
+                <p className="mt-1 text-[10px] text-violet-800/80">
+                  {t('admin.locationSetupRabbiHelp')}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 w-full rounded-lg border border-violet-300 bg-white py-2 text-[11px] font-semibold text-violet-900 hover:bg-violet-100"
+                  onClick={() => {
+                    setRabbiSetupMsg(null)
+                    setSelectedRabbiId(rabbis[0]?.id ?? null)
+                    setLocationPanelOpen(false)
+                    setAdminHub('rabbi')
+                  }}
+                >
+                  {t('admin.locationSetupRabbiOpen')}
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="submit"
@@ -1836,19 +1853,30 @@ export function AdminDashboard() {
                 </label>
                 <label className={lbl}>
                   {t('admin.punchInPh')}
-                  <input
-                    className={`${inp} font-mono ${punchInTakenAdd ? 'border-red-500 ring-1 ring-red-200' : ''}`}
-                    value={addForm.attendanceCode}
-                    onChange={(e) =>
-                      setAddForm((f) => ({
-                        ...f,
-                        attendanceCode: e.target.value,
-                      }))
-                    }
-                    required
-                  />
+                  <div className="flex items-stretch gap-1">
+                    <input
+                      className={`${inp} font-mono ${punchInTakenAdd ? 'border-red-500 ring-1 ring-red-200' : ''}`}
+                      value={addForm.attendanceCode}
+                      onChange={(e) =>
+                        setAddForm((f) => ({
+                          ...f,
+                          attendanceCode: e.target.value,
+                        }))
+                      }
+                      placeholder={t('admin.punchInAuto')}
+                    />
+                    <button
+                      type="button"
+                      title={t('admin.punchInRegenerate')}
+                      className="rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      onClick={() => void prefillAttendanceCode()}
+                    >
+                      ↻
+                    </button>
+                  </div>
                 </label>
               </div>
+              <p className="text-[10px] text-slate-500">{t('admin.punchInAutoHelp')}</p>
               {punchInTakenAdd && (
                 <p className="text-xs text-red-600">{t('admin.punchInTaken')}</p>
               )}

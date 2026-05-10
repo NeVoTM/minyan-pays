@@ -25,6 +25,7 @@ import {
 } from "../lib/memberDuplicates.js";
 import { memberFieldsSchema, memberUpdateSchema } from "../lib/memberSchemas.js";
 import { normalizeOrgSlug } from "../lib/organizationService.js";
+import { generateUniqueAttendanceCode } from "../lib/attendanceCode.js";
 import {
   adminNotifyEmail,
   emailConfigured,
@@ -135,6 +136,12 @@ const rabbiProfileSchema = z.object({
   postalCode: z.union([z.string().max(30), z.null()]).optional(),
   phone: z.union([z.string().max(40), z.null()]).optional(),
   email: z.union([z.string().email(), z.null()]).optional(),
+});
+
+/** Generate a fresh unique punch-in code so the Add Member form can pre-fill it. */
+adminRouter.get("/attendance-code/generate", async (req, res) => {
+  const code = await generateUniqueAttendanceCode(prisma, orgId(req));
+  res.json({ code });
 });
 
 /** All locations (for treasurer overview). */
@@ -280,21 +287,28 @@ adminRouter.post("/members", async (req, res) => {
     throw e;
   }
 
-  const attendanceCodeNorm = d.attendanceCode.trim();
-  const codeTaken = await prisma.user.findFirst({
-    where: {
-      organizationId: oid,
-      attendanceCode: attendanceCodeNorm,
-      role: "MEMBER",
-    },
-    select: { id: true },
-  });
-  if (codeTaken) {
-    res.status(409).json({
-      error:
-        "That punch-in code is already assigned to another member. Choose a different code.",
+  // attendanceCode is optional — server picks a unique 6-char code when blank.
+  const requestedCode = d.attendanceCode?.trim() ?? "";
+  let attendanceCodeNorm: string;
+  if (requestedCode) {
+    attendanceCodeNorm = requestedCode;
+    const codeTaken = await prisma.user.findFirst({
+      where: {
+        organizationId: oid,
+        attendanceCode: attendanceCodeNorm,
+        role: "MEMBER",
+      },
+      select: { id: true },
     });
-    return;
+    if (codeTaken) {
+      res.status(409).json({
+        error:
+          "That punch-in code is already assigned to another member. Choose a different code.",
+      });
+      return;
+    }
+  } else {
+    attendanceCodeNorm = await generateUniqueAttendanceCode(prisma, oid);
   }
 
   const pinHash = await pinHashFromOptionalPin(d.pin);
