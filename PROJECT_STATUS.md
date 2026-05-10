@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Render: `preDeployCommand` uses `db push --accept-data-loss`; dashboard must match if not using Blueprint sync)
+*Last updated: 2026-05-10* (Verified: `80e8107` on `main`, API+web build green; Render pre-deploy must use `db push --accept-data-loss` — see `render.yaml` + dashboard)
 
 ## Current Task / Goal
 
