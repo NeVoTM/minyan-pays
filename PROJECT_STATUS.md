@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (pushed `83a3bfa` — primary rabbi UI + `rabbiPasswordPlain`)
+*Last updated: 2026-05-10* (Render API build: `prisma db push --accept-data-loss` for non-interactive deploy)
 
 ## Current Task / Goal
 
