@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Render: `db push --accept-data-loss` in **build + pre-deploy**; `tsx` in API `dependencies` for `db:seed` on prod)
+*Last updated: 2026-05-10* (Render **minyan-pays web**: user cleared build cache + redeployed static site)
 
 ## Current Task / Goal
 
@@ -168,6 +168,8 @@ After those four steps, login with the simple per-org rabbi password works again
 - **Cross-tenant audit:** Confirm every protected route enforces org id + role vs JWT (directive §2).
 
 ## Notes / Context
+
+- **2026-05-10:** Production **static web** on Render: build cache cleared and service redeployed — ensures fresh `vite` bundle (e.g. new `assets/index-*.js`). Confirm **`VITE_API_BASE_URL`** still points at the live API before assuming API wiring issues.
 
 - **Git:** Latest pushed commit is **`dc5b757`** (embedded Postgres restart guard + status notes) on **`origin/main`** and **`cur/main`**.
 - **Deploy automation blocker:** No authenticated Render control path in this environment. `render` command available after install is an unrelated template-rendering CLI, not Render.com deployment CLI/API tooling.
