@@ -77,6 +77,7 @@ model Organization {
 
   users          User[]
   rabbis         Rabbi[]
+  shamoshim      Shamosh[]
   minyanSessions MinyanSession[]
   treasury       Treasury?
   charities      Charity[]
@@ -97,7 +98,26 @@ model Rabbi {
   postalCode     String?
   phone          String?
   email          String?
+  shamoshim      Shamosh[]
 
+  @@index([organizationId, name])
+}
+
+/** Helper (shamosh) that approves check-ins for one rabbi at one location. Logs in with their own 8-char password (letters+digits+special). */
+model Shamosh {
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rabbiId        String
+  rabbi          Rabbi        @relation(fields: [rabbiId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String?
+  email          String?
+  passwordHash   String
+
+  @@index([organizationId, rabbiId])
   @@index([organizationId, name])
 }
 

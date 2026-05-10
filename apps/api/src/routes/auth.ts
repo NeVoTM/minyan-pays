@@ -8,6 +8,7 @@ import {
   signAdminToken,
   signMemberToken,
   signRabbiToken,
+  signShamoshToken,
 } from "../middleware/auth.js";
 import { getBootstrapAdminPlaintext } from "../lib/bootstrapAdminPassword.js";
 import {
@@ -122,21 +123,47 @@ authRouter.post("/rabbi", async (req, res) => {
   }
 
   const password = parsed.data.password.trim();
-  let ok = false;
+
+  let rabbiOk = false;
   if (org.rabbiPasswordHash) {
-    ok = await bcrypt.compare(password, org.rabbiPasswordHash);
+    rabbiOk = await bcrypt.compare(password, org.rabbiPasswordHash);
   } else {
     const fallback = process.env.RABBI_PASSWORD?.trim();
     if (fallback) {
-      ok = timingSafeEqualString(password, fallback);
+      rabbiOk = timingSafeEqualString(password, fallback);
     }
   }
-  if (!ok) {
-    res.status(401).json({ error: "Invalid password" });
+  if (rabbiOk) {
+    res.json({ token: signRabbiToken(org.id), rabbiKind: "RABBI" });
     return;
   }
 
-  res.json({ token: signRabbiToken(org.id) });
+  // Not the location's rabbi password — try the shamoshim at this location.
+  const shamoshim = await prisma.shamosh.findMany({
+    where: { organizationId: org.id },
+    select: { id: true, rabbiId: true, passwordHash: true },
+  });
+  let matched: { id: string; rabbiId: string } | null = null;
+  for (const s of shamoshim) {
+    // Walk every shamosh; bcrypt.compare is constant-time so timing leaks are limited.
+    if (await bcrypt.compare(password, s.passwordHash)) {
+      if (matched) {
+        // Two shamoshim at this location share the same password — refuse to pick.
+        res.status(401).json({ error: "Invalid password" });
+        return;
+      }
+      matched = { id: s.id, rabbiId: s.rabbiId };
+    }
+  }
+  if (matched) {
+    res.json({
+      token: signShamoshToken(org.id, matched.id, matched.rabbiId),
+      rabbiKind: "SHAMOSH",
+    });
+    return;
+  }
+
+  res.status(401).json({ error: "Invalid password" });
 });
 
 authRouter.post("/member", async (req, res) => {

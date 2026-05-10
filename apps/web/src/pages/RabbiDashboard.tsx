@@ -99,6 +99,38 @@ type RabbiMemberDetail = {
   achAccountNumber: string | null
 }
 
+type RabbiMe = {
+  role: 'RABBI'
+  rabbiKind: 'RABBI' | 'SHAMOSH'
+  organizationId: string
+  organizationSlug: string
+  organizationName: string
+  synagogueName: string
+  displayName: string
+  shamoshId?: string
+  parentRabbiId?: string | null
+  parentRabbiName?: string | null
+  canManageShamoshim: boolean
+  canManageMembers: boolean
+  canManagePayouts: boolean
+}
+
+type RabbiAtLoc = {
+  id: string
+  name: string
+  phone: string | null
+  email: string | null
+}
+
+type ShamoshRow = {
+  id: string
+  rabbiId: string
+  name: string
+  phone: string | null
+  email: string | null
+  rabbi: { id: string; name: string }
+}
+
 function formatMemberAddress(u: SessionUser): string {
   const parts = [
     u.addressLine1,
@@ -132,10 +164,9 @@ function isPunchCodeTaken(
   )
 }
 
-const TAB_STYLES: Record<
-  'today' | 'members' | 'payouts' | 'banner',
-  { active: string; idle: string }
-> = {
+type RabbiTabId = 'today' | 'members' | 'payouts' | 'banner' | 'shamoshim'
+
+const TAB_STYLES: Record<RabbiTabId, { active: string; idle: string }> = {
   today: {
     active:
       'border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-600/25',
@@ -159,15 +190,57 @@ const TAB_STYLES: Record<
       'border-sky-600 bg-sky-600 text-white shadow-md shadow-sky-600/25',
     idle: 'border-sky-300 bg-sky-50 text-sky-900 hover:bg-sky-100',
   },
+  shamoshim: {
+    active:
+      'border-rose-600 bg-rose-600 text-white shadow-md shadow-rose-600/25',
+    idle:
+      'border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100',
+  },
+}
+
+const SHAMOSH_PASSWORD_RE =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?])[A-Za-z0-9!@#$%^&*+\-_=?]{8}$/
+
+function isValidShamoshPassword(s: string): boolean {
+  return SHAMOSH_PASSWORD_RE.test(s)
+}
+
+function generateShamoshPasswordClient(): string {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz'
+  const digits = '23456789'
+  const specials = '!@#$%^&*+-_=?'
+  const all = letters + digits + specials
+  function pick(s: string): string {
+    return s.charAt(Math.floor(Math.random() * s.length))
+  }
+  const chars = [pick(letters), pick(digits), pick(specials)]
+  while (chars.length < 8) chars.push(pick(all))
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[chars[i], chars[j]] = [chars[j]!, chars[i]!]
+  }
+  return chars.join('')
 }
 
 export function RabbiDashboard() {
   const { t } = useTranslation()
   const nav = useNavigate()
   const token = localStorage.getItem(RABBI_KEY)
-  const [tab, setTab] = useState<'today' | 'members' | 'payouts' | 'banner'>(
-    'today'
-  )
+  const [tab, setTab] = useState<RabbiTabId>('today')
+  const [me, setMe] = useState<RabbiMe | null>(null)
+  const [rabbisAtLoc, setRabbisAtLoc] = useState<RabbiAtLoc[]>([])
+  const [shamoshim, setShamoshim] = useState<ShamoshRow[]>([])
+  const [shamoshForm, setShamoshForm] = useState({
+    id: null as string | null,
+    rabbiId: '',
+    name: '',
+    phoneDigits: '',
+    email: '',
+    password: '',
+    showPassword: false,
+  })
+  const [shamoshErr, setShamoshErr] = useState<string | null>(null)
+  const [shamoshMsg, setShamoshMsg] = useState<string | null>(null)
   const [rabbiMembers, setRabbiMembers] = useState<RabbiMemberRow[]>([])
   const [checkInOnlyPreferred, setCheckInOnlyPreferred] = useState(false)
   const [session, setSession] = useState<SessionResp | null>(null)
@@ -211,18 +284,32 @@ export function RabbiDashboard() {
       return
     }
     try {
-      const [mem, s, st] = await Promise.all([
+      const meResp = await api<RabbiMe>('/api/rabbi/me', { token })
+      setMe(meResp)
+      const isShamosh = meResp.rabbiKind === 'SHAMOSH'
+      // SHAMOSH tokens may only call /me + /session/today + /attendance/:id/confirm.
+      // Skip every other call so the page does not flash 403 errors.
+      if (isShamosh) {
+        const s = await api<SessionResp>('/api/rabbi/session/today', { token })
+        setSession(s)
+        return
+      }
+      const [mem, s, st, rabs, shams] = await Promise.all([
         api<RabbiMemberRow[]>('/api/rabbi/members', { token }),
         api<SessionResp>('/api/rabbi/session/today', { token }),
         api<{ rabbiBanner: string; checkInOnlyPreferred: boolean }>(
           '/api/rabbi/settings',
           { token }
         ),
+        api<RabbiAtLoc[]>('/api/rabbi/rabbis', { token }),
+        api<ShamoshRow[]>('/api/rabbi/shamoshim', { token }),
       ])
       setRabbiMembers(mem)
       setSession(s)
       setBannerDraft(st.rabbiBanner ?? '')
       setCheckInOnlyPreferred(st.checkInOnlyPreferred)
+      setRabbisAtLoc(rabs)
+      setShamoshim(shams)
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : t('rabbi.loadFailed'))
     }
@@ -278,6 +365,127 @@ export function RabbiDashboard() {
       cancelled = true
     }
   }, [token, rabbiEditUserId, t])
+
+  const isShamosh = me?.rabbiKind === 'SHAMOSH'
+  const canManageShamoshim = !!me?.canManageShamoshim
+
+  function resetShamoshForm(rabbiId?: string) {
+    setShamoshForm({
+      id: null,
+      rabbiId: rabbiId ?? rabbisAtLoc[0]?.id ?? '',
+      name: '',
+      phoneDigits: '',
+      email: '',
+      password: '',
+      showPassword: false,
+    })
+    setShamoshErr(null)
+    setShamoshMsg(null)
+  }
+
+  function beginEditShamosh(s: ShamoshRow) {
+    setShamoshForm({
+      id: s.id,
+      rabbiId: s.rabbiId,
+      name: s.name,
+      phoneDigits: s.phone ? phoneDigitsFromE164(s.phone) : '',
+      email: s.email ?? '',
+      password: '',
+      showPassword: false,
+    })
+    setShamoshErr(null)
+    setShamoshMsg(null)
+  }
+
+  async function fillGeneratedShamoshPassword() {
+    if (!token) return
+    try {
+      const r = await api<{ password: string }>(
+        '/api/rabbi/passwords/generate',
+        { token }
+      )
+      setShamoshForm((f) => ({ ...f, password: r.password, showPassword: true }))
+    } catch {
+      setShamoshForm((f) => ({
+        ...f,
+        password: generateShamoshPasswordClient(),
+        showPassword: true,
+      }))
+    }
+  }
+
+  async function saveShamosh(e: React.FormEvent) {
+    e.preventDefault()
+    if (!token) return
+    setShamoshErr(null)
+    setShamoshMsg(null)
+    const phone = shamoshForm.phoneDigits.trim()
+      ? `+1${shamoshForm.phoneDigits.replace(/[^0-9]/g, '')}`
+      : null
+    const isEdit = !!shamoshForm.id
+    if (!shamoshForm.rabbiId) {
+      setShamoshErr(t('rabbi.shamoshNeedRabbi'))
+      return
+    }
+    if (
+      shamoshForm.password.trim() !== '' &&
+      !isValidShamoshPassword(shamoshForm.password.trim())
+    ) {
+      setShamoshErr(t('rabbi.shamoshPasswordHelp'))
+      return
+    }
+    if (!isEdit && !shamoshForm.password.trim()) {
+      setShamoshErr(t('rabbi.shamoshPasswordHelp'))
+      return
+    }
+    try {
+      const body = {
+        rabbiId: shamoshForm.rabbiId,
+        name: shamoshForm.name.trim(),
+        phone,
+        email: shamoshForm.email.trim() || null,
+        ...(shamoshForm.password.trim()
+          ? { password: shamoshForm.password.trim() }
+          : {}),
+      }
+      if (isEdit) {
+        await api(`/api/rabbi/shamoshim/${shamoshForm.id}`, {
+          method: 'PATCH',
+          token,
+          body: JSON.stringify(body),
+        })
+        setShamoshMsg(t('rabbi.shamoshSaved'))
+      } else {
+        await api('/api/rabbi/shamoshim', {
+          method: 'POST',
+          token,
+          body: JSON.stringify(body),
+        })
+        setShamoshMsg(t('rabbi.shamoshCreated'))
+      }
+      const next = await api<ShamoshRow[]>('/api/rabbi/shamoshim', { token })
+      setShamoshim(next)
+      resetShamoshForm(shamoshForm.rabbiId)
+    } catch (err: unknown) {
+      setShamoshErr(err instanceof Error ? err.message : t('rabbi.loadFailed'))
+    }
+  }
+
+  async function deleteShamosh(id: string) {
+    if (!token) return
+    if (!confirm(t('rabbi.shamoshDeleteConfirm'))) return
+    setShamoshErr(null)
+    setShamoshMsg(null)
+    try {
+      await api(`/api/rabbi/shamoshim/${id}`, { method: 'DELETE', token })
+      const next = await api<ShamoshRow[]>('/api/rabbi/shamoshim', { token })
+      setShamoshim(next)
+      if (shamoshForm.id === id) resetShamoshForm()
+      setShamoshMsg(t('rabbi.shamoshDeleted'))
+    } catch (err: unknown) {
+      setShamoshErr(err instanceof Error ? err.message : t('rabbi.loadFailed'))
+    }
+  }
 
   const loadWeek = useCallback(async () => {
     if (!token) return
@@ -576,6 +784,13 @@ export function RabbiDashboard() {
       <h1 className="text-lg font-semibold leading-tight sm:text-xl">
         {t('rabbi.title')}
       </h1>
+      {isShamosh && (
+        <p className="rounded-lg bg-rose-50 px-3 py-2 text-[11px] text-rose-800 sm:text-xs">
+          {t('rabbi.shamoshBanner', {
+            name: me?.parentRabbiName ?? '',
+          })}
+        </p>
+      )}
       {err && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
           {err}
@@ -588,28 +803,40 @@ export function RabbiDashboard() {
       )}
 
       <nav
-        className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-4"
+        className={`grid w-full min-w-0 gap-2 ${
+          isShamosh
+            ? 'grid-cols-1'
+            : canManageShamoshim
+              ? 'grid-cols-2 sm:grid-cols-5'
+              : 'grid-cols-2 sm:grid-cols-4'
+        }`}
         aria-label="Rabbi"
       >
-        {(['today', 'members', 'payouts', 'banner'] as const).map((id) => {
-          const st = TAB_STYLES[id]
-          const on = tab === id
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`rounded-xl border-2 px-2 py-2.5 text-center text-[10px] font-bold uppercase leading-tight tracking-wide sm:text-xs ${
-                on ? st.active : st.idle
-              }`}
-              onClick={() => setTab(id)}
-            >
-              {t(`rabbi.${id}`)}
-            </button>
-          )
-        })}
+        {((isShamosh
+          ? (['today'] as const)
+          : canManageShamoshim
+            ? (['today', 'members', 'payouts', 'banner', 'shamoshim'] as const)
+            : (['today', 'members', 'payouts', 'banner'] as const)) as readonly RabbiTabId[]).map(
+          (id) => {
+            const st = TAB_STYLES[id]
+            const on = tab === id
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`rounded-xl border-2 px-2 py-2.5 text-center text-[10px] font-bold uppercase leading-tight tracking-wide sm:text-xs ${
+                  on ? st.active : st.idle
+                }`}
+                onClick={() => setTab(id)}
+              >
+                {t(`rabbi.${id}`)}
+              </button>
+            )
+          }
+        )}
       </nav>
 
-      {tab === 'members' && (
+      {!isShamosh && tab === 'members' && (
         <div className="w-full min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
           <div className="rounded-lg border border-slate-100 bg-slate-50 p-2.5 text-[11px] text-slate-600 sm:text-xs">
             <p className="font-medium text-slate-800">
@@ -690,12 +917,14 @@ export function RabbiDashboard() {
                 <p className="font-medium text-slate-900">
                   {a.user.displayName}
                 </p>
-                <p className="mt-1 text-slate-600">
-                  <span className="font-medium text-slate-700">
-                    {t('rabbi.memberAddress')}:
-                  </span>{' '}
-                  {formatMemberAddress(a.user)}
-                </p>
+                {!isShamosh && (
+                  <p className="mt-1 text-slate-600">
+                    <span className="font-medium text-slate-700">
+                      {t('rabbi.memberAddress')}:
+                    </span>{' '}
+                    {formatMemberAddress(a.user)}
+                  </p>
+                )}
                 <p className="mt-0.5 text-slate-600">
                   <span className="font-medium text-slate-700">
                     {t('rabbi.checkInTime')}:
@@ -709,13 +938,15 @@ export function RabbiDashboard() {
                   {fmtAttendanceStatus(a.punchInStatus)}
                 </p>
                 <div className="mt-3 flex w-full min-w-0 flex-col gap-2">
-                  <button
-                    type="button"
-                    className="w-full rounded-lg border-2 border-indigo-400 bg-indigo-50 py-2.5 text-[11px] font-semibold text-indigo-900"
-                    onClick={() => setRabbiEditUserId(a.user.id)}
-                  >
-                    {t('rabbi.viewEditMember')}
-                  </button>
+                  {!isShamosh && (
+                    <button
+                      type="button"
+                      className="w-full rounded-lg border-2 border-indigo-400 bg-indigo-50 py-2.5 text-[11px] font-semibold text-indigo-900"
+                      onClick={() => setRabbiEditUserId(a.user.id)}
+                    >
+                      {t('rabbi.viewEditMember')}
+                    </button>
+                  )}
                   {a.punchInStatus === 'PENDING' && (
                     <>
                       <button
@@ -725,25 +956,28 @@ export function RabbiDashboard() {
                       >
                         {t('rabbi.confirm')}
                       </button>
-                      <button
-                        type="button"
-                        className="w-full rounded-lg bg-rose-600 py-2.5 text-[11px] font-semibold text-white shadow-sm"
-                        onClick={() => void reject(a.id)}
-                      >
-                        {t('rabbi.reject')}
-                      </button>
+                      {!isShamosh && (
+                        <button
+                          type="button"
+                          className="w-full rounded-lg bg-rose-600 py-2.5 text-[11px] font-semibold text-white shadow-sm"
+                          onClick={() => void reject(a.id)}
+                        >
+                          {t('rabbi.reject')}
+                        </button>
+                      )}
                     </>
                   )}
-                  {(a.punchInStatus === 'PENDING' ||
-                    a.punchInStatus === 'CONFIRMED') && (
-                    <button
-                      type="button"
-                      className="w-full rounded-lg border border-rose-300 bg-rose-50 py-2.5 text-[11px] font-semibold text-rose-900"
-                      onClick={() => void cancelAttendance(a.id)}
-                    >
-                      Cancel check-in
-                    </button>
-                  )}
+                  {!isShamosh &&
+                    (a.punchInStatus === 'PENDING' ||
+                      a.punchInStatus === 'CONFIRMED') && (
+                      <button
+                        type="button"
+                        className="w-full rounded-lg border border-rose-300 bg-rose-50 py-2.5 text-[11px] font-semibold text-rose-900"
+                        onClick={() => void cancelAttendance(a.id)}
+                      >
+                        Cancel check-in
+                      </button>
+                    )}
                 </div>
               </li>
             ))}
@@ -753,7 +987,7 @@ export function RabbiDashboard() {
               {t('admin.noPunchInsToday')}
             </p>
           )}
-          {session.canceledAttendances.length > 0 && (
+          {!isShamosh && session.canceledAttendances.length > 0 && (
             <div className="mt-4 border-t border-slate-200 pt-3">
               <h3 className="text-xs font-semibold text-slate-700">
                 Canceled check-ins
@@ -785,7 +1019,7 @@ export function RabbiDashboard() {
         </div>
       )}
 
-      {tab === 'payouts' && (
+      {!isShamosh && tab === 'payouts' && (
         <div className="w-full min-w-0 space-y-3 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <h2 className="mb-2 text-xs font-medium text-slate-700 sm:text-sm">
@@ -927,7 +1161,7 @@ export function RabbiDashboard() {
         </div>
       )}
 
-      {tab === 'banner' && (
+      {!isShamosh && tab === 'banner' && (
         <div className="w-full min-w-0 rounded-xl border border-sky-200 bg-sky-50/80 p-3 text-left text-xs sm:text-sm">
           <h2 className="mb-2 font-medium text-sky-900 sm:text-sm">
             {t('rabbi.bannerTitle')}
@@ -947,6 +1181,199 @@ export function RabbiDashboard() {
           >
             {t('rabbi.saveBanner')}
           </button>
+        </div>
+      )}
+
+      {!isShamosh && canManageShamoshim && tab === 'shamoshim' && (
+        <div className="w-full min-w-0 space-y-3 rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-left text-xs sm:text-sm">
+          <h2 className="text-sm font-semibold text-rose-900">
+            {t('rabbi.shamoshimTitle')}
+          </h2>
+          <p className="text-[11px] text-rose-800/80 sm:text-xs">
+            {t('rabbi.shamoshimHelp')}
+          </p>
+          {shamoshErr && (
+            <p className="rounded-lg bg-red-50 px-2 py-1.5 text-[11px] text-red-700 sm:text-xs">
+              {shamoshErr}
+            </p>
+          )}
+          {shamoshMsg && (
+            <p className="rounded-lg bg-emerald-50 px-2 py-1.5 text-[11px] text-emerald-800 sm:text-xs">
+              {shamoshMsg}
+            </p>
+          )}
+
+          <form
+            className="space-y-2 rounded-lg border border-rose-200 bg-white p-2.5"
+            onSubmit={saveShamosh}
+          >
+            <label className="block text-[11px] font-medium text-slate-700">
+              {t('rabbi.shamoshParentRabbi')}
+              <select
+                className={inputCls}
+                value={shamoshForm.rabbiId}
+                onChange={(e) =>
+                  setShamoshForm((f) => ({ ...f, rabbiId: e.target.value }))
+                }
+                required
+              >
+                <option value="">{t('rabbi.shamoshParentRabbiPick')}</option>
+                {rabbisAtLoc.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[11px] font-medium text-slate-700">
+              {t('rabbi.shamoshName')}
+              <input
+                className={inputCls}
+                value={shamoshForm.name}
+                onChange={(e) =>
+                  setShamoshForm((f) => ({ ...f, name: e.target.value }))
+                }
+                required
+                autoComplete="off"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-slate-700">
+              {t('rabbi.shamoshPhone')}
+              <PhoneInput
+                className={inputCls}
+                value={shamoshForm.phoneDigits}
+                onChange={(d) =>
+                  setShamoshForm((f) => ({ ...f, phoneDigits: d }))
+                }
+                autoComplete="off"
+              />
+            </label>
+            <label className="block text-[11px] font-medium text-slate-700">
+              {t('rabbi.shamoshEmail')}
+              <input
+                className={inputCls}
+                type="email"
+                value={shamoshForm.email}
+                onChange={(e) =>
+                  setShamoshForm((f) => ({ ...f, email: e.target.value }))
+                }
+                autoComplete="off"
+              />
+            </label>
+            <div className="space-y-1">
+              <label className="block text-[11px] font-medium text-slate-700">
+                {t('rabbi.shamoshPassword')}
+                <input
+                  className={`${inputCls} font-mono`}
+                  type={shamoshForm.showPassword ? 'text' : 'password'}
+                  value={shamoshForm.password}
+                  onChange={(e) =>
+                    setShamoshForm((f) => ({
+                      ...f,
+                      password: e.target.value,
+                    }))
+                  }
+                  placeholder={
+                    shamoshForm.id
+                      ? t('rabbi.shamoshPasswordUnchanged')
+                      : t('rabbi.shamoshPasswordPlaceholder')
+                  }
+                  autoComplete="new-password"
+                />
+              </label>
+              <p className="text-[10px] text-slate-500">
+                {t('rabbi.shamoshPasswordHelp')}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 bg-slate-50 py-1.5 text-[11px] font-medium text-slate-800"
+                  onClick={() =>
+                    setShamoshForm((f) => ({
+                      ...f,
+                      showPassword: !f.showPassword,
+                    }))
+                  }
+                >
+                  {shamoshForm.showPassword
+                    ? t('rabbi.shamoshHide')
+                    : t('rabbi.shamoshShow')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-rose-300 bg-rose-50 py-1.5 text-[11px] font-medium text-rose-800"
+                  onClick={() => void fillGeneratedShamoshPassword()}
+                >
+                  {t('rabbi.shamoshGenerate')}
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="submit"
+                className="rounded-lg bg-rose-600 py-2 text-[11px] font-semibold text-white"
+              >
+                {shamoshForm.id
+                  ? t('rabbi.shamoshSave')
+                  : t('rabbi.shamoshAdd')}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-300 bg-white py-2 text-[11px] font-semibold text-slate-700"
+                onClick={() => resetShamoshForm()}
+              >
+                {t('common.cancel') ?? 'Reset'}
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-slate-800">
+              {t('rabbi.shamoshList')}
+            </h3>
+            {shamoshim.length === 0 && (
+              <p className="text-[11px] text-slate-500 sm:text-xs">
+                {t('rabbi.shamoshNoneYet')}
+              </p>
+            )}
+            <ul className="grid w-full min-w-0 gap-2">
+              {shamoshim.map((s) => (
+                <li
+                  key={s.id}
+                  className="rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] sm:text-xs"
+                >
+                  <p className="font-medium text-slate-900">{s.name}</p>
+                  <p className="text-slate-600">
+                    {t('rabbi.shamoshFor')} {s.rabbi?.name ?? '—'}
+                  </p>
+                  {s.phone && (
+                    <p className="font-mono text-[10px] text-slate-500">
+                      {formatPhoneDigits(phoneDigitsFromE164(s.phone))}
+                    </p>
+                  )}
+                  {s.email && (
+                    <p className="text-[10px] text-slate-500">{s.email}</p>
+                  )}
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-indigo-300 bg-indigo-50 py-1.5 text-[11px] font-semibold text-indigo-900"
+                      onClick={() => beginEditShamosh(s)}
+                    >
+                      {t('common.edit') ?? 'Edit'}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-rose-300 bg-rose-50 py-1.5 text-[11px] font-semibold text-rose-900"
+                      onClick={() => void deleteShamosh(s.id)}
+                    >
+                      {t('rabbi.shamoshDelete')}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 

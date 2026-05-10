@@ -6,6 +6,7 @@ import { prisma } from "../lib/prisma.js";
 import {
   authMiddleware,
   requireRabbi,
+  requireRabbiNotShamosh,
   type JwtPayload,
 } from "../middleware/auth.js";
 import {
@@ -31,8 +32,40 @@ export const rabbiRouter = Router();
 rabbiRouter.use(authMiddleware);
 rabbiRouter.use(requireRabbi);
 
+/**
+ * Whitelist for SHAMOSH tokens. Shamoshim may only:
+ *   - GET  /me                       (so the client can render their restricted UI)
+ *   - GET  /session/today            (see today's check-ins for their location)
+ *   - POST /attendance/:id/confirm   (the only action they can take: approve)
+ * Everything else (members, payouts, banner, treasury, shamosh CRUD, settings, exports)
+ * is gated by requireRabbiNotShamosh on the individual handlers.
+ */
+const SHAMOSH_ALLOW_EXACT = new Set<string>(["/me", "/session/today"]);
+const SHAMOSH_ALLOW_PATTERNS: RegExp[] = [/^\/attendance\/[^/]+\/confirm$/];
+rabbiRouter.use((req, res, next) => {
+  const a = (req as Request & { auth?: JwtPayload }).auth;
+  if (a?.rabbiKind !== "SHAMOSH") {
+    next();
+    return;
+  }
+  const path = req.path;
+  if (SHAMOSH_ALLOW_EXACT.has(path)) {
+    next();
+    return;
+  }
+  if (SHAMOSH_ALLOW_PATTERNS.some((re) => re.test(path))) {
+    next();
+    return;
+  }
+  res.status(403).json({ error: "Shamoshim can only view today and confirm check-ins." });
+});
+
 function orgId(req: Request): string {
   return (req as Request & { auth: JwtPayload }).auth.organizationId;
+}
+
+function authOf(req: Request): JwtPayload {
+  return (req as Request & { auth: JwtPayload }).auth;
 }
 
 function trimOrNull(s: string | undefined | null): string | null {
@@ -41,9 +74,258 @@ function trimOrNull(s: string | undefined | null): string | null {
   return t || null;
 }
 
+/** 8 characters total, must contain at least one letter, one digit, and one special character. */
+const SHAMOSH_PASSWORD_RE =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?])[A-Za-z0-9!@#$%^&*+\-_=?]{8}$/;
+const SHAMOSH_PASSWORD_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+const SHAMOSH_PASSWORD_DIGITS = "23456789";
+const SHAMOSH_PASSWORD_SPECIALS = "!@#$%^&*+-_=?";
+
+function pickRandom(alphabet: string, n: number): string {
+  const buf = new Uint32Array(n);
+  if (typeof globalThis.crypto?.getRandomValues === "function") {
+    globalThis.crypto.getRandomValues(buf);
+  } else {
+    for (let i = 0; i < n; i += 1) buf[i] = Math.floor(Math.random() * 0xffffffff);
+  }
+  let out = "";
+  for (let i = 0; i < n; i += 1) {
+    out += alphabet[(buf[i] ?? 0) % alphabet.length];
+  }
+  return out;
+}
+
+function generateShamoshPassword(): string {
+  // Guarantee one letter, one digit, one special, then fill with mixed pool. Shuffle the result.
+  const letters = pickRandom(SHAMOSH_PASSWORD_LETTERS, 1);
+  const digits = pickRandom(SHAMOSH_PASSWORD_DIGITS, 1);
+  const specials = pickRandom(SHAMOSH_PASSWORD_SPECIALS, 1);
+  const pool =
+    SHAMOSH_PASSWORD_LETTERS + SHAMOSH_PASSWORD_DIGITS + SHAMOSH_PASSWORD_SPECIALS;
+  const rest = pickRandom(pool, 5);
+  const chars = (letters + digits + specials + rest).split("");
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j]!, chars[i]!];
+  }
+  return chars.join("");
+}
+
 const weekKeyParam = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD (any day in the week)");
+
+/** Lets the rabbi/shamosh client know who they are without leaking other locations. */
+rabbiRouter.get("/me", async (req, res) => {
+  const a = authOf(req);
+  const oid = a.organizationId;
+  const org = await prisma.organization.findUnique({
+    where: { id: oid },
+    select: { slug: true, name: true, synagogueName: true },
+  });
+  if (!org) {
+    res.status(400).json({ error: "Invalid organization" });
+    return;
+  }
+  if (a.rabbiKind === "SHAMOSH" && a.shamoshId) {
+    const s = await prisma.shamosh.findFirst({
+      where: { id: a.shamoshId, organizationId: oid },
+      select: {
+        id: true,
+        name: true,
+        rabbiId: true,
+        rabbi: { select: { id: true, name: true } },
+      },
+    });
+    res.json({
+      role: "RABBI",
+      rabbiKind: "SHAMOSH",
+      organizationId: oid,
+      organizationSlug: org.slug,
+      organizationName: org.name,
+      synagogueName: org.synagogueName,
+      shamoshId: a.shamoshId,
+      displayName: s?.name ?? "Shamosh",
+      parentRabbiId: s?.rabbiId ?? null,
+      parentRabbiName: s?.rabbi?.name ?? null,
+      canManageShamoshim: false,
+      canManageMembers: false,
+      canManagePayouts: false,
+    });
+    return;
+  }
+  res.json({
+    role: "RABBI",
+    rabbiKind: "RABBI",
+    organizationId: oid,
+    organizationSlug: org.slug,
+    organizationName: org.name,
+    synagogueName: org.synagogueName,
+    displayName: "Rabbi",
+    canManageShamoshim: true,
+    canManageMembers: true,
+    canManagePayouts: true,
+  });
+});
+
+/** Server-generated 8-char password (letter + digit + special) the rabbi UI can pre-fill into the Shamosh form. */
+rabbiRouter.get("/passwords/generate", requireRabbiNotShamosh, (_req, res) => {
+  res.json({ password: generateShamoshPassword() });
+});
+
+const shamoshSelect = {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  rabbiId: true,
+  name: true,
+  phone: true,
+  email: true,
+  rabbi: { select: { id: true, name: true } },
+} as const;
+
+const shamoshUpsertSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  rabbiId: z.string().min(1),
+  /** Plaintext password (8 chars, letter + digit + special). Required on create; optional on update. */
+  password: z.string().optional(),
+});
+
+rabbiRouter.get("/shamoshim", requireRabbiNotShamosh, async (req, res) => {
+  const oid = orgId(req);
+  const rows = await prisma.shamosh.findMany({
+    where: { organizationId: oid },
+    orderBy: [{ rabbiId: "asc" }, { name: "asc" }],
+    select: shamoshSelect,
+  });
+  res.json(rows);
+});
+
+async function assertShamoshRabbiBelongsToOrg(
+  oid: string,
+  rabbiId: string
+): Promise<void> {
+  const r = await prisma.rabbi.findFirst({
+    where: { id: rabbiId, organizationId: oid },
+    select: { id: true },
+  });
+  if (!r) throw new Error("Selected rabbi is not at this location.");
+}
+
+rabbiRouter.post("/shamoshim", requireRabbiNotShamosh, async (req, res) => {
+  const oid = orgId(req);
+  const parsed = shamoshUpsertSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const { name, phone, email, rabbiId } = parsed.data;
+  const password = (parsed.data.password ?? "").trim();
+  if (!SHAMOSH_PASSWORD_RE.test(password)) {
+    res.status(400).json({
+      error:
+        "Password must be exactly 8 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?).",
+    });
+    return;
+  }
+  try {
+    await assertShamoshRabbiBelongsToOrg(oid, rabbiId);
+    const passwordHash = await bcrypt.hash(password, 10);
+    const created = await prisma.shamosh.create({
+      data: {
+        organizationId: oid,
+        rabbiId,
+        name: name.trim(),
+        phone: trimOrNull(phone ?? null),
+        email: trimOrNull(email ?? null),
+        passwordHash,
+      },
+      select: shamoshSelect,
+    });
+    res.status(201).json(created);
+  } catch (e: unknown) {
+    res.status(400).json({ error: e instanceof Error ? e.message : "Create failed" });
+  }
+});
+
+rabbiRouter.patch("/shamoshim/:id", requireRabbiNotShamosh, async (req, res) => {
+  const oid = orgId(req);
+  const id = String(req.params.id);
+  const parsed = shamoshUpsertSchema.partial().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const existing = await prisma.shamosh.findFirst({
+    where: { id, organizationId: oid },
+    select: { id: true },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  try {
+    const data: Prisma.ShamoshUpdateInput = {};
+    if (parsed.data.name !== undefined) data.name = parsed.data.name.trim();
+    if (parsed.data.phone !== undefined) data.phone = trimOrNull(parsed.data.phone);
+    if (parsed.data.email !== undefined) data.email = trimOrNull(parsed.data.email);
+    if (parsed.data.rabbiId !== undefined) {
+      await assertShamoshRabbiBelongsToOrg(oid, parsed.data.rabbiId);
+      data.rabbi = { connect: { id: parsed.data.rabbiId } };
+    }
+    if (parsed.data.password !== undefined) {
+      const pw = parsed.data.password.trim();
+      if (pw === "") {
+        // Empty string means "leave unchanged" — ignore.
+      } else {
+        if (!SHAMOSH_PASSWORD_RE.test(pw)) {
+          res.status(400).json({
+            error:
+              "Password must be exactly 8 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?).",
+          });
+          return;
+        }
+        data.passwordHash = await bcrypt.hash(pw, 10);
+      }
+    }
+    const updated = await prisma.shamosh.update({
+      where: { id },
+      data,
+      select: shamoshSelect,
+    });
+    res.json(updated);
+  } catch (e: unknown) {
+    res.status(400).json({ error: e instanceof Error ? e.message : "Update failed" });
+  }
+});
+
+rabbiRouter.delete("/shamoshim/:id", requireRabbiNotShamosh, async (req, res) => {
+  const oid = orgId(req);
+  const id = String(req.params.id);
+  const existing = await prisma.shamosh.findFirst({
+    where: { id, organizationId: oid },
+    select: { id: true },
+  });
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await prisma.shamosh.delete({ where: { id } });
+  res.json({ ok: true });
+});
+
+/** List rabbis at this location (used by the Shamoshim form's rabbi picker). */
+rabbiRouter.get("/rabbis", requireRabbiNotShamosh, async (req, res) => {
+  const oid = orgId(req);
+  const rows = await prisma.rabbi.findMany({
+    where: { organizationId: oid },
+    orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true, phone: true, email: true },
+  });
+  res.json(rows);
+});
 
 function weekReportDateKeys(anyDayInWeek: string, tz: string): string[] {
   const sundayKey = weekSundayKeyFromDateKey(anyDayInWeek, tz);

@@ -978,6 +978,17 @@ export function AdminDashboard() {
 
       {adminHub === 'rabbi' && (
         <div className="w-full min-w-0 space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm">
+          <div className="rounded-lg border border-violet-200 bg-violet-50/60 p-2">
+            <p className="text-[11px] font-semibold text-violet-900 sm:text-xs">
+              {t('admin.rabbiSetupTitle', {
+                location:
+                  settings?.synagogueName ?? settings?.name ?? '',
+              })}
+            </p>
+            <p className="mt-0.5 text-[10px] text-violet-800/80 sm:text-[11px]">
+              {t('admin.rabbiSetupHelp')}
+            </p>
+          </div>
           <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
@@ -1014,6 +1025,17 @@ export function AdminDashboard() {
               }}
             >
               {t('admin.actionEdit')}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedRabbi}
+              className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-900 disabled:opacity-40"
+              onClick={() => {
+                if (!selectedRabbi) return
+                void deleteRabbi(selectedRabbi.id)
+              }}
+            >
+              {t('common.delete')}
             </button>
           </div>
           <p className="text-center text-[10px] text-slate-500">
@@ -1086,6 +1108,20 @@ export function AdminDashboard() {
               }}
             >
               {t('admin.actionEdit')}
+            </button>
+            <button
+              type="button"
+              disabled={!settings}
+              className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-[11px] font-semibold text-violet-900 disabled:opacity-40"
+              onClick={() => {
+                if (!settings) return
+                setRabbiSetupMsg(null)
+                setSelectedRabbiId(rabbis[0]?.id ?? null)
+                setAdminHub('rabbi')
+              }}
+              title={t('admin.locationSetupRabbiHelp')}
+            >
+              {t('admin.locationSetupRabbi')}
             </button>
           </div>
           <p className="text-center text-[10px] text-slate-500">
