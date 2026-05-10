@@ -4,7 +4,28 @@
 
 ## Current Task / Goal
 
-**Reverted multi-rabbi / Shamosh feature (May 9 2026, `d90b013`):** Per-rabbi/shamosh passwords were rolled back at user's request after the production save flow failed. **Root cause:** Render auto-deploy is **off** on both services — the static site shows zero deploy events between `acadda3` (May 8 7:48 PM) and now, so all subsequent pushes (`b12b8af`, `25c57ca`, `a761548`, `d90b013`) sit on GitHub but never built. Static site is on the new UI (with rabbi password fields, Shamosh tab) but API is on a pre-`acadda3` build that does not understand the new password fields, so the new admin form's "Save" silently dropped them.
+**Shamosh sub-menu live in production (May 9 2026, `209f65f`).** Re-implemented the multi-helper feature as a smaller, deploy-safe shape after the May 8 attempt got stuck on the Render API service:
+
+- **Schema** (additive only, no `--accept-data-loss` needed) — new `Shamosh` model with `organizationId`, `rabbiId`, `name`, `phone?`, `email?`, `passwordHash`. Cascade-deletes with the parent rabbi. `Rabbi` still belongs to exactly one location (1 org → many rabbis → many shamoshim each).
+- **Auth** (`POST /api/auth/rabbi`) — try the location's shared rabbi password first (existing behavior). On mismatch, walk the location's shamoshim and `bcrypt.compare`. Exactly one match issues a `SHAMOSH`-kind JWT carrying `shamoshId` and the parent rabbi id. Token shape gained `rabbiKind`, `shamoshId`, `shamoshRabbiId`. Multiple-match collisions refuse to pick a session.
+- **Rabbi API** — `GET /api/rabbi/me` (role + capability flags), `GET /api/rabbi/passwords/generate` (server-side 8-char letter+digit+special generator), `GET /api/rabbi/rabbis` (parent-rabbi picker for the Shamosh form), `GET/POST/PATCH/DELETE /api/rabbi/shamoshim` CRUD. Router-level allowlist hard-restricts `SHAMOSH` tokens to `/me`, `/session/today`, and `/attendance/:id/confirm`; everything else (members, payouts, banner, treasury, shamosh CRUD) returns **403** for shamoshim.
+- **Rabbi UI** — title is now "Rabbi / Shamosh menu". `/me` drives the layout: shamoshim see only the Today tab; per-row they see name + check-in time + green Confirm button (no address, no edit, no reject, no cancel). Rabbis get a new rose Shamoshim tab with parent-rabbi picker, name/phone/email, 8-char password input with Show/Hide/Generate, plus a list with edit/delete.
+- **Admin UI** — Rabbi hub gets a "Setup Rabbi at <location>" header and a Delete button next to Add/View/Edit. Location hub gets a "Setup Rabbi" button that jumps to the rabbi hub.
+
+**Deploy verified.** Render auto-deploy is **on** for both services. Production probes after `209f65f`:
+- `/api/health` → `{ ok: true }`.
+- `POST /api/auth/rabbi` with bogus credentials returns 401 (would be 500 if the Shamosh query failed against a missing column/table).
+- `/api/admin/rabbis` returns both rabbis at `dovrey-evrit`.
+- Static site bundle at `minyanpays.com` ships the new strings ("Shamoshim (helpers)", "Signed in as a Shamosh", "Setup Rabbi", "Rabbi / Shamosh menu").
+
+**Migration history this chat:**
+- `acadda3` (May 8) — original multi-rabbi feature; API auto-deploy failed at `prisma db push` (unique constraint without `--accept-data-loss`), static site succeeded so users got a UI talking to a stale API.
+- `b12b8af` / `25c57ca` — temporary `--accept-data-loss` flag dance and revert. **Did not actually run** because Render auto-deploy events showed nothing between `acadda3` and the morning's events screenshot — it later turned out auto-deploy was always on but the build kept failing.
+- `d90b013` — full revert of `acadda3` application code; **kept** the new schema. API build still failed (schema-DB drift remained).
+- `2f562ee` — schema rolled back to pre-`acadda3`; API build finally went green (no schema delta).
+- `209f65f` — additive Shamosh model + new endpoints + UI. Both services green.
+
+**Reverted multi-rabbi / Shamosh feature (May 9 2026, `d90b013` — superseded by `209f65f`):** Per-rabbi/shamosh passwords were rolled back at user's request after the production save flow failed. **Root cause:** Render auto-deploy is **off** on both services — the static site shows zero deploy events between `acadda3` (May 8 7:48 PM) and now, so all subsequent pushes (`b12b8af`, `25c57ca`, `a761548`, `d90b013`) sit on GitHub but never built. Static site is on the new UI (with rabbi password fields, Shamosh tab) but API is on a pre-`acadda3` build that does not understand the new password fields, so the new admin form's "Save" silently dropped them.
 
 The revert (`d90b013`) restores the simple org-level rabbi password flow (legacy `Organization.rabbiPasswordHash` + `RABBI_PASSWORD` env). The Prisma schema is **intentionally kept** as-is so production DB does not need another `--accept-data-loss` migration — the new `Rabbi.isMain`/`passwordHash`/`passwordPlain` columns and the `Shamosh` table just sit unused. Geocoding endpoint, shamosh menu, address city/state/zip split, and "Look up GPS from address" button are gone again with this revert.
 
