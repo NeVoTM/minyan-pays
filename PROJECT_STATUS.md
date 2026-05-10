@@ -4,6 +4,17 @@
 
 ## Current Task / Goal
 
+**Rabbi dashboard: location header, balance row, shamosh hub + view, edit fix (May 10 2026, `6bec621`).** Pushed to `origin/main`; Render auto-deploy is on so the rebuild should land within ~2 minutes. Smoke-test once the new `assets/index-*.js` hash appears at `https://minyanpays.com/`.
+
+- **Header on every rabbi-tab now shows the location name** (`me.synagogueName || me.organizationName` from `/api/rabbi/me`). Solves the user's "rabbi must be assigned and connected to a location so the location must show up on header" requirement — the rabbi token is per-org, so the location is always known after login.
+- **Tab buttons are no longer wrapping to 3 lines on phones.** The 5-tab nav now uses `grid-cols-5` always; small-screen labels are short ("Today", "Members") and `sm+` uses the full names ("Today's check-ins", "Members & check-in").
+- **Members & check-in tab**: name + phone + recorded balance now render on a single tappable row with a filled radio circle (not a checkbox) for the preferred-for-check-in toggle. Tapping the row toggles preferred for that member. `GET /api/rabbi/members` now returns `balanceCents` (sum of EARNED − PAID − DONATED on `MemberLedgerEntry` for the org). Posted weeks reflect immediately.
+- **Shamoshim tab restyled to match the admin Rabbi panel exactly**: Add / View / Edit / Delete hub buttons, click-to-select / double-click-to-edit one-line list, modal panel for the form. The form supports three modes — `add`, `view` (inputs disabled, password visible), `edit` (inputs editable, password pre-filled).
+- **Critical fix**: shamosh edit form now pre-fills the existing password instead of leaving it blank. New nullable `Shamosh.passwordPlain` column stores the plaintext (same pattern as global admin + legacy per-org rabbi password). Saving with the field unchanged keeps the password as-is; saving with a new value updates both `passwordHash` and `passwordPlain`.
+- **i18n cleanup**: added `common.edit` (was rendering as the literal "common.edit" button label), `common.add`, and the new `rabbi.*` keys for the location banner, members balance line, and shamosh hub buttons.
+
+Schema change is purely additive (nullable column), so Render's `prisma db push` step in `render.yaml` applies it without `--accept-data-loss`. Local TS build is green for both `apps/api` and `apps/web`; no lints introduced.
+
 **Setup Rabbi moved into Location Edit + auto-generated punch-in code (May 10 2026, `050ef12`).**
 - The Location hub action row is back to three buttons (Add / View / Edit). The fourth "Setup Rabbi" button moved **inside the Location Edit modal** as a violet card with help copy and an "Open Rabbi setup" button — clicking it closes the Edit modal and switches to the Rabbi hub. Matches the user's spec that the rabbi connection belongs inside the Location Edit screen, not the header.
 - Add Member's punch-in code field is **no longer required input**. `memberFieldsSchema.attendanceCode` is now optional with the same preprocess used by public registration; `POST /api/admin/members` calls `generateUniqueAttendanceCode` whenever the field is blank. New `GET /api/admin/attendance-code/generate` endpoint pre-fills the field as soon as the Add Member modal opens, and a small ↻ button lets you regenerate. Verified live: probe POSTs without `attendanceCode` and with `attendanceCode: ""` both returned 201 with server-picked codes (e.g. `DYEXVY`, `ETS4AD`).
