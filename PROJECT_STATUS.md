@@ -4,9 +4,19 @@
 
 ## Current Task / Goal
 
-**Production deploy of multi-rabbi / Shamosh schema (May 9 2026):** Pushed the new `Rabbi.passwordPlain @unique` + `Shamosh` table to the production Render Postgres via a temporary `--accept-data-loss` flag in `render.yaml` (commit `b12b8af` flag-on, `25c57ca` flag-off). Probed `POST /api/auth/rabbi` against `dovrey-evrit` — returns clean **401** with bogus credentials, confirming both new column and table queries succeed (a 500 would have meant schema didn't apply). Saved the AI-driven deploy procedure to `.cursor/rules/production-deploy-runbook.mdc` and logged the migration in `docs/RENDER_DEPLOYMENT.md`. **Awaiting:** production admin password(s) so the AI can drive per-rabbi config (mark Main, generate passwords) over the REST API.
+**Reverted multi-rabbi / Shamosh feature (May 9 2026, `d90b013`):** Per-rabbi/shamosh passwords were rolled back at user's request after the production save flow failed. **Root cause:** Render auto-deploy is **off** on both services — the static site shows zero deploy events between `acadda3` (May 8 7:48 PM) and now, so all subsequent pushes (`b12b8af`, `25c57ca`, `a761548`, `d90b013`) sit on GitHub but never built. Static site is on the new UI (with rabbi password fields, Shamosh tab) but API is on a pre-`acadda3` build that does not understand the new password fields, so the new admin form's "Save" silently dropped them.
 
-**Multi-rabbi / Shamosh feature pass (May 8 2026):** Each Location now supports multiple rabbis (one **Main rabbi** + additional approve-only rabbis), each rabbi can manage their own **Shamoshim** (helpers) who approve check-ins from the same rabbi menu, and admin can see all rabbi/shamosh passwords (8 alphanumeric, unique across the whole org/system). Address on the Location panel is now split into street/city/state/ZIP and auto-geocodes to lat/lon via OpenStreetMap Nominatim. The "(shown to members)" wording was removed and the Phone column now lines up with Location name.
+The revert (`d90b013`) restores the simple org-level rabbi password flow (legacy `Organization.rabbiPasswordHash` + `RABBI_PASSWORD` env). The Prisma schema is **intentionally kept** as-is so production DB does not need another `--accept-data-loss` migration — the new `Rabbi.isMain`/`passwordHash`/`passwordPlain` columns and the `Shamosh` table just sit unused. Geocoding endpoint, shamosh menu, address city/state/zip split, and "Look up GPS from address" button are gone again with this revert.
+
+**Pending — requires Render dashboard access (only the user can click these):**
+1. **Manual Deploy** the latest commit (`d90b013`) on the **static site** (`minyan-pays-1`, the one in the screenshot).
+2. **Manual Deploy** the latest commit on the **API service** (separate Render service from the static site).
+3. While in **Settings → Build & Deploy** on each service, turn **Auto-Deploy → On Commit** back **On** so future `git push origin main` actually rebuilds.
+4. Capture the API service's Events tab so we can confirm what commit it had been stuck on.
+
+After those four steps, login with the simple per-org rabbi password works again. The geocode/address-split work and the multi-rabbi/Shamosh feature can be re-attempted later, with auto-deploy on, in smaller commits each verified against a real Render rebuild.
+
+**Multi-rabbi / Shamosh feature pass (May 8 2026, REVERTED 2026-05-09):** Each Location now supports multiple rabbis (one **Main rabbi** + additional approve-only rabbis), each rabbi can manage their own **Shamoshim** (helpers) who approve check-ins from the same rabbi menu, and admin can see all rabbi/shamosh passwords (8 alphanumeric, unique across the whole org/system). Address on the Location panel is now split into street/city/state/ZIP and auto-geocodes to lat/lon via OpenStreetMap Nominatim. The "(shown to members)" wording was removed and the Phone column now lines up with Location name.
 
 **Completion directive** (`MINYANPAYS_COMPLETION_DIRECTIVE`): ship MinyanPays only — deployment fix, secure auth, three tefillos, first-nine UX, Zelle export, member balance wallet UI, rabbi/admin polish, kiosk, demo seed, i18n. **In progress:** Tasks 1–2 landed in code; Tasks 3+ not started in this pass.
 
