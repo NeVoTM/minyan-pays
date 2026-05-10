@@ -826,6 +826,7 @@ const orgSettingsPublicSelect = {
   checkInLatitude: true,
   checkInLongitude: true,
   primaryRabbiId: true,
+  rabbiPasswordPlain: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -891,6 +892,7 @@ adminRouter.patch("/settings", async (req, res) => {
     updateData.rabbiPasswordHash = parsed.data.rabbiPassword
       ? await bcrypt.hash(parsed.data.rabbiPassword, 10)
       : null;
+    updateData.rabbiPasswordPlain = parsed.data.rabbiPassword;
   }
 
   const s = await prisma.organization.update({

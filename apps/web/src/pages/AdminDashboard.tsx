@@ -43,6 +43,7 @@ type AdminLocationRow = {
   locationAddress: string | null
   timezone: string
   createdAt: string
+  primaryRabbi?: { id: string; name: string } | null
 }
 
 type RabbiProfile = {
@@ -108,11 +109,15 @@ function rabbiOneLine(r: RabbiProfile): string {
 }
 
 function locationOneLine(loc: AdminLocationRow): string {
+  const rabbiBit = loc.primaryRabbi?.name
+    ? `Rabbi: ${loc.primaryRabbi.name}`
+    : 'Rabbi: —'
   return [
     loc.synagogueName,
     loc.slug,
     loc.locationAddress ?? '—',
     loc.timezone,
+    rabbiBit,
   ].join(' · ')
 }
 
@@ -227,6 +232,8 @@ export function AdminDashboard() {
     checkInOnlyPreferred?: boolean
     checkInLatitude?: number | null
     checkInLongitude?: number | null
+    primaryRabbiId?: string | null
+    rabbiPasswordPlain?: string | null
   } | null>(null)
   const [allLocations, setAllLocations] = useState<AdminLocationRow[]>([])
   const [showAddLocation, setShowAddLocation] = useState(false)
@@ -244,6 +251,10 @@ export function AdminDashboard() {
   >('he')
   const [locationCheckInLatDraft, setLocationCheckInLatDraft] = useState('')
   const [locationCheckInLngDraft, setLocationCheckInLngDraft] = useState('')
+  /** Rabbi assigned to this org (location); persisted with Save location setup. */
+  const [locationPrimaryRabbiIdDraft, setLocationPrimaryRabbiIdDraft] = useState<
+    string | null
+  >(null)
   const [locationSetupMsg, setLocationSetupMsg] = useState<string | null>(null)
   const [rabbis, setRabbis] = useState<RabbiProfile[]>([])
   const [rabbiEditId, setRabbiEditId] = useState<string | null>(null)
@@ -322,6 +333,8 @@ export function AdminDashboard() {
           checkInOnlyPreferred?: boolean
           checkInLatitude?: number | null
           checkInLongitude?: number | null
+          primaryRabbiId?: string | null
+          rabbiPasswordPlain?: string | null
         }>('/api/admin/settings', { token }),
         api<MemberRow[]>('/api/admin/members', { token }),
         api<RabbiProfile[]>('/api/admin/rabbis', { token }),
@@ -341,6 +354,7 @@ export function AdminDashboard() {
       setLocationCheckInLngDraft(
         st.checkInLongitude != null ? String(st.checkInLongitude) : ''
       )
+      setLocationPrimaryRabbiIdDraft(st.primaryRabbiId ?? null)
       setRabbis(rb)
       setMembers(m)
       setAllLocations(locs)
@@ -640,6 +654,7 @@ export function AdminDashboard() {
           defaultLocale: locationLocaleDraft,
           checkInLatitude,
           checkInLongitude,
+          primaryRabbiId: locationPrimaryRabbiIdDraft,
         }),
       })
       setLocationPanelOpen(false)
@@ -693,6 +708,7 @@ export function AdminDashboard() {
     setRabbiZipDraft(r.postalCode ?? '')
     setRabbiPhoneDraft(r.phone ? phoneDigitsFromE164(r.phone) : '')
     setRabbiEmailDraft(r.email ?? '')
+    setRabbiPasswordDraft(settings?.rabbiPasswordPlain?.trim() ?? '')
   }
 
   async function saveRabbiSetup(e: React.FormEvent) {
@@ -903,6 +919,13 @@ export function AdminDashboard() {
   const selectedRabbi = useMemo(
     () => rabbis.find((r) => r.id === selectedRabbiId) ?? null,
     [rabbis, selectedRabbiId]
+  )
+  const locationModalSelectedRabbi = useMemo(
+    () =>
+      locationPrimaryRabbiIdDraft
+        ? rabbis.find((r) => r.id === locationPrimaryRabbiIdDraft) ?? null
+        : null,
+    [rabbis, locationPrimaryRabbiIdDraft]
   )
   const todayRows = todaySession?.attendances ?? []
 
@@ -1183,7 +1206,7 @@ export function AdminDashboard() {
               onClick={() => {
                 setRabbiSetupMsg(null)
                 resetRabbiForm()
-                setRabbiPasswordDraft('')
+                setRabbiPasswordDraft(settings?.rabbiPasswordPlain?.trim() ?? '')
                 setRabbiPanelOpen(true)
               }}
             >
@@ -1605,20 +1628,120 @@ export function AdminDashboard() {
                   />
                 </label>
               </div>
-              <div className="rounded-lg border border-violet-200 bg-violet-50 p-2">
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-2 space-y-2">
+                <label className={lbl}>
+                  {t('admin.locationPrimaryRabbiLabel')}
+                  <select
+                    className={inp}
+                    value={locationPrimaryRabbiIdDraft ?? ''}
+                    onChange={(e) =>
+                      setLocationPrimaryRabbiIdDraft(e.target.value || null)
+                    }
+                  >
+                    <option value="">{t('admin.locationPrimaryRabbiNone')}</option>
+                    {rabbis.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="text-[10px] text-violet-800/80">
+                  {t('admin.locationPrimaryRabbiHint')}
+                </p>
+                {locationModalSelectedRabbi && (
+                  <div className="rounded-md border border-violet-100 bg-white/90 p-2">
+                    <p className="text-[10px] font-semibold text-violet-900">
+                      {t('admin.locationRabbiViewTitle')}
+                    </p>
+                    <dl className="mt-1 grid gap-1 text-[10px] text-slate-700">
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 text-slate-500">{t('admin.rabbiName')}</dt>
+                        <dd className="min-w-0 break-words">{locationModalSelectedRabbi.name}</dd>
+                      </div>
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 text-slate-500">{t('admin.phone')}</dt>
+                        <dd className="min-w-0 break-words">
+                          {locationModalSelectedRabbi.phone ?? '—'}
+                        </dd>
+                      </div>
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 text-slate-500">{t('admin.labelEmail')}</dt>
+                        <dd className="min-w-0 break-words">
+                          {locationModalSelectedRabbi.email ?? '—'}
+                        </dd>
+                      </div>
+                      <div className="flex gap-2">
+                        <dt className="shrink-0 text-slate-500">{t('admin.address')}</dt>
+                        <dd className="min-w-0 break-words">
+                          {[
+                            locationModalSelectedRabbi.address,
+                            [
+                              locationModalSelectedRabbi.city,
+                              locationModalSelectedRabbi.stateRegion,
+                              locationModalSelectedRabbi.postalCode,
+                            ]
+                              .filter(Boolean)
+                              .join(', '),
+                          ]
+                            .filter(Boolean)
+                            .join(', ') || '—'}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={!locationModalSelectedRabbi}
+                    className="rounded-lg border border-violet-300 bg-white px-2 py-1.5 text-[10px] font-semibold text-violet-900 disabled:opacity-40 hover:bg-violet-100"
+                    onClick={() => {
+                      if (!locationModalSelectedRabbi) return
+                      setRabbiSetupMsg(null)
+                      beginEditRabbi(locationModalSelectedRabbi)
+                      setRabbiPanelOpen(true)
+                    }}
+                  >
+                    {t('admin.actionEdit')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!locationModalSelectedRabbi}
+                    className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] font-semibold text-red-800 disabled:opacity-40 hover:bg-red-100"
+                    onClick={() => {
+                      if (!locationModalSelectedRabbi) return
+                      void deleteRabbi(locationModalSelectedRabbi.id)
+                    }}
+                  >
+                    {t('common.delete')}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1.5 text-[10px] font-semibold text-emerald-900 hover:bg-emerald-100"
+                    onClick={() => {
+                      setRabbiSetupMsg(null)
+                      resetRabbiForm()
+                      setRabbiPasswordDraft(settings?.rabbiPasswordPlain?.trim() ?? '')
+                      setRabbiPanelOpen(true)
+                    }}
+                  >
+                    {t('admin.addRabbiTitle')}
+                  </button>
+                </div>
                 <button
                   type="button"
                   className="w-full text-left text-[11px] font-semibold text-violet-900 underline decoration-violet-400 decoration-2 underline-offset-2 hover:text-violet-950"
                   onClick={() => {
                     setRabbiSetupMsg(null)
-                    setSelectedRabbiId(rabbis[0]?.id ?? null)
+                    setSelectedRabbiId(locationPrimaryRabbiIdDraft ?? rabbis[0]?.id ?? null)
                     setLocationPanelOpen(false)
                     setAdminHub('rabbi')
                   }}
                 >
                   {t('admin.locationSetupRabbi')}
                 </button>
-                <p className="mt-1 text-[10px] text-violet-800/80">
+                <p className="text-[10px] text-violet-800/80">
                   {t('admin.locationSetupRabbiHelp')}
                 </p>
               </div>

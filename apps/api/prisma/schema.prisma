@@ -74,6 +74,8 @@ model Organization {
   adminPasswordHash String?
   /** Per-org rabbi menu password (bcrypt). */
   rabbiPasswordHash String?
+  /** Plaintext copy for admin View/Edit only (same pattern as shamosh / global admin password). */
+  rabbiPasswordPlain String?
   /** Rabbi shown for this location in admin and member-facing context (optional). Unique so one rabbi is primary for at most one org. */
   primaryRabbiId String? @unique
   primaryRabbi   Rabbi? @relation("OrgPrimaryRabbi", fields: [primaryRabbiId], references: [id], onDelete: SetNull)
