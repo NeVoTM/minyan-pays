@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Render API build: `prisma db push --accept-data-loss` for non-interactive deploy)
+*Last updated: 2026-05-10* (Render: `preDeployCommand` uses `db push --accept-data-loss`; dashboard must match if not using Blueprint sync)
 
 ## Current Task / Goal
 

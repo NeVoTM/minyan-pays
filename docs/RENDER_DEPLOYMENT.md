@@ -79,7 +79,7 @@ Canonical deploy source: **`origin`** → **`NeVoTM/minyan-pays`**.
 
 | Approach | When to use |
 |----------|-------------|
-| **Deploy build** | Your API build runs **`npx prisma db push --accept-data-loss`** (see [`render.yaml`](../render.yaml)) so schema updates apply in non-interactive CI without a TTY prompt. Prefer **`prisma migrate deploy`** with a baselined history once you move off ad-hoc `db push` for production. |
+| **Deploy build / pre-deploy** | API **build** is `npm install && npx prisma generate && npm run build` (no DB). **Pre-deploy** runs **`npx prisma db push --accept-data-loss && npm run db:seed`** (see [`render.yaml`](../render.yaml)). The `--accept-data-loss` flag is required because Prisma prints “data loss” warnings for some safe changes (e.g. adding a unique index) and exits in non-interactive mode without it. If your service was created manually, paste the same **Pre-deploy command** from `render.yaml` into the Render dashboard. Prefer **`prisma migrate deploy`** with a baselined history once you move off ad-hoc `db push` for production. |
 | **Local CLI against prod** | On your PC: `cd apps/api`, set **`DATABASE_URL`** to Render Postgres **external** URL (from dashboard only; never commit), then `npx prisma generate`, `npx prisma db push` or `migrate deploy`, `npm run db:seed` as needed. |
 | **Upgrade API to paid** | If you want a real shell: upgrade the **API** web service to a paid instance type, then use Dashboard **Shell** or **SSH** per Render docs. |
 

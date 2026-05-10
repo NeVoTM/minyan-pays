@@ -21,8 +21,10 @@ services:
     region: oregon
     plan: free
     rootDir: apps/api
-    # db push must not prompt in CI; Render has no TTY (--accept-data-loss skips confirmation when Prisma warns)
-    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build
+    # Build has no DB step (matches typical Render split). Schema sync runs in preDeployCommand where DATABASE_URL exists.
+    buildCommand: npm install && npx prisma generate && npm run build
+    # Prisma warns on new unique FKs (e.g. primaryRabbiId); CI has no TTY — flag is required.
+    preDeployCommand: npx prisma db push --accept-data-loss && npm run db:seed
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
