@@ -156,12 +156,16 @@ adminRouter.get("/organizations", async (_req, res) => {
       locationAddress: true,
       timezone: true,
       createdAt: true,
+      primaryRabbi: {
+        select: { id: true, name: true },
+      },
     },
   });
   res.json(
     rows.map((r) => ({
       ...r,
       createdAt: r.createdAt.toISOString(),
+      primaryRabbi: r.primaryRabbi,
     }))
   );
 });
@@ -821,6 +825,7 @@ const orgSettingsPublicSelect = {
   checkInOnlyPreferred: true,
   checkInLatitude: true,
   checkInLongitude: true,
+  primaryRabbiId: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -858,11 +863,22 @@ adminRouter.patch("/settings", async (req, res) => {
     defaultLocale: z.enum(["en", "he", "es", "ru", "fr"]).optional(),
     checkInLatitude: z.number().gte(-90).lte(90).nullable().optional(),
     checkInLongitude: z.number().gte(-180).lte(180).nullable().optional(),
+    primaryRabbiId: z.union([z.string().cuid(), z.null()]).optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
+  }
+  if (parsed.data.primaryRabbiId !== undefined && parsed.data.primaryRabbiId !== null) {
+    const rabbiOk = await prisma.rabbi.findFirst({
+      where: { id: parsed.data.primaryRabbiId, organizationId: oid },
+      select: { id: true },
+    });
+    if (!rabbiOk) {
+      res.status(400).json({ error: "That rabbi does not belong to this location." });
+      return;
+    }
   }
   const updateData: Prisma.OrganizationUpdateInput = {
     ...parsed.data,

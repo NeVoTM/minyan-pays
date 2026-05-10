@@ -74,9 +74,12 @@ model Organization {
   adminPasswordHash String?
   /** Per-org rabbi menu password (bcrypt). */
   rabbiPasswordHash String?
+  /** Rabbi shown for this location in admin and member-facing context (optional). Unique so one rabbi is primary for at most one org. */
+  primaryRabbiId String? @unique
+  primaryRabbi   Rabbi? @relation("OrgPrimaryRabbi", fields: [primaryRabbiId], references: [id], onDelete: SetNull)
 
   users          User[]
-  rabbis         Rabbi[]
+  rabbis         Rabbi[] @relation("OrgRabbis")
   shamoshim      Shamosh[]
   minyanSessions MinyanSession[]
   treasury       Treasury?
@@ -90,7 +93,8 @@ model Rabbi {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation("OrgRabbis", fields: [organizationId], references: [id], onDelete: Cascade)
+  primaryForOrganization Organization? @relation("OrgPrimaryRabbi")
   name           String
   address        String?
   city           String?

@@ -1606,15 +1606,9 @@ export function AdminDashboard() {
                 </label>
               </div>
               <div className="rounded-lg border border-violet-200 bg-violet-50 p-2">
-                <p className="text-[11px] font-semibold text-violet-900">
-                  {t('admin.locationSetupRabbi')}
-                </p>
-                <p className="mt-1 text-[10px] text-violet-800/80">
-                  {t('admin.locationSetupRabbiHelp')}
-                </p>
                 <button
                   type="button"
-                  className="mt-2 w-full rounded-lg border border-violet-300 bg-white py-2 text-[11px] font-semibold text-violet-900 hover:bg-violet-100"
+                  className="w-full text-left text-[11px] font-semibold text-violet-900 underline decoration-violet-400 decoration-2 underline-offset-2 hover:text-violet-950"
                   onClick={() => {
                     setRabbiSetupMsg(null)
                     setSelectedRabbiId(rabbis[0]?.id ?? null)
@@ -1622,8 +1616,11 @@ export function AdminDashboard() {
                     setAdminHub('rabbi')
                   }}
                 >
-                  {t('admin.locationSetupRabbiOpen')}
+                  {t('admin.locationSetupRabbi')}
                 </button>
+                <p className="mt-1 text-[10px] text-violet-800/80">
+                  {t('admin.locationSetupRabbiHelp')}
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button

@@ -254,7 +254,6 @@
     "locationListHint": "Double-click a row to open. Only the location you signed into can be edited here.",
     "locationSetupRabbi": "Setup Rabbi",
     "locationSetupRabbiHelp": "Manage the rabbis assigned to this location: add, edit, view, or delete.",
-    "locationSetupRabbiOpen": "Open Rabbi setup",
     "rabbiSetupTitle": "Setup Rabbi at {{location}}",
     "rabbiSetupHelp": "Add the rabbis who serve this location. Each rabbi shows up on this location's rabbi list. They sign in with the location's shared rabbi password; their helpers (shamoshim) get their own passwords from the Rabbi menu.",
     "switchLocationToEdit": "To edit another site, choose it on Home, then sign in to admin again.",

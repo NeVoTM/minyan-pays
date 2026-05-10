@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10*
+*Last updated: 2026-05-10* (Location modal: Rabbi title is link)
 
 ## Current Task / Goal
 
@@ -16,7 +16,7 @@
 Schema change is purely additive (nullable column), so Render's `prisma db push` step in `render.yaml` applies it without `--accept-data-loss`. Local TS build is green for both `apps/api` and `apps/web`; no lints introduced.
 
 **Setup Rabbi moved into Location Edit + auto-generated punch-in code (May 10 2026, `050ef12`).**
-- The Location hub action row is back to three buttons (Add / View / Edit). The fourth "Setup Rabbi" button moved **inside the Location Edit modal** as a violet card with help copy and an "Open Rabbi setup" button — clicking it closes the Edit modal and switches to the Rabbi hub. Matches the user's spec that the rabbi connection belongs inside the Location Edit screen, not the header.
+- The Location hub action row is back to three buttons (Add / View / Edit). The fourth "Setup Rabbi" control is **inside the Location Edit modal** as a violet card: the **"Setup Rabbi" title is an underlined link** (same behavior as before: closes the modal, switches to the Rabbi hub). Help copy remains below; the separate "Open Rabbi setup" button was removed.
 - Add Member's punch-in code field is **no longer required input**. `memberFieldsSchema.attendanceCode` is now optional with the same preprocess used by public registration; `POST /api/admin/members` calls `generateUniqueAttendanceCode` whenever the field is blank. New `GET /api/admin/attendance-code/generate` endpoint pre-fills the field as soon as the Add Member modal opens, and a small ↻ button lets you regenerate. Verified live: probe POSTs without `attendanceCode` and with `attendanceCode: ""` both returned 201 with server-picked codes (e.g. `DYEXVY`, `ETS4AD`).
 
 **Global admin password live + email-confirmed change flow (May 10 2026, `eff62be`).** One password (`Aron$11213`) now authenticates the admin into every organization, and there is a Settings tab to view / rotate it with a 6-digit code emailed to `elichalfinny@gmail.com`. Production verified after Render rebuild:
