@@ -1,6 +1,6 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Render **minyan-pays web**: user cleared build cache + redeployed static site)
+*Last updated: 2026-05-10* (Render API: `render-build.mjs` runs push+seed when `RENDER=true`; blueprint `preDeployCommand: true` — clear stale dashboard pre-deploy if needed)
 
 ## Current Task / Goal
 
