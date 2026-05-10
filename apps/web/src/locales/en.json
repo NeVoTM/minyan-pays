@@ -232,7 +232,7 @@
     "globalPwBootstrapTitle": "Set first global admin password",
     "globalPwChangeTitle": "Change global admin password",
     "globalPwNewLabel": "New global admin password",
-    "globalPwRule": "Exactly 8 characters, must include at least one letter, one digit, and one special character (!@#$%^&*+-_=?).",
+    "globalPwRule": "8-64 characters, must include at least one letter, one digit, and one special character (!@#$%^&*+-_=?$.,).",
     "globalPwApplyNow": "Apply now",
     "globalPwSendCode": "Send confirmation code to {{email}}",
     "globalPwCodeLabel": "6-digit confirmation code from email",

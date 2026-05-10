@@ -1025,11 +1025,13 @@ adminRouter.get("/export/week/:weekKey.csv", async (req, res) => {
 //      change requires a 6-digit code emailed to ADMIN_NOTIFY_EMAIL.
 // --------------------------------------------------------------------------
 
+// Relaxed vs the rabbi/shamosh rule (which is exactly 8): a global admin
+// secret may be longer for convenience, e.g. "Aron$11213".
 const GLOBAL_ADMIN_PASSWORD_RE =
-  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?])[A-Za-z0-9!@#$%^&*+\-_=?]{8}$/;
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?$.,])[A-Za-z0-9!@#$%^&*+\-_=?$.,]{8,64}$/;
 
 const GLOBAL_ADMIN_PASSWORD_RULE_MSG =
-  "Global admin password must be exactly 8 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?).";
+  "Global admin password must be 8-64 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?$.,).";
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
@@ -1051,20 +1053,18 @@ adminRouter.get("/global-password", async (_req, res) => {
   });
 });
 
-/** First-time setup. Allowed only when no global password exists yet. */
+/**
+ * Direct set/replace of the global admin password without email confirmation.
+ * Always allowed — but requires a valid admin JWT, so a logged-in admin can
+ * use it for first-time setup, emergency reset (forgot the email mailbox),
+ * or before email transport is configured. The email-confirmed flow under
+ * /global-password/request-change is the preferred path for normal rotation.
+ */
 adminRouter.post("/global-password/bootstrap", async (req, res) => {
   const schema = z.object({ password: z.string().regex(GLOBAL_ADMIN_PASSWORD_RE) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: GLOBAL_ADMIN_PASSWORD_RULE_MSG });
-    return;
-  }
-  const existing = await getGlobalAdminPasswordHash();
-  if (existing) {
-    res.status(409).json({
-      error:
-        "Global admin password already set. Use the request-change flow to rotate it.",
-    });
     return;
   }
   const plain = parsed.data.password.trim();

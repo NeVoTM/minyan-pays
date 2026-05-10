@@ -170,6 +170,13 @@ function isValidRabbiPassword(s: string): boolean {
   return RABBI_PASSWORD_RE.test(s)
 }
 
+const GLOBAL_PW_RE =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?$.,])[A-Za-z0-9!@#$%^&*+\-_=?$.,]{8,64}$/
+
+function isValidGlobalAdminPassword(s: string): boolean {
+  return GLOBAL_PW_RE.test(s)
+}
+
 function generateRabbiPasswordClient(): string {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz'
   const digits = '23456789'
@@ -743,7 +750,7 @@ export function AdminDashboard() {
     setGlobalPwErr(null)
     setGlobalPwMsg(null)
     const pw = globalPwNew.trim()
-    if (!isValidRabbiPassword(pw)) {
+    if (!isValidGlobalAdminPassword(pw)) {
       setGlobalPwErr(t('admin.globalPwRule'))
       return
     }
@@ -770,7 +777,7 @@ export function AdminDashboard() {
     setGlobalPwErr(null)
     setGlobalPwMsg(null)
     const pw = globalPwNew.trim()
-    if (!isValidRabbiPassword(pw)) {
+    if (!isValidGlobalAdminPassword(pw)) {
       setGlobalPwErr(t('admin.globalPwRule'))
       return
     }
