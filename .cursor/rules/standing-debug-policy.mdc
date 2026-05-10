@@ -1,9 +1,9 @@
 ---
-description: Standing UI debug and regression policy
+description: Standing UI debug, regression, and production deploy policy
 alwaysApply: true
 ---
 
-# Standing Debug Policy
+# Standing Debug & Deploy Policy
 
 ## MinyanPays screens (minyanpays.com)
 
@@ -58,3 +58,85 @@ Commit hygiene policy:
 - If changes are substantial, propose a commit.
 - If there are many edits (around 10+ files) or long elapsed time (~1 hour), remind to checkpoint with a commit.
 - Never auto-push without explicit user instruction.
+
+## Production deploy runbook (AI does this, not the user)
+
+Render's free tier has **no Shell and no SSH** (see `docs/RENDER_DEPLOYMENT.md`). The AI must drive deploys through `git push` + `render.yaml` rather than handing instructions back to the user.
+
+### What the AI is allowed to do without asking
+
+1. Edit, commit, and push code, including temporary changes to `render.yaml`.
+2. Push to **both** remotes: `origin` (canonical, Render-connected) **and** `cur` (mirror).
+3. Probe production via the public REST API at `https://minyan-pays.onrender.com/api/...` to verify deploys, schema, and feature behavior.
+4. Use the production admin/rabbi REST API to create or update Rabbi, Shamosh, and Organization records once the user has supplied (or already documented) the admin password.
+
+### What the AI must ask the user for
+
+- Production secrets the AI cannot derive: `ADMIN_PASSWORD` for each org slug, the Render Postgres `External` URL (only if a direct DB action is required), and confirmation before changing or removing any Render env var.
+- Approval before destructive actions: dropping a column, deleting org/user data, force-pushing.
+
+### Standard deploy flow (no schema change)
+
+1. `git status` to confirm clean working tree, then `git push origin main` and `git push cur main`.
+2. Wait for Render rebuild (typical 2-4 min) and probe `GET /api/health` until `{ ok: true }`.
+3. Run a feature-level probe relevant to the change (a route that didn't exist before, or that depends on the new code path).
+
+### Schema-change deploy flow (Prisma `db push` with potential data loss)
+
+Render's API service builds with `npx prisma db push` (no flag). If the schema change introduces a new `@unique`, drops a column, or otherwise trips Prisma's data-loss guard, the build aborts. To migrate **without** human intervention, the AI uses the temporary-flag dance:
+
+1. **Set the flag.** Edit `render.yaml`'s API `buildCommand` to use `npx prisma db push --accept-data-loss`. Add a comment noting it's one-time.
+2. **Push.** Commit + push to `origin/main` and `cur/main`. Render auto-deploys.
+3. **Wait & verify.** Poll a route that exercises the new schema (e.g. for a new column on `Rabbi`, `POST /api/auth/rabbi` with bogus credentials should return **401**, not **500**).
+4. **Revert the flag.** Edit `render.yaml` back to `npx prisma db push` (no flag). Commit + push. The next build is a no-op for schema but restores the safety guard.
+5. **Document.** Update `PROJECT_STATUS.md`'s "Current Task / Goal" and `docs/RENDER_DEPLOYMENT.md`'s **Migration log** with the date, schema delta, and the two commit SHAs (the flag-on commit and the revert).
+
+> Never leave `--accept-data-loss` in `render.yaml` after the migration succeeds. It defeats Prisma's main protection against accidental column drops.
+
+### Direct production DB access (only if the flag dance is not enough)
+
+If a needed migration cannot be expressed as a `db push` (e.g. data backfill across rows), the AI must:
+
+1. Ask the user for the **External** `DATABASE_URL` from the Render Postgres dashboard.
+2. From `apps/api`, run `DATABASE_URL=<external> npx prisma db push` or a one-off script (e.g. `node apps/api/scripts/<name>.mjs`).
+3. Delete (or `.gitignore`) any local file that contains the URL before committing anything.
+
+### Configuring Rabbis / Shamoshim post-deploy
+
+After a multi-rabbi schema deploy the AI drives the per-org setup over the REST API rather than walking the user through clicks:
+
+```text
+# 1. Admin login
+POST /api/auth/admin   { organizationSlug, password }   -> { token }
+
+# 2. Per location: set/refresh structured address (and auto-geocode)
+PATCH /api/admin/settings (Bearer admin)
+  { locationAddress, locationCity, locationState, locationPostalCode,
+    locationPhone, autoGeocode: true }
+
+# 3. List existing rabbis at the location
+GET /api/admin/rabbis (Bearer admin)
+
+# 4. For each rabbi: flip Main + assign a generated 8-alphanumeric password
+GET   /api/admin/passwords/generate (Bearer admin) -> { password }
+PATCH /api/admin/rabbis/:id (Bearer admin) { isMain: true, password }
+
+# 5. (Optional) Create additional rabbis
+POST /api/admin/rabbis (Bearer admin) { name, isMain: false, generatePassword: true, ... }
+
+# 6. Log in as that rabbi to add Shamoshim
+POST /api/auth/rabbi (organizationSlug, the new rabbi password) -> { token, rabbiKind: "MAIN" }
+POST /api/rabbi/shamoshim (Bearer rabbi) { name, phone, generatePassword: true }
+```
+
+The AI must surface every generated password back to the user **once in chat**. Plaintext is also stored on the row for the admin UI, but the chat reply is the user's only out-of-band copy at the moment of generation.
+
+### After a successful migration
+
+- Rotate or remove the legacy `RABBI_PASSWORD` env var on Render only after every org has at least one rabbi with `isMain: true` and a `passwordPlain`. **Confirm with the user before removing.**
+- Append a one-line entry to `docs/RENDER_DEPLOYMENT.md` "Migration log" with date + schema delta + commits.
+
+### Failure handling
+
+- If a Render build fails, ask the user to paste the Render build log (free tier exposes logs only via the dashboard). Do not silently retry.
+- If post-deploy probes return 500, immediately push a revert commit on `origin/main` to roll back to the previous SHA, then debug locally before re-attempting.

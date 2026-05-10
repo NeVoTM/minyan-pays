@@ -1,8 +1,10 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-08*
+*Last updated: 2026-05-09*
 
 ## Current Task / Goal
+
+**Production deploy of multi-rabbi / Shamosh schema (May 9 2026):** Pushed the new `Rabbi.passwordPlain @unique` + `Shamosh` table to the production Render Postgres via a temporary `--accept-data-loss` flag in `render.yaml` (commit `b12b8af` flag-on, `25c57ca` flag-off). Probed `POST /api/auth/rabbi` against `dovrey-evrit` — returns clean **401** with bogus credentials, confirming both new column and table queries succeed (a 500 would have meant schema didn't apply). Saved the AI-driven deploy procedure to `.cursor/rules/production-deploy-runbook.mdc` and logged the migration in `docs/RENDER_DEPLOYMENT.md`. **Awaiting:** production admin password(s) so the AI can drive per-rabbi config (mark Main, generate passwords) over the REST API.
 
 **Multi-rabbi / Shamosh feature pass (May 8 2026):** Each Location now supports multiple rabbis (one **Main rabbi** + additional approve-only rabbis), each rabbi can manage their own **Shamoshim** (helpers) who approve check-ins from the same rabbi menu, and admin can see all rabbi/shamosh passwords (8 alphanumeric, unique across the whole org/system). Address on the Location panel is now split into street/city/state/ZIP and auto-geocodes to lat/lon via OpenStreetMap Nominatim. The "(shown to members)" wording was removed and the Phone column now lines up with Location name.
 

@@ -1,6 +1,14 @@
 # Render + GitHub — production reference (minyan-pays)
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-05-09*
+
+> **AI deploy runbook:** the "Production deploy runbook" section of `.cursor/rules/standing-debug-policy.mdc` is the canonical procedure. Future schema migrations should be performed by the AI via the temporary `--accept-data-loss` flag in `render.yaml`, not by asking the user to SSH.
+
+## Migration log
+
+| Date | Commits | Change |
+|------|---------|--------|
+| 2026-05-09 | `b12b8af` (flag on) → `25c57ca` (flag off) | Added `Rabbi.passwordPlain @unique`, `Rabbi.passwordHash`, `Rabbi.isMain`; new `Shamosh` model with `passwordPlain @unique`; structured `Organization.locationCity/locationState/locationPostalCode`. Pushed via temporary `--accept-data-loss` flag dance; verified by `POST /api/auth/rabbi` returning 401 (would have been 500 on missing column). |
 
 Keep this file updated when URLs, service names, or IDs change. **Do not paste live database passwords or full `DATABASE_URL` strings into git** — store secrets only in Render (or a password manager) and note here *where* they live.
 
