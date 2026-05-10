@@ -4,6 +4,39 @@
 
 ## Current Task / Goal
 
+**Global admin password live + email-confirmed change flow (May 10 2026, `eff62be`).** One password (`Aron$11213`) now authenticates the admin into every organization, and there is a Settings tab to view / rotate it with a 6-digit code emailed to `elichalfinny@gmail.com`. Production verified after Render rebuild:
+
+- `POST /api/auth/admin` slug=`770`           pwd=`Aron$11213` → **200** (was 401 — fixed via global fallback).
+- `POST /api/auth/admin` slug=`dovrey-evrit`  pwd=`Aron$11213` → **200** (still works — per-org match).
+- `POST /api/auth/admin` slug=`770`           pwd=`NotMyPass!1` → **401** (wrong passwords still rejected).
+- `GET  /api/admin/global-password` → `{ isSet: true, plain: "Aron$11213", notifyEmail: "elichalfinny@gmail.com", emailConfigured: false }`.
+- `POST /global-password/request-change` returns **503** with an actionable message until `GMAIL_USER` + `GMAIL_APP_PASSWORD` are set on Render.
+
+**Schema (additive, no data-loss flag needed):**
+- `Setting` (key/value) stores `globalAdminPasswordHash` and `globalAdminPasswordPlain` (plaintext kept for the View feature; single-tenant convenience).
+- `AdminPasswordChangeRequest` stages the new password + bcrypted code + expiry while waiting for confirmation.
+
+**Server (`apps/api`):**
+- `POST /api/auth/admin` now also accepts the global hash. Match priority: per-org `adminPasswordHash` → global `Setting[globalAdminPasswordHash]` → bootstrap env-var fallback (only when org has no hash).
+- `GET /api/admin/global-password` — read-only status: `isSet`, `plain` (when set), `notifyEmail`, `emailConfigured`.
+- `POST /api/admin/global-password/bootstrap` — direct set/replace of the global password without email. Always allowed for any logged-in admin (the email flow is preferred for normal rotation; bootstrap is the emergency / first-time / no-email-yet path). Regex: 8–64 chars, must include at least one letter, one digit, and one of `!@#$%^&*+-_=?$.,`.
+- `POST /api/admin/global-password/request-change` — generates a 6-digit code, bcrypts both code and the staged new password, emails the code to `ADMIN_NOTIFY_EMAIL` (defaults to `elichalfinny@gmail.com`). Returns `requestId` + delivery status. Returns 503 if email isn't configured (or echoes the code when `ADMIN_PASSWORD_VERIFICATION_ECHO=1`).
+- `POST /api/admin/global-password/confirm-change` — verifies code + applies the staged password. 5-attempt cap, 10-minute expiry, single-use.
+- Email transport: `apps/api/src/lib/email.ts` (Nodemailer + Gmail SMTP via `GMAIL_USER` + `GMAIL_APP_PASSWORD`).
+
+**Web (`apps/web`):**
+- New 5th admin hub tab **Settings** (slate theme). Inside is a "Global admin password" card with two modes:
+  - **First-time setup** — single password input + Generate/Show/Hide + "Apply now" button. No email confirmation needed for the very first set.
+  - **Once set** — shows the current plaintext (Show/Hide), then a change form: enter new password → "Send confirmation code to elichalfinny@gmail.com" → 6-digit code input → "Confirm and apply globally".
+- Help banner appears when the server reports `emailConfigured: false`, telling the admin which env vars to set on Render.
+
+**Operator next step (only the user can do):** to enable the email-confirmed change flow, set on the API service in Render → Environment:
+- `GMAIL_USER` = `elichalfinny@gmail.com`
+- `GMAIL_APP_PASSWORD` = a 16-char Google App Password (requires 2-Step Verification on the account, then https://myaccount.google.com/apppasswords → "Mail" → "Other (Custom name)" → "MinyanPays").
+- *(optional)* `ADMIN_NOTIFY_EMAIL` if the confirmation should go to a different inbox than the default `elichalfinny@gmail.com`.
+
+Until those are set, you can still rotate the global password via the Settings tab — but only by clicking Apply now (bootstrap), not the email-confirmed path.
+
 **Location rabbi password tightened to 8-char letter+digit+special (May 10 2026, `bd489a1`).** Admin → Rabbi modal's password field was only enforcing `min(4)`. Now both server (`apps/api/src/routes/admin.ts` Zod schema for `PATCH /api/admin/settings`) and client (`apps/web/src/pages/AdminDashboard.tsx`) require **exactly 8 chars with at least one letter, one digit, and one special (!@#$%^&*+-_=?)** — matching the existing Shamosh rule. The form gained Show/Hide and Generate buttons + a help line. Deploy verified against production:
 
 - `POST /api/auth/admin` (slug=`dovrey-evrit`, password=`Aron$11213`) → **200 OK** — admin password is unchanged and still works for Dovrey Evrit.
