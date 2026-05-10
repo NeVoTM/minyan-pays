@@ -14,7 +14,11 @@ services:
     region: oregon
     plan: free
     rootDir: apps/api
-    buildCommand: npm install && npx prisma generate && npx prisma db push && npm run build
+    # NOTE (May 2026): --accept-data-loss is needed for the one-time push that adds
+    # Rabbi.passwordPlain @unique + Shamosh table. Once production is in sync, revert
+    # this line back to `npx prisma db push` (no flag) so Prisma still guards future
+    # destructive schema changes.
+    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
