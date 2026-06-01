@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-lux-red: #d40000;
+  --color-lux-red-bright: #e30000;
+  --color-lux-red-dark: #a80000;
+  --color-lux-black: #000000;
+  --color-lux-surface: #0a0a0a;
+  --color-lux-elevated: #141414;
+  --color-lux-border: #2a2a2a;
+  --color-lux-muted: #a8a8a8;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-script: 'Allura', 'Brush Script MT', cursive;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-lux-black text-white antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+
+  ::selection {
+    @apply bg-lux-red text-white;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility font-script {
+  font-family: var(--font-script);
+}
