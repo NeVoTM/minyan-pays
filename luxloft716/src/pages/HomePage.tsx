@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/Button'
+import { Logo } from '../components/Logo'
+import { SectionLabel } from '../components/SectionLabel'
 import { AMENITIES, BRAND, FEATURES, GALLERY_IMAGES, SALON_SUITE_BENEFITS } from '../data/content'
 
 const amenityIcons = [Clock, Sparkles, Droplets, Wifi, Building2, Building2, WashingMachine, Building2]
@@ -16,64 +18,69 @@ const amenityIcons = [Clock, Sparkles, Droplets, Wifi, Building2, Building2, Was
 export function HomePage() {
   return (
     <>
-      <section className="relative min-h-[78vh] overflow-hidden bg-ink text-white">
+      <section className="relative min-h-[85vh] overflow-hidden bg-lux-black text-white">
         <img
           src="https://images.unsplash.com/photo-1560066984-138d9834c973?w=1600&q=80"
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-40"
+          className="absolute inset-0 h-full w-full object-cover opacity-25"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/50" />
-        <div className="relative mx-auto flex max-w-6xl flex-col justify-center px-4 py-24 lg:px-6 lg:py-32">
-          <p className="mb-4 text-xs font-semibold tracking-[0.4em] text-gold uppercase">The Ultimate Salon Experience</p>
-          <h1 className="max-w-2xl text-4xl leading-tight font-semibold md:text-5xl lg:text-6xl">
-            Your Private Studio Awaits at {BRAND.name}
+        <div className="absolute inset-0 bg-gradient-to-b from-lux-black via-lux-black/90 to-lux-black" />
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 py-20 text-center lg:px-6 lg:py-28">
+          <Logo variant="full" className="max-w-[min(100%,360px)]" />
+          <p className="mt-6 text-xs font-semibold tracking-[0.25em] text-lux-red uppercase">{BRAND.slogan}</p>
+          <h1 className="mt-8 max-w-2xl text-3xl leading-tight font-semibold md:text-4xl lg:text-5xl">
+            The Ultimate Salon Experience in the 716
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-white/85">
-            Premier salon suites for beauty professionals in Buffalo and the 716—luxurious, move-in-ready spaces to grow
-            your brand.
+          <p className="mt-6 max-w-xl text-lg text-white/80">
+            Premier salon suites for beauty professionals in Buffalo—luxurious, move-in-ready spaces to grow your brand.
           </p>
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Button to="/contact" variant="secondary">
+          <div className="mt-10 flex flex-wrap justify-center gap-4">
+            <Button to="/contact" variant="primary">
               Schedule a Tour
             </Button>
-            <Button to="/professionals" variant="outline" className="border-white text-white hover:bg-white hover:text-ink">
+            <Button to="/professionals" variant="outline" className="border-white text-white hover:bg-white hover:text-lux-black">
               Book a Service
             </Button>
           </div>
         </div>
       </section>
 
-      <section className="bg-gold/15 border-y border-gold/30">
+      <section className="border-y border-lux-red/40 bg-lux-red">
         <div className="mx-auto max-w-4xl px-4 py-10 text-center lg:px-6">
-          <h2 className="text-2xl font-semibold md:text-3xl">
-            First 6 Weeks <span className="text-gold-dark">FREE Rent</span> at {BRAND.name}
+          <h2 className="text-2xl font-semibold text-white md:text-3xl">
+            First 6 Weeks <span className="underline decoration-white/50 decoration-2 underline-offset-4">FREE Rent</span>
           </h2>
-          <p className="mt-2 text-ink/80">Limited time offer for new tenants only</p>
+          <p className="mt-2 text-white/90">Limited time offer for new tenants only</p>
           <div className="mt-6">
-            <Button to="/contact">Schedule a Tour</Button>
+            <Button to="/contact" variant="secondary">
+              Schedule a Tour
+            </Button>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-20 lg:px-6">
-        <p className="text-center text-xs font-semibold tracking-[0.35em] text-gold-dark uppercase">{BRAND.tagline}</p>
-        <h2 className="mt-3 text-center text-3xl font-semibold md:text-4xl">We Created Unique, Singular Spaces</h2>
-        <p className="mx-auto mt-6 max-w-3xl text-center text-lg text-ink/80">
+        <SectionLabel>{BRAND.tagline}</SectionLabel>
+        <h2 className="mt-6 text-center text-3xl font-semibold md:text-4xl">We Created Unique, Singular Spaces</h2>
+        <p className="mx-auto mt-6 max-w-3xl text-center text-lg text-lux-muted">
           {BRAND.name} is a premier destination for beauty professionals looking for a luxurious and fully equipped
           workspace to showcase their skills. With a wide range of amenities, we offer a comfortable and professional
           environment for hair stylists, nail technicians, estheticians, and other beauty experts.
         </p>
         <div className="mt-14 grid gap-8 md:grid-cols-3">
           {FEATURES.map((f) => (
-            <article key={f.title} className="rounded-lg border border-black/10 bg-white p-8 text-center shadow-sm">
-              <h3 className="text-xl font-semibold">{f.title}</h3>
-              <p className="mt-3 text-ink/75">{f.description}</p>
+            <article
+              key={f.title}
+              className="rounded-lg border border-lux-border bg-lux-elevated p-8 text-center shadow-sm"
+            >
+              <h3 className="text-xl font-semibold text-lux-red-bright">{f.title}</h3>
+              <p className="mt-3 text-lux-muted">{f.description}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="bg-ink text-white">
+      <section className="border-y border-white/10 bg-lux-surface">
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 lg:grid-cols-2 lg:px-6">
           <div>
             <h2 className="text-3xl font-semibold md:text-4xl">{BRAND.name} Amenities</h2>
@@ -82,7 +89,7 @@ export function HomePage() {
                 const Icon = amenityIcons[i] ?? Building2
                 return (
                   <li key={item} className="flex items-start gap-3">
-                    <Icon className="mt-0.5 shrink-0 text-gold" size={20} />
+                    <Icon className="mt-0.5 shrink-0 text-lux-red" size={20} />
                     <span className="text-white/90">{item}</span>
                   </li>
                 )
@@ -92,7 +99,7 @@ export function HomePage() {
               <Button to="/amenities" variant="secondary">
                 Learn More
               </Button>
-              <Button to="/contact" variant="outline" className="border-white text-white hover:bg-white hover:text-ink">
+              <Button to="/contact" variant="outline">
                 Schedule a Tour
               </Button>
             </div>
@@ -100,7 +107,7 @@ export function HomePage() {
           <img
             src="https://images.unsplash.com/photo-1633681926022-84c23e8cb04d?w=900&q=80"
             alt="LuxLoft716 suite amenities"
-            className="rounded-lg shadow-2xl"
+            className="rounded-lg border border-lux-border shadow-2xl shadow-lux-red/10"
           />
         </div>
       </section>
@@ -110,18 +117,18 @@ export function HomePage() {
           <img
             src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=900&q=80"
             alt="LuxLoft716 location"
-            className="rounded-lg shadow-lg"
+            className="rounded-lg border border-lux-border shadow-lg"
           />
           <div>
             <h2 className="text-3xl font-semibold md:text-4xl">Why Us?</h2>
-            <p className="mt-6 text-lg text-ink/80">
+            <p className="mt-6 text-lg text-lux-muted">
               Why is {BRAND.name} your premier salon suite destination? Location is key—and we are strategically
               positioned in Western New York&apos;s busy 716 corridor. High visibility and steady traffic help beauty
               professionals attract new clients, grow their books, and maximize earning potential.
             </p>
             <Link
               to="/why-us"
-              className="mt-6 inline-flex items-center gap-2 font-semibold text-gold-dark hover:text-ink"
+              className="mt-6 inline-flex items-center gap-2 font-semibold text-lux-red-bright hover:text-white"
             >
               Learn More <ArrowRight size={18} />
             </Link>
@@ -129,22 +136,22 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white">
+      <section className="border-y border-white/10 bg-lux-elevated">
         <div className="mx-auto max-w-6xl px-4 py-20 lg:px-6">
           <div className="grid items-start gap-12 lg:grid-cols-2">
             <img
               src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=900&q=80"
               alt="What is a salon suite"
-              className="rounded-lg shadow-lg"
+              className="rounded-lg border border-lux-border shadow-lg"
             />
             <div>
               <h2 className="text-3xl font-semibold md:text-4xl">What Is A Salon Suite?</h2>
-              <p className="mt-6 text-ink/80">
+              <p className="mt-6 text-lux-muted">
                 A salon suite is one of the fastest-growing segments in the industry. It&apos;s a personal studio that
                 allows you to have your own space and privacy. Come and go as you please—the building is open 24/7, just
                 as if you owned your own salon.
               </p>
-              <p className="mt-4 text-ink/80">
+              <p className="mt-4 text-lux-muted">
                 A salon suite is a full set-up: a private mini salon you can rent, equipped with most furniture and
                 equipment, usually move-in ready. Suites are located in a commercial space shared with other beauty
                 professionals—each with their own private door.
@@ -152,8 +159,8 @@ export function HomePage() {
               <div className="mt-10 grid gap-6 sm:grid-cols-2">
                 {SALON_SUITE_BENEFITS.map((b) => (
                   <div key={b.title}>
-                    <h3 className="font-semibold text-gold-dark">{b.title}</h3>
-                    <p className="mt-2 text-sm text-ink/75">{b.description}</p>
+                    <h3 className="font-semibold text-lux-red">{b.title}</h3>
+                    <p className="mt-2 text-sm text-lux-muted">{b.description}</p>
                   </div>
                 ))}
               </div>
@@ -169,7 +176,10 @@ export function HomePage() {
         <h2 className="text-center text-3xl font-semibold md:text-4xl">Gallery</h2>
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {GALLERY_IMAGES.map((img) => (
-            <figure key={img.src} className="group overflow-hidden rounded-lg">
+            <figure
+              key={img.src}
+              className="group overflow-hidden rounded-lg border border-lux-border ring-1 ring-lux-red/0 transition-[box-shadow] hover:ring-lux-red/40"
+            >
               <img
                 src={img.src}
                 alt={img.alt}
@@ -181,12 +191,11 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-ink text-white">
+      <section className="border-t border-lux-red/30 bg-lux-red">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center lg:px-6">
-          <h2 className="text-2xl font-semibold md:text-3xl">Exclusive Opportunity at {BRAND.name}</h2>
-          <p className="mt-4 text-white/80">
-            First 6 weeks FREE rent—limited time for new tenants. Elevate your business in our premium salon suites,
-            designed for your success.
+          <h2 className="text-2xl font-semibold text-white md:text-3xl">Exclusive Opportunity at {BRAND.name}</h2>
+          <p className="mt-4 text-white/90">
+            First 6 weeks FREE rent—limited time for new tenants. {BRAND.slogan}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Button to="/reserve" variant="secondary">
@@ -194,12 +203,12 @@ export function HomePage() {
             </Button>
             <a
               href={BRAND.phoneHref}
-              className="inline-flex items-center justify-center rounded-sm border-2 border-gold px-6 py-3 text-sm font-semibold tracking-wide text-gold uppercase hover:bg-gold hover:text-ink"
+              className="inline-flex items-center justify-center rounded-sm border-2 border-white px-6 py-3 text-sm font-semibold tracking-wide text-white uppercase hover:bg-white hover:text-lux-black"
             >
               {BRAND.phone}
             </a>
           </div>
-          <p className="mt-6 text-sm text-white/60">Limited spaces available. Call today to save your spot.</p>
+          <p className="mt-6 text-sm text-white/75">Limited spaces available. Call today to save your spot.</p>
         </div>
       </section>
     </>

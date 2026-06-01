@@ -1,12 +1,16 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-gold: #c9a962;
-  --color-gold-dark: #a88b4a;
-  --color-ink: #1a1a1a;
-  --color-cream: #faf8f5;
-  --color-charcoal: #2d2d2d;
+  --color-lux-red: #d40000;
+  --color-lux-red-bright: #e30000;
+  --color-lux-red-dark: #a80000;
+  --color-lux-black: #000000;
+  --color-lux-surface: #0a0a0a;
+  --color-lux-elevated: #141414;
+  --color-lux-border: #2a2a2a;
+  --color-lux-muted: #a8a8a8;
   --font-display: 'Playfair Display', Georgia, serif;
+  --font-script: 'Allura', 'Brush Script MT', cursive;
   --font-sans: 'Inter', system-ui, sans-serif;
 }
 
@@ -16,7 +20,7 @@
   }
 
   body {
-    @apply bg-cream text-ink antialiased;
+    @apply bg-lux-black text-white antialiased;
     font-family: var(--font-sans);
   }
 
@@ -25,8 +29,16 @@
   h3 {
     font-family: var(--font-display);
   }
+
+  ::selection {
+    @apply bg-lux-red text-white;
+  }
 }
 
 @utility font-display {
   font-family: var(--font-display);
+}
+
+@utility font-script {
+  font-family: var(--font-script);
 }

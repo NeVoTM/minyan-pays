@@ -1,6 +1,7 @@
 export const BRAND = {
   name: 'LuxLoft716',
-  tagline: 'Modern Salon Suites',
+  tagline: 'Salon Suites',
+  slogan: 'Elevate your craft. Own your space.',
   phone: '(716) 555-0716',
   phoneHref: 'tel:+17165550716',
   email: 'hello@luxloft716.com',

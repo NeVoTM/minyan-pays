@@ -8,9 +8,9 @@ type ButtonProps = {
 }
 
 const variants = {
-  primary: 'bg-ink text-white hover:bg-charcoal',
-  secondary: 'bg-gold text-ink hover:bg-gold-dark',
-  outline: 'border-2 border-ink text-ink hover:bg-ink hover:text-white',
+  primary: 'bg-lux-red text-white hover:bg-lux-red-dark',
+  secondary: 'bg-white text-lux-black hover:bg-white/90',
+  outline: 'border-2 border-lux-red text-lux-red hover:bg-lux-red hover:text-white',
 }
 
 export function Button({ to, children, variant = 'primary', className = '' }: ButtonProps) {
