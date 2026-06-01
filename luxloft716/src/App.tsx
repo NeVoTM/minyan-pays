@@ -8,9 +8,12 @@ import { ReservePage } from './pages/ReservePage'
 import { WhatIsSalonSuitePage } from './pages/WhatIsSalonSuitePage'
 import { WhyUsPage } from './pages/WhyUsPage'
 
+const routerBasename =
+  import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '')
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={routerBasename}>
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
