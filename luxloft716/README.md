@@ -35,7 +35,7 @@ Static output is in `dist/`.
    (Details: `docs/GITHUB_PAGES_SETUP.md`)
 2. Push to `main` — Actions deploys automatically.
 
-**Live site:** https://nevotm.github.io/minyan-pays/
+**Live site:** https://nevotm.github.io/minyan-pays/ (enable Pages: `gh-pages` branch or GitHub Actions)
 
 ## Customize before launch
 
