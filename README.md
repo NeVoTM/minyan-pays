@@ -52,6 +52,16 @@ npm run build
 npm run preview
 ```
 
+## Deploy (Render)
+
+Root **`render.yaml`** defines a free **static site** service. After the GitHub repo exists:
+
+1. Push `main` to **`NeVoTM/slinkys`**
+2. Render → **New** → **Blueprint** → connect the repo
+3. Site goes live at **`https://slinkys.onrender.com`**
+
+Details: [`docs/RENDER_DEPLOYMENT.md`](docs/RENDER_DEPLOYMENT.md)
+
 ## Pages
 
 | Route | Description |

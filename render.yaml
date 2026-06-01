@@ -1,0 +1,20 @@
+# Render Blueprint — connect repo NeVoTM/slinkys in dashboard: New → Blueprint.
+# Static SPA only (no API). Live URL will be https://slinkys.onrender.com unless you add a custom domain.
+# https://render.com/docs/blueprint-spec
+
+version: "1"
+services:
+  - type: web
+    name: slinkys
+    runtime: static
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.0"
