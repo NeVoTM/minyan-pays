@@ -33,7 +33,7 @@ export function HowItWorks() {
             Simple &amp; seamless
           </p>
           <h2 className="mt-2 font-serif text-3xl font-bold text-brand-white">
-            How LucLoft716 works
+            How LuxLoft716 works
           </h2>
         </div>
 

@@ -21,7 +21,7 @@ type Suite = {
 const allSuites: Suite[] = [
   {
     id: '1',
-    name: 'Luxe Loft — Suite A',
+    name: 'LuxLoft716 — Suite A',
     location: 'Buffalo, NY',
     neighborhood: 'Elmwood Village',
     type: 'Hair styling',

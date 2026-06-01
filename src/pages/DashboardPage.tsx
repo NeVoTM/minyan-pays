@@ -6,7 +6,7 @@ import { useAuth } from '../context/useAuth'
 const upcoming = [
   {
     id: '1',
-    suite: 'Luxe Loft — Suite A',
+    suite: 'LuxLoft716 — Suite A',
     date: 'Jun 5, 2026',
     time: '10:00 AM – 2:00 PM',
     location: 'Elmwood Village, Buffalo',

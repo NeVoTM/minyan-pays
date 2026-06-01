@@ -15,7 +15,7 @@ function App() {
         element={
           <LoginPage
             role="member"
-            title="Sign in to Slinkys"
+            title="Sign in to LuxLoft716"
             subtitle="Access your Instant Suite reservations and mobile pass."
             alternate={{ label: 'Managing a team?', href: '/login/team' }}
           />
@@ -26,7 +26,7 @@ function App() {
         element={
           <LoginPage
             role="team"
-            title="Team admin sign in"
+            title="LuxLoft716 team admin sign in"
             subtitle="Manage member access, budgets, and billing for Suite Teams."
             alternate={{ label: 'Booking for yourself?', href: '/login' }}
           />

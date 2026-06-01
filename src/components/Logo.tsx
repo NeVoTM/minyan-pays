@@ -13,7 +13,7 @@ export function Logo({ className = '', size = 'md' }: LogoProps) {
   const s = sizes[size]
 
   return (
-    <div className={`select-none ${className}`} aria-label="LucLoft716">
+    <div className={`select-none ${className}`} aria-label="LuxLoft716">
       <div className="flex items-start gap-0 leading-none">
         <span className={`font-serif font-bold text-brand-red ${s.l}`}>L</span>
         <div className="flex flex-col pt-1">

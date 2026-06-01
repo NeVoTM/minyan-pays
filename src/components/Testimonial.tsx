@@ -6,7 +6,7 @@ export function Testimonial() {
       <div className="mx-auto max-w-3xl text-center">
         <Quote size={40} className="mx-auto text-brand-red/40" />
         <blockquote className="mt-6 font-serif text-2xl leading-relaxed text-brand-white sm:text-3xl">
-          &ldquo;LucLoft716 transformed the way I think about my business. I bookable to serve
+          &ldquo;LuxLoft716 transformed the way I think about my business. I bookable to serve
           clients in a premium suite without the overhead of a full lease — it&apos;s the first
           option I recommend to every stylist starting out.&rdquo;
         </blockquote>

@@ -12,7 +12,7 @@ const STORAGE_KEY = 'slinkys_session'
 /** Demo accounts until backend auth ships. */
 const DEMO_USERS: Record<string, { password: string; name: string; role: UserRole }> = {
   'demo@lucloft716.com': { password: 'Luc716!', name: 'Maria Santos', role: 'member' },
-  'admin@lucloft716.com': { password: 'Suite716!', name: 'LucLoft716 Admin', role: 'team' },
+  'admin@lucloft716.com': { password: 'Suite716!', name: 'LuxLoft716 Admin', role: 'team' },
 }
 
 export function login(email: string, password: string, expectedRole?: UserRole): Session | null {

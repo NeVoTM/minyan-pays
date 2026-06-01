@@ -79,7 +79,7 @@ export function Footer() {
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-brand-border pt-8 sm:flex-row">
           <p className="text-xs text-brand-muted">
-            &copy; {new Date().getFullYear()} LucLoft716 Salon Suites. Powered by Slinkys.
+            &copy; {new Date().getFullYear()} LuxLoft716 Salon Suites.
           </p>
           <p className="text-xs text-brand-muted">Buffalo, NY &middot; Area code 716</p>
         </div>

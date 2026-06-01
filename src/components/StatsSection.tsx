@@ -27,7 +27,7 @@ export function StatsSection() {
           </h2>
           <p className="mt-4 text-base leading-relaxed text-brand-muted">
             When beauty professionals work in convenient, comfortable, and fully equipped
-            suites they experience higher client satisfaction and income potential. LucLoft716
+            suites they experience higher client satisfaction and income potential. LuxLoft716
             gives every stylist, esthetician, and barber managed access to premium salon
             suites — on their schedule, without the overhead of a full lease.
           </p>
