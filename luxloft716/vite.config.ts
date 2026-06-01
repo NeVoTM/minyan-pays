@@ -8,4 +8,9 @@ const githubPagesBase = process.env.GITHUB_PAGES === 'true' ? '/minyan-pays/' : 
 export default defineConfig({
   base: githubPagesBase ?? '/',
   plugins: [react(), tailwindcss()],
+  preview: {
+    host: true,
+    port: 4173,
+    allowedHosts: true,
+  },
 })
