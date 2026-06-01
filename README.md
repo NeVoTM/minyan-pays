@@ -52,7 +52,17 @@ npm run build
 npm run preview
 ```
 
-## Deploy (Render)
+## Deploy (GitHub Pages — recommended)
+
+**Live URL:** `https://nevoTM.github.io/slinkys/login`
+
+1. Create empty public repo **`NeVoTM/slinkys`** on GitHub
+2. Push `main` (agent can push once repo exists)
+3. Repo **Settings → Pages → Source: GitHub Actions**
+
+Push to `main` auto-deploys via `.github/workflows/pages.yml`. Full steps: [`docs/GITHUB_PAGES.md`](docs/GITHUB_PAGES.md)
+
+## Deploy (Render — alternative)
 
 Root **`render.yaml`** defines a free **static site** service. After the GitHub repo exists:
 
