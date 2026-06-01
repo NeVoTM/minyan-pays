@@ -2,11 +2,11 @@
 
 ## Live URL (after setup)
 
-**https://nevoTM.github.io/slinkys/**
+**https://nevoTM.github.io/Slinkys/**
 
 Login:
-- Stylist: **https://nevoTM.github.io/slinkys/login**
-- Team admin: **https://nevoTM.github.io/slinkys/login/team**
+- Stylist: **https://nevoTM.github.io/Slinkys/login**
+- Team admin: **https://nevoTM.github.io/Slinkys/login/team**
 
 ## One-time setup (~2 minutes)
 

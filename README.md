@@ -54,7 +54,7 @@ npm run preview
 
 ## Deploy (GitHub Pages — recommended)
 
-**Live URL:** `https://nevoTM.github.io/slinkys/login`
+**Live URL:** `https://nevoTM.github.io/Slinkys/login`
 
 1. Create empty public repo **`NeVoTM/slinkys`** on GitHub
 2. Push `main` (agent can push once repo exists)
