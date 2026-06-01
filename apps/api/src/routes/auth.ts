@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
@@ -15,7 +16,16 @@ import {
   getOrganizationBySlug,
   normalizeOrgSlug,
 } from "../lib/organizationService.js";
-import { getGlobalAdminPasswordHash } from "../lib/settings.js";
+import {
+  getGlobalAdminPasswordHash,
+  setGlobalAdminPassword,
+} from "../lib/settings.js";
+import {
+  adminNotifyEmail,
+  emailConfigured,
+  generate6DigitCode,
+  sendEmail,
+} from "../lib/email.js";
 
 export const authRouter = Router();
 
@@ -216,4 +226,133 @@ authRouter.post("/member", async (req, res) => {
     return;
   }
   res.json({ token: signMemberToken(user.id, org.id) });
+});
+
+// --------------------------------------------------------------------------
+// PUBLIC ADMIN PASSWORD RESET (forgot password on login screen)
+//
+// Sends a 6-digit code to ADMIN_NOTIFY_EMAIL (default elichalfinny@gmail.com),
+// then lets the operator set a new global admin password without being logged in.
+// --------------------------------------------------------------------------
+
+const GLOBAL_ADMIN_PASSWORD_RE =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*+\-_=?$.,])[A-Za-z0-9!@#$%^&*+\-_=?$.,]{8,64}$/;
+
+const GLOBAL_ADMIN_PASSWORD_RULE_MSG =
+  "Global admin password must be 8-64 characters and include at least one letter, one digit, and one special character (!@#$%^&*+-_=?$.,).";
+
+const RESET_CODE_EXPIRY_MS = 10 * 60 * 1000;
+const RESET_MAX_CODE_ATTEMPTS = 5;
+
+function adminEchoCodeEnabled(): boolean {
+  const v = process.env.ADMIN_PASSWORD_VERIFICATION_ECHO?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/** Email a 6-digit reset code to the configured admin notify address. */
+authRouter.post("/admin/request-password-reset", async (_req, res) => {
+  const echo = adminEchoCodeEnabled();
+  if (!emailConfigured() && !echo) {
+    res.status(503).json({
+      error:
+        "Email transport not configured. Ask your admin to set GMAIL_USER + GMAIL_APP_PASSWORD on Render (or set ADMIN_PASSWORD_VERIFICATION_ECHO=1 for dev).",
+    });
+    return;
+  }
+
+  const code = generate6DigitCode();
+  const codeHash = await bcrypt.hash(code, 10);
+  const email = adminNotifyEmail();
+
+  // Placeholder password — the real one is supplied on confirm.
+  const placeholderPlain = crypto.randomBytes(32).toString("hex");
+  const placeholderHash = await bcrypt.hash(placeholderPlain, 10);
+
+  await prisma.adminPasswordChangeRequest.updateMany({
+    where: { email, consumedAt: null, expiresAt: { gt: new Date() } },
+    data: { expiresAt: new Date(0) },
+  });
+
+  const created = await prisma.adminPasswordChangeRequest.create({
+    data: {
+      email,
+      codeHash,
+      newPasswordHash: placeholderHash,
+      newPasswordPlain: placeholderPlain,
+      expiresAt: new Date(Date.now() + RESET_CODE_EXPIRY_MS),
+    },
+    select: { id: true, email: true, expiresAt: true },
+  });
+
+  let emailDelivered: { ok: boolean; error?: string } = { ok: false };
+  if (emailConfigured()) {
+    const subject = "MinyanPays — Admin password reset code";
+    const text = `Your MinyanPays admin password reset code is ${code}.\nIt expires in 10 minutes.\n\nIf you did not request this reset, ignore this email.`;
+    const html = `<p>Your MinyanPays admin password reset code is <b>${code}</b>.</p><p>It expires in 10 minutes.</p><p style="color:#666">If you did not request this reset, ignore this email.</p>`;
+    const r = await sendEmail({ to: email, subject, text, html });
+    emailDelivered = r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  res.json({
+    requestId: created.id,
+    email: created.email,
+    expiresAt: created.expiresAt,
+    emailDelivered: emailDelivered.ok,
+    emailError: emailDelivered.ok ? null : emailDelivered.error ?? null,
+    devCode: echo ? code : undefined,
+  });
+});
+
+/** Verify the reset code and apply a new global admin password. */
+authRouter.post("/admin/confirm-password-reset", async (req, res) => {
+  const schema = z.object({
+    requestId: z.string().min(1),
+    code: z.string().min(4).max(12),
+    newPassword: z.string().regex(GLOBAL_ADMIN_PASSWORD_RE),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: GLOBAL_ADMIN_PASSWORD_RULE_MSG });
+    return;
+  }
+
+  const reqRow = await prisma.adminPasswordChangeRequest.findUnique({
+    where: { id: parsed.data.requestId },
+  });
+  if (!reqRow) {
+    res.status(404).json({ error: "Unknown reset request." });
+    return;
+  }
+  if (reqRow.consumedAt) {
+    res.status(409).json({ error: "This reset request was already used." });
+    return;
+  }
+  if (reqRow.expiresAt.getTime() <= Date.now()) {
+    res.status(410).json({ error: "Reset code expired. Request a new one." });
+    return;
+  }
+  if (reqRow.attempts >= RESET_MAX_CODE_ATTEMPTS) {
+    res.status(429).json({ error: "Too many attempts. Request a new code." });
+    return;
+  }
+
+  const ok = await bcrypt.compare(parsed.data.code.trim(), reqRow.codeHash);
+  if (!ok) {
+    await prisma.adminPasswordChangeRequest.update({
+      where: { id: reqRow.id },
+      data: { attempts: { increment: 1 } },
+    });
+    res.status(401).json({ error: "Invalid reset code." });
+    return;
+  }
+
+  const newPasswordPlain = parsed.data.newPassword.trim();
+  const newPasswordHash = await bcrypt.hash(newPasswordPlain, 10);
+  await setGlobalAdminPassword({ hash: newPasswordHash, plain: newPasswordPlain });
+  await prisma.adminPasswordChangeRequest.update({
+    where: { id: reqRow.id },
+    data: { consumedAt: new Date() },
+  });
+
+  res.json({ ok: true });
 });

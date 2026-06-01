@@ -71,7 +71,31 @@
     "passwordRequired": "Enter a password.",
     "submit": "Sign in",
     "chooseOrgFirst": "Choose a location first.",
-    "loginFailed": "Login failed"
+    "loginFailed": "Login failed",
+    "forgotPassword": "Forgot password?"
+  },
+  "adminResetPassword": {
+    "title": "Reset admin password",
+    "subtitle": "We email a 6-digit code to the site operator, then you choose a new global admin password.",
+    "requestHelp": "Tap below to send a reset code to the configured admin email (elichalfinny@gmail.com).",
+    "sendCode": "Send reset code to email",
+    "confirmHelp": "Enter the 6-digit code sent to {{email}} and choose a new password.",
+    "codeLabel": "6-digit code from email",
+    "newPassword": "New admin password",
+    "confirm": "Confirm new password",
+    "rule": "8-64 characters, must include at least one letter, one digit, and one special character (!@#$%^&*+-_=?$.,).",
+    "submit": "Reset password",
+    "resendCode": "Send a new code",
+    "codeSent": "Reset code sent to {{email}}. Check your inbox; the code expires in 10 minutes.",
+    "devCode": "Dev mode: reset code is {{code}}.",
+    "emailFailed": "Email could not be sent ({{error}}). Try again or set GMAIL_USER + GMAIL_APP_PASSWORD on the server.",
+    "done": "Password reset. Redirecting to admin sign-in…",
+    "requestFailed": "Could not send reset code.",
+    "confirmFailed": "Could not reset password.",
+    "noRequest": "Request a reset code first.",
+    "codeRequired": "Enter the 6-digit code from your email.",
+    "mismatch": "Passwords do not match.",
+    "backLogin": "Back to admin sign-in"
   },
   "adminChangePassword": {
     "title": "Set admin password",

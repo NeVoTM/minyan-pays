@@ -16,6 +16,7 @@ import { PunchIn } from './pages/PunchIn'
 import { PunchOut } from './pages/PunchOut'
 import { AdminLogin } from './pages/AdminLogin'
 import { AdminChangePassword } from './pages/AdminChangePassword'
+import { AdminResetPassword } from './pages/AdminResetPassword'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { RabbiLogin } from './pages/RabbiLogin'
 import { RabbiDashboard } from './pages/RabbiDashboard'
@@ -60,6 +61,8 @@ function headerLabelsForPath(pathname: string): HeaderLabelKeys {
       return { tabKey: 'nav.admin', pageKey: 'adminLogin.title' }
     case '/admin/change-password':
       return { tabKey: 'nav.admin', pageKey: 'adminChangePassword.title' }
+    case '/admin/reset-password':
+      return { tabKey: 'nav.admin', pageKey: 'adminResetPassword.title' }
     case '/admin/app':
       return { tabKey: 'nav.admin', pageKey: 'admin.title' }
     case '/rabbi':
@@ -300,6 +303,10 @@ export default function App() {
             <Route
               path="/admin/change-password"
               element={<AdminChangePassword />}
+            />
+            <Route
+              path="/admin/reset-password"
+              element={<AdminResetPassword />}
             />
             <Route path="/admin/app" element={<AdminDashboard />} />
             <Route path="/rabbi" element={<RabbiLogin />} />

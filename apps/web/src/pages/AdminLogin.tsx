@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { BackLink } from '../components/BackLink'
@@ -90,6 +90,14 @@ export function AdminLogin() {
           >
             {t('adminLogin.submit')}
           </button>
+          <p className="text-center text-sm">
+            <Link
+              to="/admin/reset-password"
+              className="font-medium text-blue-600 hover:text-blue-700"
+            >
+              {t('adminLogin.forgotPassword')}
+            </Link>
+          </p>
         </form>
       </div>
     </div>
