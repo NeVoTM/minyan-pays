@@ -10,4 +10,9 @@ const base = process.env.GITHUB_PAGES === 'true' ? pagesBase : '/'
 export default defineConfig({
   base,
   plugins: [react(), tailwindcss()],
+  preview: {
+    host: true,
+    port: 4173,
+    allowedHosts: true,
+  },
 })
