@@ -1,27 +1,40 @@
 # Host LuxLoft716 on GitHub Pages
 
-## One-time setup (about 1 minute)
+Uses the **same hosting pattern as Slinkys** (`slinkys-release` branch + `actions/deploy-pages`).
+
+## Live URL
+
+**https://nevotm.github.io/minyan-pays/**
+
+## One-time setup (~1 minute)
 
 1. Open **https://github.com/NeVoTM/minyan-pays/settings/pages**
-2. Under **Build and deployment** → **Source**, choose **Deploy from a branch**
-3. **Branch:** `gh-pages` · **Folder:** `/ (root)` → **Save**
+2. **Build and deployment** → **Source:** **GitHub Actions** (not “Deploy from a branch”)
+3. Save
 
-After the next push to `main` (or a manual workflow run), your site will be live at:
+The next push to `main` (or **Actions → Deploy LuxLoft716 to GitHub Pages → Run workflow**) publishes the site.
 
-### https://nevotm.github.io/minyan-pays/
+## How it works
 
-(Use that exact URL on iPhone Safari; paths are case-insensitive for the username.)
+| Piece | Purpose |
+|-------|---------|
+| `npm run build:pages` | Vite build with base `/minyan-pays/` |
+| `scripts/spa-render-404.mjs` | Copies `index.html` → `404.html` for deep links |
+| `.github/workflows/luxloft716-pages.yml` | Build artifact + `deploy-pages` |
 
-## How deploys work
+## Slinkys vs LuxLoft716 (same repo)
 
-- Workflow: `.github/workflows/luxloft716-pages.yml`
-- On every push to `main` that touches `luxloft716/`, GitHub Actions builds the app and pushes `dist/` to the `gh-pages` branch.
-- React Router uses base path `/minyan-pays/` for this project site URL.
+| App | Branch / path | URL path | Role |
+|-----|----------------|----------|------|
+| **LuxLoft716** (marketing) | `main` → `luxloft716/` | `/minyan-pays/` | Salon suite landing site |
+| **Slinkys** (booking demo) | `slinkys-release` (app at repo root) | `/minyan-pays/login` | Deskpass-style demo + test logins |
 
-## Manual deploy
+Only one **GitHub Actions** Pages deployment is active per repo; the latest successful workflow wins. Use `slinkys-release` pushes for the booking demo, `main` + `luxloft716/` for marketing.
 
-**Actions** → **Deploy LuxLoft716 to GitHub Pages** → **Run workflow**
+## iPhone
+
+Open the live URL in **Safari** → Share → **Add to Home Screen**.
 
 ## Custom domain (optional)
 
-In the same Pages settings, add your domain (e.g. `luxloft716.com`) and follow GitHub’s DNS instructions.
+Repo **Settings → Pages** → add domain (e.g. `luxloft716.com`) and configure DNS per GitHub’s instructions.

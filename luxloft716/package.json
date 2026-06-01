@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:pages": "GITHUB_PAGES=true npm run build && cp dist/index.html dist/404.html",
+    "build": "tsc -b && vite build && node scripts/spa-render-404.mjs",
+    "build:pages": "GITHUB_PAGES=true npm run build",
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "preview:phone": "npm run build && npm run preview"
