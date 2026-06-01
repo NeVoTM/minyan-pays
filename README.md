@@ -67,7 +67,11 @@ Details: [`docs/RENDER_DEPLOYMENT.md`](docs/RENDER_DEPLOYMENT.md)
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page (Deskpass-inspired hero, city grid, stats, product tiers) |
-| `/search` | Suite search results with filters |
+| `/search` | Suite search results |
+| `/login` | Stylist / Instant Suite sign in |
+| `/login/team` | Team admin sign in |
+| `/app` | Member dashboard (after login) |
+| `/team/app` | Team admin dashboard (after login) |
 
 ## Inspired by
 

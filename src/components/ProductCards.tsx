@@ -15,7 +15,7 @@ const products = [
       'No commitment',
     ],
     cta: 'Find your suite',
-    ctaHref: '/search',
+    ctaHref: '/login',
     primary: true,
   },
   {
@@ -33,7 +33,7 @@ const products = [
       'Live reporting and usage insights',
     ],
     cta: 'Book a demo',
-    ctaHref: '#contact',
+    ctaHref: '/login/team',
     primary: false,
   },
 ]

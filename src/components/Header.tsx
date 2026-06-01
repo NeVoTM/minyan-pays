@@ -34,17 +34,17 @@ export function Header() {
 
         <div className="hidden items-center gap-3 md:flex">
           <Link
-            to="/search"
+            to="/login"
             className="rounded-full border border-brand-border px-4 py-2 text-sm font-medium text-brand-white transition hover:border-brand-red"
           >
-            Make a Reservation
+            Sign in
           </Link>
-          <a
-            href="#suite-teams"
+          <Link
+            to="/login/team"
             className="rounded-full bg-brand-red px-4 py-2 text-sm font-semibold text-brand-white transition hover:bg-brand-red-dark"
           >
             Manage Team Access
-          </a>
+          </Link>
         </div>
 
         <button
@@ -71,19 +71,19 @@ export function Header() {
               </a>
             ))}
             <Link
-              to="/search"
+              to="/login"
               className="rounded-full border border-brand-border px-4 py-3 text-center text-sm font-medium"
               onClick={() => setOpen(false)}
             >
-              Make a Reservation
+              Sign in
             </Link>
-            <a
-              href="#suite-teams"
+            <Link
+              to="/login/team"
               className="rounded-full bg-brand-red px-4 py-3 text-center text-sm font-semibold"
               onClick={() => setOpen(false)}
             >
               Manage Team Access
-            </a>
+            </Link>
           </nav>
         </div>
       )}
