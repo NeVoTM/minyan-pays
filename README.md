@@ -73,6 +73,13 @@ Details: [`docs/RENDER_DEPLOYMENT.md`](docs/RENDER_DEPLOYMENT.md)
 | `/app` | Member dashboard (after login) |
 | `/team/app` | Team admin dashboard (after login) |
 
+### Demo login
+
+| Account | Email | Password | Dashboard |
+|---------|-------|----------|-----------|
+| Stylist | `demo@lucloft716.com` | `Luc716!` | `/app` |
+| Team admin | `admin@lucloft716.com` | `Suite716!` | `/team/app` |
+
 ## Inspired by
 
 [Deskpass](https://www.deskpass.com) — on-demand coworking. Slinkys adapts the model for salon suites: hourly booth rental, team access, and instant booking across the Buffalo metro.
