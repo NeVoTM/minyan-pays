@@ -27,7 +27,15 @@ npm run build
 npm run preview
 ```
 
-Static output is in `dist/` — suitable for Netlify, Vercel, Render static site, or GitHub Pages.
+Static output is in `dist/`.
+
+### GitHub Pages (recommended)
+
+1. Enable Pages: **Settings → Pages → Deploy from branch → `gh-pages` / root**  
+   (Details: `docs/GITHUB_PAGES_SETUP.md`)
+2. Push to `main` — Actions deploys automatically.
+
+**Live site:** https://nevotm.github.io/minyan-pays/
 
 ## Customize before launch
 

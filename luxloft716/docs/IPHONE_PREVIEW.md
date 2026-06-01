@@ -1,11 +1,10 @@
 # View LuxLoft716 on your iPhone
 
-## Option A — GitHub Pages (best permanent link)
+## Option A — GitHub Pages (hosted on GitHub)
 
-1. Open **https://github.com/NeVoTM/minyan-pays/settings/pages**
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**
-3. Merge the `cursor/luxloft716-site-73c7` branch (or wait for the workflow on `main`)
-4. After **Actions → Deploy LuxLoft716** succeeds, open:
+See **`docs/GITHUB_PAGES_SETUP.md`** for the one-time Pages setting.
+
+Live URL after deploy:
 
 **https://nevotm.github.io/minyan-pays/**
 
