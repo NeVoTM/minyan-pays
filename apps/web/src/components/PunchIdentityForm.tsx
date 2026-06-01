@@ -286,6 +286,17 @@ export function PunchIdentityForm({ mode }: Props) {
           </p>
         )}
 
+        {mode === 'in' && (
+          <div className="-mb-2 flex flex-col items-center" aria-hidden="true">
+            <div className="rounded-full bg-yellow-300 px-5 py-2 text-sm font-extrabold uppercase tracking-wide text-yellow-950 shadow-lg shadow-yellow-500/30 ring-2 ring-yellow-400">
+              {t(submitKey)}
+            </div>
+            <div className="animate-bounce text-7xl font-black leading-none text-yellow-400 drop-shadow-[0_5px_0_rgba(146,64,14,0.35)]">
+              ↓
+            </div>
+          </div>
+        )}
+
         <button type="submit" disabled={loading || !canSubmit} className={btnClass}>
           {loading ? t(loadingKey) : t(submitKey)}
         </button>

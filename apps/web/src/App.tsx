@@ -44,11 +44,94 @@ type PublicConfig = {
   timezone: string
 }
 
+type HeaderLabelKeys = {
+  tabKey: string
+  pageKey?: string
+  pageDefault?: string
+}
+
+function headerLabelsForPath(pathname: string): HeaderLabelKeys {
+  switch (pathname) {
+    case '/punch/in':
+      return { tabKey: 'nav.punch', pageKey: 'punchIn.title' }
+    case '/punch/out':
+      return { tabKey: 'nav.punch', pageKey: 'punchOut.title' }
+    case '/admin':
+      return { tabKey: 'nav.admin', pageKey: 'adminLogin.title' }
+    case '/admin/change-password':
+      return { tabKey: 'nav.admin', pageKey: 'adminChangePassword.title' }
+    case '/admin/app':
+      return { tabKey: 'nav.admin', pageKey: 'admin.title' }
+    case '/rabbi':
+      return { tabKey: 'nav.rabbi', pageKey: 'rabbiLogin.title' }
+    case '/rabbi/app':
+      return { tabKey: 'nav.rabbi', pageKey: 'rabbi.title' }
+    case '/member/login':
+      return { tabKey: 'nav.member', pageKey: 'memberLogin.title' }
+    case '/member/signup':
+      return { tabKey: 'nav.member', pageKey: 'signup.title' }
+    case '/member/app':
+      return { tabKey: 'nav.member', pageKey: 'member.balanceTitle' }
+    case '/member/profile':
+      return {
+        tabKey: 'nav.member',
+        pageKey: 'member.profileTitle',
+        pageDefault: 'Member profile',
+      }
+    case '/member/billing':
+      return { tabKey: 'nav.member', pageKey: 'billing.title' }
+    case '/member':
+      return { tabKey: 'nav.member' }
+    case '/punch':
+    default:
+      return { tabKey: 'nav.punch' }
+  }
+}
+
 /** Rabbi banner only on public check-in / check-out (not member login, balance, profile, etc.). */
 function PunchOnlyRabbiBanner({ text }: { text: string | null | undefined }) {
   const { pathname } = useLocation()
   if (pathname !== '/punch/in' && pathname !== '/punch/out') return null
   return <RabbiBanner text={text} />
+}
+
+function CurrentPageHeader({
+  punchInHeaderTitle,
+}: {
+  punchInHeaderTitle: string | null
+}) {
+  const { t } = useTranslation()
+  const { pathname } = useLocation()
+  const labels = headerLabelsForPath(pathname)
+  const tabLabel = t(labels.tabKey)
+  const pageLabel = labels.pageKey
+    ? t(labels.pageKey, { defaultValue: labels.pageDefault })
+    : tabLabel
+  const appTitle = t('app.title')
+
+  useEffect(() => {
+    document.title =
+      pageLabel === tabLabel
+        ? `${pageLabel} - ${appTitle}`
+        : `${pageLabel} - ${tabLabel} - ${appTitle}`
+  }, [appTitle, pageLabel, tabLabel])
+
+  return (
+    <div className="min-w-0">
+      <Link
+        to="/"
+        className="block truncate text-lg font-bold tracking-tight text-blue-600"
+      >
+        {pageLabel}
+      </Link>
+      <span className="block truncate text-[11px] font-medium text-slate-500 sm:text-xs">
+        <span className="font-semibold text-slate-700">{tabLabel}</span>
+        {punchInHeaderTitle
+          ? ` · ${punchInHeaderTitle}`
+          : ` · ${t('app.subtitle')}`}
+      </span>
+    </div>
+  )
 }
 
 function OrgPicker() {
@@ -100,10 +183,8 @@ export default function App() {
   }, [isRtl, i18n.language])
 
   useEffect(() => {
-    if (!organizationSlug) {
-      setPub(null)
-      return
-    }
+    if (!organizationSlug) return
+
     let cancelled = false
     const q = new URLSearchParams({ organizationSlug })
     fetch(apiUrl(`/api/public/config?${q.toString()}`))
@@ -150,7 +231,9 @@ export default function App() {
               <div className="mx-auto flex max-w-md min-w-0 items-start justify-between gap-2 sm:gap-3">
                 <div className="min-w-0">
                   <span className="block text-lg font-bold tracking-tight text-blue-600">
-                    {t('app.title')}
+                    {organizations.length === 0
+                      ? t('app.title')
+                      : t('org.chooseTitle')}
                   </span>
                   <span className="text-[11px] font-medium text-slate-500 sm:text-xs">
                     {t('app.subtitle')}
@@ -198,17 +281,7 @@ export default function App() {
           )}
           <header className="border-b border-slate-200/80 px-3 py-3 shadow-sm sm:px-4">
             <div className="mx-auto flex max-w-md min-w-0 items-start justify-between gap-2 sm:gap-3">
-              <div className="min-w-0">
-                <Link
-                  to="/"
-                  className="block truncate text-lg font-bold tracking-tight text-blue-600"
-                >
-                  {punchInHeaderTitle ?? t('app.title')}
-                </Link>
-                <span className="shrink-0 text-[11px] font-medium text-slate-500 sm:text-xs">
-                  {t('app.subtitle')}
-                </span>
-              </div>
+              <CurrentPageHeader punchInHeaderTitle={punchInHeaderTitle} />
               <div className="flex shrink-0 items-center gap-2">
                 <LangToggle />
                 <ClockBar />
