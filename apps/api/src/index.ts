@@ -1,6 +1,9 @@
 import "./env.js";
+import "./patchExpressAsync.js";
 import express from "express";
 import cors from "cors";
+import { Prisma } from "@prisma/client";
+import { prisma } from "./lib/prisma.js";
 import { authRouter } from "./routes/auth.js";
 import { punchRouter } from "./routes/punch.js";
 import { adminRouter } from "./routes/admin.js";
@@ -32,8 +35,14 @@ app.use(
 );
 app.use(express.json());
 
+let dbReady = false;
+
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "minyan-pays-api" });
+  res.json({
+    ok: true,
+    service: "minyan-pays-api",
+    db: dbReady,
+  });
 });
 
 app.use("/api/public", publicRouter);
@@ -46,16 +55,52 @@ app.use("/api/me", memberRouter);
 
 app.use(
   (
-    err: Error,
+    err: unknown,
     _req: express.Request,
     res: express.Response,
     _next: express.NextFunction
   ) => {
     console.error(err);
-    res.status(500).json({ error: err.message || "Server error" });
+    const message = err instanceof Error ? err.message : "Server error";
+    const dbUnavailable =
+      err instanceof Prisma.PrismaClientInitializationError ||
+      (err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P1001");
+    if (dbUnavailable) {
+      res.status(503).json({
+        error:
+          "Database is temporarily unavailable. Check Render Postgres and DATABASE_URL.",
+      });
+      return;
+    }
+    res.status(500).json({ error: message || "Server error" });
   }
 );
 
+async function connectDatabase(): Promise<void> {
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await prisma.$connect();
+      dbReady = true;
+      console.log("Database connected.");
+      return;
+    } catch (err) {
+      console.error(
+        `Database connect attempt ${attempt}/${maxAttempts} failed:`,
+        err
+      );
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, attempt * 2000));
+      }
+    }
+  }
+  console.error(
+    "Database unreachable after retries; API stays up for /api/health but data routes return 503."
+  );
+}
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`minyan-pays API http://localhost:${PORT}`);
+  void connectDatabase();
 });

@@ -8,6 +8,7 @@
 
 | Date | Commits | Change |
 |------|---------|--------|
+| 2026-06-02 | *(this deploy)* | **API crash loop fix:** unhandled async Prisma errors (log shows `retryable: undefined`) exited Node with code 1 → Render 502. Patched Express `Route` handlers to forward rejections; API returns 503 JSON when Postgres is unreachable instead of dying. Check **minyan-pays-db** if `GET /api/health` shows `"db": false` (free DB expired **2026-05-29** per table above). |
 | 2026-05-09 | `b12b8af` (flag on) → `25c57ca` (flag off) | Added `Rabbi.passwordPlain @unique`, `Rabbi.passwordHash`, `Rabbi.isMain`; new `Shamosh` model with `passwordPlain @unique`; structured `Organization.locationCity/locationState/locationPostalCode`. Pushed via temporary `--accept-data-loss` flag dance; verified by `POST /api/auth/rabbi` returning 401 (would have been 500 on missing column). |
 
 Keep this file updated when URLs, service names, or IDs change. **Do not paste live database passwords or full `DATABASE_URL` strings into git** — store secrets only in Render (or a password manager) and note here *where* they live.
