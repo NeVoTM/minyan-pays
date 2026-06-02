@@ -10,12 +10,32 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const opts = { stdio: "inherit", cwd: root, env: process.env };
 const onRender = process.env.RENDER === "true";
 
-if (onRender) {
-  execSync("npx prisma db push --accept-data-loss", opts);
+function tryStep(label, command) {
+  try {
+    execSync(command, opts);
+    return true;
+  } catch (err) {
+    console.warn(
+      `[render-build] ${label} failed (continuing so API can still deploy):`,
+      err instanceof Error ? err.message : err
+    );
+    return false;
+  }
 }
 
-execSync("npx tsc", opts);
-
 if (onRender) {
-  execSync("npm run db:seed", opts);
+  const dbSynced = tryStep(
+    "prisma db push",
+    "npx prisma db push --accept-data-loss"
+  );
+  execSync("npx tsc", opts);
+  if (dbSynced) {
+    tryStep("db seed", "npm run db:seed");
+  } else {
+    console.warn(
+      "[render-build] Skipping seed because db push did not succeed."
+    );
+  }
+} else {
+  execSync("npx tsc", opts);
 }
