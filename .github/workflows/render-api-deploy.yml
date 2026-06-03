@@ -9,6 +9,13 @@
 name: Render API deploy
 
 on:
+  # Auto-deploy API when main changes (no manual "Run workflow" needed).
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'render.yaml'
+      - '.github/workflows/render-api-deploy.yml'
   workflow_dispatch:
     inputs:
       clear_cache:

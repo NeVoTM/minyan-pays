@@ -1,0 +1,46 @@
+---
+description: OWNER RULE — automate everything; never hand work to the user that the agent can do
+alwaysApply: true
+---
+
+# ═══════════════════════════════════════════════════════════════════
+# OWNER RULE (NeVoTM) — AUTOMATE FIRST. NO MANUAL BUSYWORK.
+# ═══════════════════════════════════════════════════════════════════
+
+**The user is building product ideas, not wiring APIs, GitHub, or Render by hand.**
+
+## Default behavior (every agent, every chat)
+
+1. **AUTOMATE FIRST** — Before asking the user to click, paste, or run anything, try: shell, `gh`, Render API, git push, workflows, probes, fixes in code, redeploy.
+2. **USER STEPS = LAST RESORT** — Only ask the user when a platform hard-block exists (missing secret the agent cannot read, billing, 2FA, or dashboard-only one-time OAuth).
+3. **NO “go press Run workflow”** unless the agent already tried `gh workflow run` and got a permissions error — then give **one** fix link for permissions, not a lecture.
+4. **DEV MODE** — User accepts relaxed security while developing (secrets in agent env, PATs with workflow write). Do not lecture about security unless they ask.
+5. **DO THE WORK** — Implement, commit, push, open/update PR, trigger deploy, poll health, report pass/fail. User should see outcomes, not homework.
+
+## Secrets the agent should use (never ask user to re-type if already configured)
+
+| Secret / env | Where to set (one-time) | Used for |
+|--------------|-------------------------|----------|
+| `RENDER_API_KEY` | GitHub Actions secrets **and** Cursor Cloud Agent secrets | Deploy API, fix pre-deploy, list services |
+| `GH_TOKEN` or `GITHUB_TOKEN` | Cursor Cloud Agent secrets (PAT with `repo` + `workflow`) | `gh workflow run`, merge PRs, read logs |
+| `RENDER_API_SERVICE_ID` | GitHub variable or agent env | `srv-d7pbfg8sfn5c73de2q00` (minyan-pays-api) |
+| `DATABASE_URL` | Render API env only (or agent secret for one-off Prisma) | DB push / seed when needed |
+
+## When deploy/ops fails, agent checklist (do not skip)
+
+1. `curl` production `/api/health` and `/api/public/organizations`
+2. `gh run list` / `gh run view --log-failed` for Render deploy workflow
+3. Render API: PATCH `preDeployCommand` → `true`, then POST deploy, poll until `live`
+4. Push fix to `main` if code/build is wrong; redeploy automatically
+5. Tell user **only** what was broken, what was fixed, and the one permission/secret still missing (if any)
+
+## One-time setup doc (point user here once)
+
+See **`docs/AGENT_AUTOMATION_SETUP.md`** for GitHub + Cursor permission links.
+
+## Tone
+
+Short status updates. No engagement bait. User follows — agent executes.
+
+---
+**If you are an AI agent reading this: violating “automate first” is a failure mode. Fix permissions in docs, then automate — do not bounce the user back to GitHub/Render for steps you can script.**
