@@ -35,6 +35,18 @@ jobs:
           fi
           echo "SERVICE_ID=${RENDER_API_SERVICE_ID:-srv-d7pbfg8sfn5c73de2q00}" >> "$GITHUB_ENV"
 
+      - name: Fix pre-deploy command (clears dashboard override)
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          # Stale dashboard preDeploy (e.g. prisma db push) causes pre_deploy_failed.
+          curl -fsS -X PATCH \
+            "https://api.render.com/v1/services/${SERVICE_ID}" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"serviceDetails":{"preDeployCommand":"true"}}'
+          echo "preDeployCommand set to true (no-op)."
+
       - name: Trigger deploy
         id: trigger
         env:
@@ -79,13 +91,28 @@ jobs:
           echo "::error::Timed out waiting for deploy"
           exit 1
 
-      - name: Health check
+      - name: Health and locations check
         run: |
-          for i in 1 2 3 4 5; do
-            CODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 30 \
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            HCODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 30 \
               https://minyan-pays.onrender.com/api/health || echo 000)
-            echo "health HTTP $CODE: $(head -c 200 /tmp/health.json)"
-            if [ "$CODE" = "200" ]; then exit 0; fi
-            sleep 10
+            OCODE=$(curl -sS -o /tmp/orgs.json -w "%{http_code}" --max-time 30 \
+              https://minyan-pays.onrender.com/api/public/organizations || echo 000)
+            echo "[$i] health=$HCODE $(head -c 120 /tmp/health.json)"
+            echo "[$i] orgs=$OCODE $(head -c 120 /tmp/orgs.json)"
+            if [ "$HCODE" = "200" ] && echo "$(cat /tmp/health.json)" | grep -q '"db"'; then
+              ok=1
+            fi
+            if [ "$OCODE" = "200" ]; then
+              echo "Locations endpoint OK."
+              exit 0
+            fi
+            if [ "$OCODE" = "503" ] && [ "$ok" = "1" ]; then
+              echo "::warning::API is up but database unreachable (health db:false or orgs 503). Fix Render Postgres DATABASE_URL."
+              exit 1
+            fi
+            sleep 15
           done
+          echo "::error::API did not become healthy with new build"
           exit 1
