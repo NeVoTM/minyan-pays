@@ -1,30 +1,6 @@
 import { Check, Copy, Download, ExternalLink } from 'lucide-react'
 import { useState } from 'react'
-import { BRAND, BRAND_ASSETS } from '../data/content'
-import { BrandHeroLogo } from '../components/Logo'
-
-const LINKS = [
-  {
-    label: 'Logo PNG (live site)',
-    hint: 'Best for iPhone — tap, then long-press the image → Save to Photos',
-    url: BRAND_ASSETS.liveLogoPng,
-  },
-  {
-    label: 'Logo PNG (GitHub)',
-    hint: 'Same file in the repo — tap to open, then save',
-    url: BRAND_ASSETS.githubLogoPng,
-  },
-  {
-    label: 'Logo SVG (live site)',
-    hint: 'Vector version for print or design apps',
-    url: BRAND_ASSETS.liveLogoSvg,
-  },
-  {
-    label: 'Logo SVG (GitHub)',
-    hint: 'Vector file from the repository',
-    url: BRAND_ASSETS.githubLogoSvg,
-  },
-] as const
+import { BRAND, LOGO_VARIANTS } from '../data/content'
 
 function CopyLinkRow({ label, url }: { label: string; url: string }) {
   const [copied, setCopied] = useState(false)
@@ -40,20 +16,85 @@ function CopyLinkRow({ label, url }: { label: string; url: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-lux-border bg-lux-black p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 rounded-lg border border-lux-border bg-lux-black p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-white">{label}</p>
-        <p className="mt-1 break-all font-mono text-xs text-lux-muted">{url}</p>
+        <p className="text-xs font-medium text-white">{label}</p>
+        <p className="mt-1 break-all font-mono text-[11px] text-lux-muted">{url}</p>
       </div>
       <button
         type="button"
         onClick={copy}
-        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-lux-red hover:text-lux-red-bright"
+        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:border-lux-red hover:text-lux-red-bright"
       >
-        {copied ? <Check size={16} aria-hidden /> : <Copy size={16} aria-hidden />}
-        {copied ? 'Copied' : 'Copy link'}
+        {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
+        {copied ? 'Copied' : 'Copy'}
       </button>
     </div>
+  )
+}
+
+type Variant = (typeof LOGO_VARIANTS)[number]
+
+function LogoVariantCard({ variant }: { variant: Variant }) {
+  const isSiteLogo = variant.id === 'sign'
+
+  return (
+    <article
+      className={`rounded-lg border p-6 ${
+        isSiteLogo ? 'border-lux-red/50 bg-lux-red/5' : 'border-lux-border bg-lux-elevated'
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-xl font-semibold text-white">{variant.name}</h2>
+        <span
+          className={`rounded-sm px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
+            isSiteLogo ? 'bg-lux-red text-white' : 'bg-white/10 text-lux-muted'
+          }`}
+        >
+          {variant.badge}
+        </span>
+      </div>
+      <p className="mt-2 text-sm text-lux-muted">{variant.description}</p>
+
+      <div className="mt-6 rounded-lg border border-lux-border bg-lux-black p-6">
+        <img
+          src={variant.preview}
+          alt={`${BRAND.name} ${variant.name} logo`}
+          className="mx-auto max-h-48 w-full max-w-sm object-contain"
+        />
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <a
+          href={variant.livePng}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-2 rounded-sm bg-lux-red px-4 py-3 text-sm font-semibold tracking-wide text-white uppercase hover:bg-lux-red-dark"
+        >
+          <ExternalLink size={16} aria-hidden />
+          Open PNG
+        </a>
+        <a
+          href={variant.png}
+          download={variant.downloadName}
+          className="inline-flex items-center justify-center gap-2 rounded-sm border-2 border-lux-red px-4 py-3 text-sm font-semibold tracking-wide text-lux-red uppercase hover:bg-lux-red hover:text-white"
+        >
+          <Download size={16} aria-hidden />
+          Download PNG
+        </a>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <CopyLinkRow label="PNG link (live site)" url={variant.livePng} />
+        <CopyLinkRow label="PNG link (GitHub)" url={variant.githubPng} />
+        {'liveSvg' in variant && variant.liveSvg ? (
+          <CopyLinkRow label="SVG link (live site)" url={variant.liveSvg} />
+        ) : null}
+        {'githubSvg' in variant && variant.githubSvg ? (
+          <CopyLinkRow label="SVG link (GitHub)" url={variant.githubSvg} />
+        ) : null}
+      </div>
+    </article>
   )
 }
 
@@ -64,57 +105,44 @@ export function BrandPage() {
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="text-4xl font-semibold md:text-5xl">Brand Logo</h1>
           <p className="mt-4 text-lg text-lux-muted">
-            Download the official {BRAND.name} logo for your phone, social profiles, or print materials.
+            Two versions of the {BRAND.name} logo — pick the one you want to save or use.
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 py-16 lg:px-6">
-        <div className="rounded-lg border border-lux-border bg-lux-elevated p-8">
-          <BrandHeroLogo className="mx-auto max-w-[min(100%,360px)]" />
-        </div>
-
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
-          <a
-            href={BRAND_ASSETS.liveLogoPng}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-sm bg-lux-red px-6 py-4 text-sm font-semibold tracking-wide text-white uppercase hover:bg-lux-red-dark"
-          >
-            <ExternalLink size={18} aria-hidden />
-            Open logo PNG
-          </a>
-          <a
-            href={BRAND_ASSETS.liveLogoPng}
-            download="luxe-loft-716-logo.png"
-            className="inline-flex items-center justify-center gap-2 rounded-sm border-2 border-lux-red px-6 py-4 text-sm font-semibold tracking-wide text-lux-red uppercase hover:bg-lux-red hover:text-white"
-          >
-            <Download size={18} aria-hidden />
-            Download PNG
-          </a>
-        </div>
-
-        <div className="mt-10 rounded-lg border border-lux-red/30 bg-lux-red/5 p-6">
-          <h2 className="text-lg font-semibold text-white">Save on iPhone</h2>
-          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-lux-muted">
-            <li>Tap <strong className="text-white">Open logo PNG</strong> above.</li>
-            <li>When the full image opens, <strong className="text-white">press and hold</strong> the logo.</li>
-            <li>Choose <strong className="text-white">Add to Photos</strong> or <strong className="text-white">Save Image</strong>.</li>
-          </ol>
-        </div>
-
-        <h2 className="mt-12 text-xl font-semibold">Copy &amp; paste links</h2>
-        <p className="mt-2 text-sm text-lux-muted">
-          Share these URLs in Messages, Notes, or email — they always point to the logo files in GitHub and on the live
-          site.
-        </p>
-        <div className="mt-6 space-y-4">
-          {LINKS.map((link) => (
-            <div key={link.url}>
-              <CopyLinkRow label={link.label} url={link.url} />
-              <p className="mt-1 text-xs text-lux-muted">{link.hint}</p>
-            </div>
+      <section className="mx-auto max-w-4xl px-4 py-16 lg:px-6">
+        <div className="space-y-10">
+          {LOGO_VARIANTS.map((variant) => (
+            <LogoVariantCard key={variant.id} variant={variant} />
           ))}
+        </div>
+
+        <div className="mt-12 rounded-lg border border-lux-red/30 bg-lux-red/5 p-6">
+          <h2 className="text-lg font-semibold text-white">How to choose a logo</h2>
+          <div className="mt-4 space-y-4 text-sm text-lux-muted">
+            <div>
+              <p className="font-semibold text-white">Save to your iPhone</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <li>Pick <strong className="text-white">Classic (regular X)</strong> or <strong className="text-white">Sign style</strong> above.</li>
+                <li>Tap <strong className="text-white">Open PNG</strong>.</li>
+                <li>Long-press the image → <strong className="text-white">Add to Photos</strong>.</li>
+              </ol>
+            </div>
+            <div>
+              <p className="font-semibold text-white">Which logo is on the website?</p>
+              <p className="mt-2">
+                The live site header, footer, and favicon use <strong className="text-white">Sign style</strong>{' '}
+                today. To switch the whole site to Classic (regular X), tell us and we can update it in one step.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-white">Copy a link</p>
+              <p className="mt-2">
+                Use the <strong className="text-white">Copy</strong> buttons under each logo to paste into Messages,
+                Notes, or email.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </div>

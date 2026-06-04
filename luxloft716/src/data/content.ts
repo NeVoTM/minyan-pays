@@ -49,18 +49,49 @@ export const AMENITIES = [
 /** Brand logo image — used site-wide (header, hero, footer, favicon) */
 export const LOGO_IMAGE = asset('logo.png')
 
-/** Direct download links (share / save on iPhone) */
+const GITHUB_RAW =
+  'https://raw.githubusercontent.com/NeVoTM/minyan-pays/main/luxloft716/public'
+const LIVE = 'https://nevotm.github.io/minyan-pays'
+
+/** Logo files for download — pick the version you want on /brand */
+export const LOGO_VARIANTS = [
+  {
+    id: 'sign',
+    name: 'Sign style',
+    badge: 'On website now',
+    description:
+      'Current site logo — matches building signage. Stylized X in UXE with brush-stroke 716.',
+    preview: asset('brand/logo-sign.png'),
+    png: asset('brand/logo-sign.png'),
+    livePng: `${LIVE}/logo.png`,
+    githubPng: `${GITHUB_RAW}/logo.png`,
+    downloadName: 'luxe-loft-716-logo-sign.png',
+  },
+  {
+    id: 'classic',
+    name: 'Classic (regular X)',
+    badge: 'Previous logo',
+    description:
+      'Earlier lockup with standard serif UXE and OFT — regular X, no italic flourish on the letter.',
+    preview: asset('brand/logo-classic.png'),
+    png: asset('brand/logo-classic.png'),
+    svg: asset('brand/logo-classic.svg'),
+    livePng: `${LIVE}/brand/logo-classic.png`,
+    liveSvg: `${LIVE}/brand/logo-classic.svg`,
+    githubPng: `${GITHUB_RAW}/brand/logo-classic.png`,
+    githubSvg: `${GITHUB_RAW}/brand/logo-classic.svg`,
+    downloadName: 'luxe-loft-716-logo-classic.png',
+  },
+] as const
+
+/** @deprecated Use LOGO_VARIANTS — kept for backwards compatibility */
 export const BRAND_ASSETS = {
   logoPng: asset('logo.png'),
   logoSvg: asset('logo.svg'),
-  /** Full-size PNG on the live site — open in Safari, long-press → Save to Photos */
-  liveLogoPng: 'https://nevotm.github.io/minyan-pays/logo.png',
-  liveLogoSvg: 'https://nevotm.github.io/minyan-pays/logo.svg',
-  /** GitHub raw files (same assets in the repo) */
-  githubLogoPng:
-    'https://raw.githubusercontent.com/NeVoTM/minyan-pays/main/luxloft716/public/logo.png',
-  githubLogoSvg:
-    'https://raw.githubusercontent.com/NeVoTM/minyan-pays/main/luxloft716/public/logo.svg',
+  liveLogoPng: `${LIVE}/logo.png`,
+  liveLogoSvg: `${LIVE}/logo.svg`,
+  githubLogoPng: `${GITHUB_RAW}/logo.png`,
+  githubLogoSvg: `${GITHUB_RAW}/logo.svg`,
 } as const
 
 /** Stock photos (Pexels) — bundled locally for reliable GitHub Pages delivery */
