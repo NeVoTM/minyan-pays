@@ -26,6 +26,8 @@ export function ReservePage() {
             submitLabel="Submit Inquiry"
             successTitle="Inquiry received!"
             successMessage={`Thank you for your interest in ${BRAND.name}. We received your reservation inquiry and will follow up within one business day.`}
+            returnPath="/reserve"
+            successParam="reserve"
             messageLabel="Tell us about your business"
             idPrefix="reserve"
           />

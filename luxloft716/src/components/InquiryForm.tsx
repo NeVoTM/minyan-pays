@@ -1,7 +1,8 @@
-import { CheckCircle2, Loader2 } from 'lucide-react'
-import { useRef, useState, type FormEvent } from 'react'
+import { CheckCircle2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { BRAND } from '../data/content'
-import { submitInquiry } from '../lib/submitInquiry'
+import { formSubmitReturnUrl } from '../lib/formSubmitReturnUrl'
 
 const inputClass =
   'w-full rounded-sm border border-lux-border bg-lux-black px-4 py-3 text-white placeholder:text-lux-muted focus:border-lux-red focus:outline-none focus:ring-1 focus:ring-lux-red'
@@ -11,6 +12,10 @@ type InquiryFormProps = {
   submitLabel: string
   successTitle: string
   successMessage: string
+  /** Path for FormSubmit redirect, e.g. /contact */
+  returnPath: string
+  /** Query flag matched on return, e.g. tour | reserve */
+  successParam: string
   messageLabel?: string
   /** Pre-filled message value (submitted with form). Select-all on focus for quick edits on mobile. */
   defaultMessage?: string
@@ -24,43 +29,32 @@ export function InquiryForm({
   submitLabel,
   successTitle,
   successMessage,
+  returnPath,
+  successParam,
   messageLabel = 'Message',
   defaultMessage = '',
   formTitle,
   idPrefix = 'inquiry',
   className = 'space-y-5',
 }: InquiryFormProps) {
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [showSuccess, setShowSuccess] = useState(false)
   const statusRef = useRef<HTMLDivElement>(null)
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setStatus('submitting')
-
-    const form = e.currentTarget
-    const data = new FormData(form)
-
-    try {
-      await submitInquiry(subject, {
-        name: String(data.get('name') ?? ''),
-        email: String(data.get('email') ?? ''),
-        phone: String(data.get('phone') ?? ''),
-        message: String(data.get('message') ?? ''),
-      })
-      form.reset()
-      setStatus('success')
-      requestAnimationFrame(() => {
-        statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      })
-    } catch {
-      setStatus('error')
+  useEffect(() => {
+    if (searchParams.get('submitted') === successParam) {
+      setShowSuccess(true)
+      setSearchParams({}, { replace: true })
       requestAnimationFrame(() => {
         statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       })
     }
-  }
+  }, [searchParams, setSearchParams, successParam])
 
-  if (status === 'success') {
+  const formAction = `https://formsubmit.co/${encodeURIComponent(BRAND.email)}`
+  const nextUrl = formSubmitReturnUrl(returnPath, successParam)
+
+  if (showSuccess) {
     return (
       <div
         ref={statusRef}
@@ -75,11 +69,15 @@ export function InquiryForm({
           Need help sooner? Call{' '}
           <a href={BRAND.phoneHref} className="font-semibold text-lux-red-bright hover:underline">
             {BRAND.phone}
+          </a>{' '}
+          or email{' '}
+          <a href={`mailto:${BRAND.email}`} className="font-semibold text-lux-red-bright hover:underline">
+            {BRAND.emailDisplay}
           </a>
         </p>
         <button
           type="button"
-          onClick={() => setStatus('idle')}
+          onClick={() => setShowSuccess(false)}
           className="mt-8 rounded-sm border border-white/20 px-6 py-2 text-sm font-semibold text-white hover:border-lux-red hover:text-lux-red-bright"
         >
           Send another message
@@ -90,50 +88,31 @@ export function InquiryForm({
 
   return (
     <div ref={statusRef}>
-      {status === 'error' && (
-        <div
-          className="mb-5 rounded-lg border border-lux-red/50 bg-lux-red/10 p-4 text-sm text-white/90"
-          role="alert"
-          aria-live="assertive"
-        >
-          Something went wrong sending your message. Please call{' '}
-          <a href={BRAND.phoneHref} className="font-semibold text-lux-red-bright hover:underline">
-            {BRAND.phone}
-          </a>{' '}
-          or email{' '}
-          <a href={`mailto:${BRAND.email}`} className="font-semibold text-lux-red-bright hover:underline">
-            {BRAND.emailDisplay}
-          </a>
-          .
-        </div>
-      )}
+      <form action={formAction} method="POST" className={className}>
+        <input type="hidden" name="_next" value={nextUrl} />
+        <input type="hidden" name="_subject" value={subject} />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="text" name="_honey" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden />
 
-      <form className={className} onSubmit={handleSubmit}>
         {formTitle ? <h2 className="text-xl font-semibold">{formTitle}</h2> : null}
         <div>
           <label htmlFor={`${idPrefix}-name`} className="mb-1 block text-sm font-medium text-white/90">
             Your Name
           </label>
-          <input id={`${idPrefix}-name`} name="name" required className={inputClass} disabled={status === 'submitting'} />
+          <input id={`${idPrefix}-name`} name="name" required className={inputClass} />
         </div>
         <div>
           <label htmlFor={`${idPrefix}-email`} className="mb-1 block text-sm font-medium text-white/90">
             Your Email
           </label>
-          <input
-            id={`${idPrefix}-email`}
-            name="email"
-            type="email"
-            required
-            className={inputClass}
-            disabled={status === 'submitting'}
-          />
+          <input id={`${idPrefix}-email`} name="email" type="email" required className={inputClass} />
         </div>
         <div>
           <label htmlFor={`${idPrefix}-phone`} className="mb-1 block text-sm font-medium text-white/90">
             Phone
           </label>
-          <input id={`${idPrefix}-phone`} name="phone" type="tel" className={inputClass} disabled={status === 'submitting'} />
+          <input id={`${idPrefix}-phone`} name="phone" type="tel" className={inputClass} />
         </div>
         <div>
           <label htmlFor={`${idPrefix}-message`} className="mb-1 block text-sm font-medium text-white/90">
@@ -145,23 +124,14 @@ export function InquiryForm({
             rows={formTitle ? 4 : 5}
             defaultValue={defaultMessage}
             className={inputClass}
-            disabled={status === 'submitting'}
             onFocus={(e) => e.currentTarget.select()}
           />
         </div>
         <button
           type="submit"
-          disabled={status === 'submitting'}
-          className="flex w-full items-center justify-center gap-2 rounded-sm bg-lux-red py-3 text-sm font-semibold tracking-wide text-white uppercase hover:bg-lux-red-dark disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-center gap-2 rounded-sm bg-lux-red py-3 text-sm font-semibold tracking-wide text-white uppercase hover:bg-lux-red-dark"
         >
-          {status === 'submitting' ? (
-            <>
-              <Loader2 className="animate-spin" size={18} aria-hidden />
-              Sending…
-            </>
-          ) : (
-            submitLabel
-          )}
+          {submitLabel}
         </button>
       </form>
     </div>

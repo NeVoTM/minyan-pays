@@ -61,6 +61,8 @@ export function ContactPage() {
               submitLabel="Schedule Tour"
               successTitle="Tour request received!"
               successMessage={`Thank you! We received your tour request and will contact you shortly to confirm a visit to ${BRAND.name}.`}
+              returnPath="/contact"
+              successParam="tour"
               messageLabel="Message"
               defaultMessage="I'd like to schedule a tour"
               formTitle="Send a message"
