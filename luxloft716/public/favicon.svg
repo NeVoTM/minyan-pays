@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-label="LUXE LOFT 716">
   <title>LUXE LOFT 716</title>
   <rect width="64" height="64" fill="#000"/>
-  <text x="6" y="40" font-family="Georgia, serif" font-size="34" font-weight="700" fill="#d40000">L</text>
-  <text x="28" y="26" font-family="Georgia, serif" font-size="10" fill="#fff" letter-spacing="0.05em">UXE</text>
-  <text x="28" y="38" font-family="Georgia, serif" font-size="10" fill="#fff" letter-spacing="0.05em">LOFT</text>
-  <text x="46" y="38" font-family="cursive" font-size="16" fill="#d40000">716</text>
+  <text x="4" y="42" font-family="Georgia, serif" font-size="36" font-weight="700" fill="#d40000">L</text>
+  <text x="24" y="24" font-family="Georgia, serif" font-size="9" fill="#fff" letter-spacing="0.06em">UXE</text>
+  <text x="24" y="36" font-family="Georgia, serif" font-size="9" fill="#fff" letter-spacing="0.06em">OFT</text>
+  <text x="42" y="28" font-family="cursive" font-size="15" font-style="italic" fill="#d40000" transform="rotate(-8 42 28)">716</text>
 </svg>

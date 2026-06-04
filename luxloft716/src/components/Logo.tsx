@@ -7,7 +7,7 @@ type LogoProps = {
   showTagline?: boolean
 }
 
-/** Building-sign lockup: L (red) + UXE / LOFT (white) + 716 (script red) */
+/** Building sign: one big L, UXE/OFT tight to L, italic 716 over the T */
 function LuxeLoft716Mark({
   size = 'md',
   showTagline = false,
@@ -16,23 +16,43 @@ function LuxeLoft716Mark({
   showTagline?: boolean
 }) {
   const lSize =
-    size === 'lg' ? 'text-[3.25rem] md:text-[4.5rem]' : size === 'sm' ? 'text-3xl' : 'text-[2.75rem] md:text-5xl'
-  const stackSize = size === 'lg' ? 'text-base md:text-xl' : size === 'sm' ? 'text-[10px]' : 'text-sm md:text-base'
-  const scriptSize = size === 'lg' ? 'text-5xl md:text-6xl' : size === 'sm' ? 'text-2xl' : 'text-3xl md:text-4xl'
+    size === 'lg'
+      ? 'text-[4rem] md:text-[5.5rem] leading-[0.85]'
+      : size === 'sm'
+        ? 'text-[2.5rem] leading-[0.85]'
+        : 'text-[3.25rem] md:text-[4.75rem] leading-[0.85]'
+  const stackSize =
+    size === 'lg' ? 'text-lg md:text-2xl' : size === 'sm' ? 'text-[10px]' : 'text-sm md:text-lg'
+  const scriptSize =
+    size === 'lg' ? 'text-[3.25rem] md:text-[4.25rem]' : size === 'sm' ? 'text-xl' : 'text-2xl md:text-[2.75rem]'
 
   return (
     <div className="inline-flex flex-col items-center">
-      <span className="inline-flex items-end gap-1 leading-none">
-        <span className={`font-display font-bold ${lSize} text-lux-red`}>{LOGO_TEXT.letter}</span>
-        <span className={`mb-1 flex flex-col font-display font-medium tracking-[0.12em] ${stackSize}`}>
+      <span className="inline-flex items-end leading-none">
+        <span className={`shrink-0 font-display font-bold ${lSize} text-lux-red`}>{LOGO_TEXT.letter}</span>
+        <span
+          className={`relative -ml-[0.2em] mb-[0.12em] flex flex-col font-display font-medium tracking-[0.14em] ${stackSize}`}
+        >
           <span className="text-white">{LOGO_TEXT.top}</span>
-          <span className="-mt-0.5 text-white">{LOGO_TEXT.bottom}</span>
+          <span className="relative -mt-[0.15em] text-white">
+            {LOGO_TEXT.bottom}
+            <span
+              className={`absolute font-script italic text-lux-red ${scriptSize}`}
+              style={{
+                left: '1.05em',
+                bottom: '0.05em',
+                transform: 'translateY(-38%) rotate(-4deg)',
+                lineHeight: 1,
+              }}
+            >
+              {LOGO_TEXT.script}
+            </span>
+          </span>
         </span>
-        <span className={`font-script mb-0.5 text-lux-red ${scriptSize}`}>{LOGO_TEXT.script}</span>
       </span>
       {showTagline && (
         <>
-          <SectionLabel className="mt-4">{BRAND.tagline}</SectionLabel>
+          <SectionLabel className="mt-5">{BRAND.tagline}</SectionLabel>
           <p className="mt-3 text-[10px] font-semibold tracking-[0.2em] text-lux-red uppercase md:text-xs">
             {BRAND.slogan}
           </p>
@@ -57,7 +77,7 @@ export function Logo({ variant = 'compact', className = '', showTagline = false 
     return (
       <span className={`inline-flex items-end leading-none ${className}`} aria-hidden>
         <span className="font-display text-4xl font-bold text-lux-red">{LOGO_TEXT.letter}</span>
-        <span className="font-script ml-0.5 text-2xl text-lux-red">{LOGO_TEXT.script}</span>
+        <span className="font-script ml-0.5 text-2xl italic text-lux-red">{LOGO_TEXT.script}</span>
       </span>
     )
   }

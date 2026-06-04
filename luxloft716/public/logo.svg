@@ -1,12 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 220" fill="none" aria-label="LUXE LOFT 716 Salon Suites">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" fill="none" aria-label="LUXE LOFT 716 Salon Suites">
   <title>LUXE LOFT 716 Salon Suites</title>
-  <rect width="420" height="220" fill="#000000"/>
-  <text x="24" y="118" font-family="Georgia, 'Playfair Display', serif" font-size="128" font-weight="700" fill="#d40000">L</text>
-  <text x="96" y="72" font-family="Georgia, 'Playfair Display', serif" font-size="42" font-weight="500" fill="#ffffff" letter-spacing="0.08em">UXE</text>
-  <text x="96" y="118" font-family="Georgia, 'Playfair Display', serif" font-size="42" font-weight="500" fill="#ffffff" letter-spacing="0.08em">LOFT</text>
-  <text x="272" y="108" font-family="'Brush Script MT', cursive" font-size="72" fill="#d40000">716</text>
-  <line x1="96" y1="138" x2="178" y2="138" stroke="#d40000" stroke-width="1.5"/>
-  <text x="192" y="142" font-family="Arial, sans-serif" font-size="14" fill="#ffffff" letter-spacing="0.35em">SALON SUITES</text>
-  <line x1="342" y1="138" x2="396" y2="138" stroke="#d40000" stroke-width="1.5"/>
-  <text x="210" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#d40000" letter-spacing="0.2em">ELEVATE YOUR CRAFT. OWN YOUR SPACE.</text>
+  <rect width="400" height="220" fill="#000000"/>
+  <!-- One big L -->
+  <text x="8" y="122" font-family="Georgia, 'Playfair Display', serif" font-size="136" font-weight="700" fill="#d40000">L</text>
+  <!-- UXE / OFT tight to L (shared L spells LUXE LOFT) -->
+  <text x="72" y="68" font-family="Georgia, 'Playfair Display', serif" font-size="44" font-weight="500" fill="#ffffff" letter-spacing="0.1em">UXE</text>
+  <text x="72" y="118" font-family="Georgia, 'Playfair Display', serif" font-size="44" font-weight="500" fill="#ffffff" letter-spacing="0.1em">OFT</text>
+  <!-- 716 italic, over the T -->
+  <text x="158" y="92" font-family="'Brush Script MT', 'Allura', cursive" font-size="78" font-style="italic" fill="#d40000" transform="rotate(-6 158 92)">716</text>
+  <line x1="72" y1="138" x2="148" y2="138" stroke="#d40000" stroke-width="1.5"/>
+  <text x="162" y="142" font-family="Arial, sans-serif" font-size="13" fill="#ffffff" letter-spacing="0.35em">SALON SUITES</text>
+  <line x1="318" y1="138" x2="378" y2="138" stroke="#d40000" stroke-width="1.5"/>
+  <text x="200" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#d40000" letter-spacing="0.2em">ELEVATE YOUR CRAFT. OWN YOUR SPACE.</text>
 </svg>

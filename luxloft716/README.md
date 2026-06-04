@@ -1,6 +1,6 @@
-# LuxLoft716
+# LUXE LOFT 716
 
-Marketing website for **LuxLoft716** — modern salon suites for beauty professionals in Buffalo, Western New York (716).
+Marketing website for **LUXE LOFT 716** — salon suites at 3887 Seneca St, Buffalo, NY.
 
 Inspired by the structure and content flow of [The Luxe Salon Suites](https://www.theluxesalonsuites.com/) (third-party reference site), rebranded exclusively as **LuxLoft716** for Buffalo-area positioning.
 
@@ -63,4 +63,4 @@ Forms use `mailto:` links; connect Formspree, Resend, or a small API later if yo
 
 ## License
 
-Private — LuxLoft716.
+Private — LUXE LOFT 716.

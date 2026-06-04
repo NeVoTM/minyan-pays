@@ -15,11 +15,11 @@ export const BRAND = {
     'https://www.google.com/maps/search/?api=1&query=3887+Seneca+St+Buffalo+NY+14224',
 } as const
 
-/** Sign logo: red L + UXE / LOFT + script 716 */
+/** Sign logo: one red L + UXE / OFT (shared L) + italic 716 over the T */
 export const LOGO_TEXT = {
   letter: 'L',
   top: 'UXE',
-  bottom: 'LOFT',
+  bottom: 'OFT',
   script: '716',
 } as const
 
