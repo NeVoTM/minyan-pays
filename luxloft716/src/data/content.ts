@@ -46,6 +46,9 @@ export const AMENITIES = [
   'Waiting Room For Clients',
 ] as const
 
+/** Brand logo image — used site-wide (header, hero, footer, favicon) */
+export const LOGO_IMAGE = asset('logo.png')
+
 /** Stock photos (Pexels) — bundled locally for reliable GitHub Pages delivery */
 export const SITE_IMAGES = {
   hero: asset('images/hero.jpg'),
