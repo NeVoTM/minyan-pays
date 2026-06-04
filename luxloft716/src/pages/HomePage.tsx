@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/Button'
-import { LuxLoft716HeroLogo } from '../components/Logo'
+import { BrandHeroLogo } from '../components/Logo'
 import { SectionLabel } from '../components/SectionLabel'
 import { AMENITIES, BRAND, FEATURES, GALLERY_IMAGES, SALON_SUITE_BENEFITS } from '../data/content'
 
@@ -26,8 +26,7 @@ export function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-lux-black via-lux-black/90 to-lux-black" />
         <div className="relative mx-auto flex max-w-6xl flex-col items-center px-4 py-20 text-center lg:px-6 lg:py-28">
-          <LuxLoft716HeroLogo className="mx-auto max-w-[min(100%,420px)]" />
-          <p className="mt-6 text-xs font-semibold tracking-[0.25em] text-lux-red uppercase">{BRAND.slogan}</p>
+          <BrandHeroLogo className="mx-auto max-w-[min(100%,420px)]" />
           <h1 className="mt-8 max-w-2xl text-3xl leading-tight font-semibold md:text-4xl lg:text-5xl">
             The Ultimate Salon Experience at {BRAND.name}
           </h1>

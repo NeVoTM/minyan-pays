@@ -1,19 +1,26 @@
 export const BRAND = {
   /** Canonical brand name — use everywhere user-facing */
-  name: 'LuxLoft716',
+  name: 'LUXE LOFT 716',
+  shortName: 'LUXE LOFT 716',
   tagline: 'Salon Suites',
   slogan: 'Elevate your craft. Own your space.',
   phone: '(716) 421-1210',
   phoneHref: 'tel:+17164211210',
-  /** mailto address (lowercase domain) */
   email: 'hello@luxloft716.com',
-  /** Shown on site — brand casing */
-  emailDisplay: 'Hello@LuxLoft716.com',
+  emailDisplay: 'Hello@LuxELoft716.com',
   addressLine1: '3887 Seneca St',
   addressLine2: 'Buffalo, NY 14224',
   location: '3887 Seneca St, Buffalo, NY 14224',
   mapsUrl:
     'https://www.google.com/maps/search/?api=1&query=3887+Seneca+St+Buffalo+NY+14224',
+} as const
+
+/** Sign logo: red L + UXE / LOFT + script 716 */
+export const LOGO_TEXT = {
+  letter: 'L',
+  top: 'UXE',
+  bottom: 'LOFT',
+  script: '716',
 } as const
 
 export const NAV_LINKS = [

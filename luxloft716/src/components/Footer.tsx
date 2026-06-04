@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { BRAND, NAV_LINKS } from '../data/content'
 import { BrandIcon } from './BrandIcon'
-import { LuxLoft716HeroLogo } from './Logo'
+import { BrandHeroLogo } from './Logo'
 import { SectionLabel } from './SectionLabel'
 
 export function Footer() {
@@ -9,8 +9,7 @@ export function Footer() {
     <footer className="border-t border-white/10 bg-lux-black">
       <div className="mx-auto max-w-6xl px-4 py-14 lg:px-6">
         <div className="flex flex-col items-center text-center">
-          <LuxLoft716HeroLogo className="mx-auto max-w-[280px]" />
-          <p className="mt-4 text-xs font-semibold tracking-[0.25em] text-lux-red uppercase">{BRAND.slogan}</p>
+          <BrandHeroLogo className="mx-auto max-w-[300px]" />
           <BrandIcon className="mt-6 h-14 w-14" />
         </div>
 
