@@ -3,8 +3,8 @@ export const BRAND = {
   name: 'LuxLoft716',
   tagline: 'Salon Suites',
   slogan: 'Elevate your craft. Own your space.',
-  phone: '(716) 555-0716',
-  phoneHref: 'tel:+17165550716',
+  phone: '(716) 421-1210',
+  phoneHref: 'tel:+17164211210',
   /** mailto address (lowercase domain) */
   email: 'hello@luxloft716.com',
   /** Shown on site — brand casing */
