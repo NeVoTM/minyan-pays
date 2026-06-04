@@ -32,6 +32,7 @@ export const NAV_LINKS = [
   { to: '/what-is-a-salon-suite', label: 'What Is A Salon Suite?' },
   { to: '/professionals', label: 'Professionals' },
   { to: '/reserve', label: 'Reserve A Unit' },
+  { to: '/brand', label: 'Logo' },
   { to: '/contact', label: 'Contact' },
 ] as const
 
