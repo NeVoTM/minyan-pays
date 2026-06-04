@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AmenitiesPage } from './pages/AmenitiesPage'
+import { BrandPage } from './pages/BrandPage'
 import { ContactPage } from './pages/ContactPage'
 import { HomePage } from './pages/HomePage'
 import { ProfessionalsPage } from './pages/ProfessionalsPage'
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="professionals" element={<ProfessionalsPage />} />
           <Route path="reserve" element={<ReservePage />} />
           <Route path="contact" element={<ContactPage />} />
+          <Route path="brand" element={<BrandPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

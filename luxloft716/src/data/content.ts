@@ -49,6 +49,20 @@ export const AMENITIES = [
 /** Brand logo image — used site-wide (header, hero, footer, favicon) */
 export const LOGO_IMAGE = asset('logo.png')
 
+/** Direct download links (share / save on iPhone) */
+export const BRAND_ASSETS = {
+  logoPng: asset('logo.png'),
+  logoSvg: asset('logo.svg'),
+  /** Full-size PNG on the live site — open in Safari, long-press → Save to Photos */
+  liveLogoPng: 'https://nevotm.github.io/minyan-pays/logo.png',
+  liveLogoSvg: 'https://nevotm.github.io/minyan-pays/logo.svg',
+  /** GitHub raw files (same assets in the repo) */
+  githubLogoPng:
+    'https://raw.githubusercontent.com/NeVoTM/minyan-pays/main/luxloft716/public/logo.png',
+  githubLogoSvg:
+    'https://raw.githubusercontent.com/NeVoTM/minyan-pays/main/luxloft716/public/logo.svg',
+} as const
+
 /** Stock photos (Pexels) — bundled locally for reliable GitHub Pages delivery */
 export const SITE_IMAGES = {
   hero: asset('images/hero.jpg'),

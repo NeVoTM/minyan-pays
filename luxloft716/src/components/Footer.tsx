@@ -51,6 +51,11 @@ export function Footer() {
             <p className="mt-4 text-sm text-lux-muted">
               Limited suites available. Schedule a tour to reserve your space.
             </p>
+            <p className="mt-3 text-sm">
+              <Link to="/brand" className="font-semibold text-lux-red-bright hover:underline">
+                Download logo
+              </Link>
+            </p>
           </div>
         </div>
       </div>
