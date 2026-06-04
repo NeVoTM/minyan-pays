@@ -17,7 +17,13 @@ export function Footer() {
         <div className="mt-14 grid gap-10 md:grid-cols-3">
           <div>
             <SectionLabel className="justify-start md:justify-center">{BRAND.tagline}</SectionLabel>
-            <p className="mt-4 text-sm text-lux-muted md:text-center">{BRAND.location}</p>
+            <p className="mt-4 text-sm text-lux-muted md:text-center">
+              <a href={BRAND.mapsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-lux-red-bright">
+                {BRAND.addressLine1}
+                <br />
+                {BRAND.addressLine2}
+              </a>
+            </p>
           </div>
 
           <nav>

@@ -9,7 +9,11 @@ export const BRAND = {
   email: 'hello@luxloft716.com',
   /** Shown on site — brand casing */
   emailDisplay: 'Hello@LuxLoft716.com',
-  location: 'Buffalo, NY — Western New York',
+  addressLine1: '3887 Seneca St',
+  addressLine2: 'Buffalo, NY 14224',
+  location: '3887 Seneca St, Buffalo, NY 14224',
+  mapsUrl:
+    'https://www.google.com/maps/search/?api=1&query=3887+Seneca+St+Buffalo+NY+14224',
 } as const
 
 export const NAV_LINKS = [

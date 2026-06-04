@@ -40,11 +40,19 @@ export function ContactPage() {
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <MapPin className="mt-1 text-lux-red" size={22} />
+              <MapPin className="mt-1 shrink-0 text-lux-red" size={22} />
               <div>
-                <p className="font-semibold">Location</p>
-                <p className="text-lux-muted">{BRAND.location}</p>
-                <p className="mt-2 text-sm text-lux-muted/80">Update street address in src/data/content.ts when ready.</p>
+                <p className="font-semibold">Address</p>
+                <a
+                  href={BRAND.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lux-muted hover:text-lux-red-bright"
+                >
+                  {BRAND.addressLine1}
+                  <br />
+                  {BRAND.addressLine2}
+                </a>
               </div>
             </div>
           </div>
