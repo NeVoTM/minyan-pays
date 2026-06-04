@@ -12,7 +12,8 @@ type InquiryFormProps = {
   successTitle: string
   successMessage: string
   messageLabel?: string
-  messagePlaceholder?: string
+  /** Pre-filled message value (submitted with form). Select-all on focus for quick edits on mobile. */
+  defaultMessage?: string
   formTitle?: string
   idPrefix?: string
   className?: string
@@ -24,7 +25,7 @@ export function InquiryForm({
   successTitle,
   successMessage,
   messageLabel = 'Message',
-  messagePlaceholder,
+  defaultMessage = '',
   formTitle,
   idPrefix = 'inquiry',
   className = 'space-y-5',
@@ -142,9 +143,10 @@ export function InquiryForm({
             id={`${idPrefix}-message`}
             name="message"
             rows={formTitle ? 4 : 5}
-            placeholder={messagePlaceholder}
+            defaultValue={defaultMessage}
             className={inputClass}
             disabled={status === 'submitting'}
+            onFocus={(e) => e.currentTarget.select()}
           />
         </div>
         <button
