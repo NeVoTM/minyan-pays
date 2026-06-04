@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { BrandHeroLogo } from '../components/Logo'
 import { SectionLabel } from '../components/SectionLabel'
-import { AMENITIES, BRAND, FEATURES, GALLERY_IMAGES, SALON_SUITE_BENEFITS } from '../data/content'
+import { AMENITIES, BRAND, FEATURES, GALLERY_IMAGES, SALON_SUITE_BENEFITS, SITE_IMAGES } from '../data/content'
 
 const amenityIcons = [Clock, Sparkles, Droplets, Wifi, Building2, Building2, WashingMachine, Building2]
 
@@ -20,7 +20,7 @@ export function HomePage() {
     <>
       <section className="relative min-h-[85vh] overflow-hidden bg-lux-black text-white">
         <img
-          src="https://images.unsplash.com/photo-1560066984-138d9834c973?w=1600&q=80"
+          src={SITE_IMAGES.hero}
           alt=""
           className="absolute inset-0 h-full w-full object-cover opacity-25"
         />
@@ -70,10 +70,13 @@ export function HomePage() {
           {FEATURES.map((f) => (
             <article
               key={f.title}
-              className="rounded-lg border border-lux-border bg-lux-elevated p-8 text-center shadow-sm"
+              className="overflow-hidden rounded-lg border border-lux-border bg-lux-elevated text-center shadow-sm"
             >
-              <h3 className="text-xl font-semibold text-lux-red-bright">{f.title}</h3>
-              <p className="mt-3 text-lux-muted">{f.description}</p>
+              <img src={f.image} alt={f.alt} className="aspect-[4/3] w-full object-cover" loading="lazy" />
+              <div className="p-8">
+                <h3 className="text-xl font-semibold text-lux-red-bright">{f.title}</h3>
+                <p className="mt-3 text-lux-muted">{f.description}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -104,7 +107,7 @@ export function HomePage() {
             </div>
           </div>
           <img
-            src="https://images.unsplash.com/photo-1633681926022-84c23e8cb04d?w=900&q=80"
+            src={SITE_IMAGES.amenities}
             alt={`${BRAND.name} suite amenities`}
             className="rounded-lg border border-lux-border shadow-2xl shadow-lux-red/10"
           />
@@ -114,7 +117,7 @@ export function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-20 lg:px-6">
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <img
-            src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=900&q=80"
+            src={SITE_IMAGES.location}
             alt={`${BRAND.name} location`}
             className="rounded-lg border border-lux-border shadow-lg"
           />
@@ -139,7 +142,7 @@ export function HomePage() {
         <div className="mx-auto max-w-6xl px-4 py-20 lg:px-6">
           <div className="grid items-start gap-12 lg:grid-cols-2">
             <img
-              src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=900&q=80"
+              src={SITE_IMAGES.salonSuite}
               alt="What is a salon suite"
               className="rounded-lg border border-lux-border shadow-lg"
             />

@@ -1,6 +1,6 @@
 import { Button } from '../components/Button'
 import { SectionLabel } from '../components/SectionLabel'
-import { AMENITIES, BRAND } from '../data/content'
+import { AMENITIES, BRAND, SITE_IMAGES } from '../data/content'
 
 export function AmenitiesPage() {
   return (
@@ -29,7 +29,7 @@ export function AmenitiesPage() {
             ))}
           </ul>
           <img
-            src="https://images.unsplash.com/photo-1633681926022-84c23e8cb04d?w=900&q=80"
+            src={SITE_IMAGES.amenities}
             alt="Suite interior with amenities"
             className="h-full min-h-[320px] rounded-lg border border-lux-border object-cover shadow-lg"
           />

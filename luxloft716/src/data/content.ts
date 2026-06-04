@@ -1,3 +1,5 @@
+import { asset } from '../lib/assets'
+
 export const BRAND = {
   /** Canonical brand name — use everywhere user-facing */
   name: 'LUXE LOFT 716',
@@ -44,18 +46,33 @@ export const AMENITIES = [
   'Waiting Room For Clients',
 ] as const
 
+/** Stock photos (Pexels) — bundled locally for reliable GitHub Pages delivery */
+export const SITE_IMAGES = {
+  hero: asset('images/hero.jpg'),
+  amenities: asset('images/amenities.jpg'),
+  location: asset('images/location.jpg'),
+  salonSuite: asset('images/salon-suite.jpg'),
+  whyUs: asset('images/why-us.jpg'),
+} as const
+
 export const FEATURES = [
   {
     title: 'Spacious Design',
     description: 'Generous suite footprints designed for comfort, flow, and a premium client experience.',
+    image: asset('images/feature-spacious.jpg'),
+    alt: `${BRAND.name} spacious salon suite`,
   },
   {
     title: 'Luxurious Interior',
     description: 'Refined finishes and thoughtful details that elevate every appointment.',
+    image: asset('images/feature-luxurious.jpg'),
+    alt: `${BRAND.name} luxurious suite interior`,
   },
   {
     title: 'Cleanliness',
     description: 'Well-maintained common areas and professional standards throughout the building.',
+    image: asset('images/feature-clean.jpg'),
+    alt: `${BRAND.name} clean professional workspace`,
   },
 ] as const
 
@@ -83,28 +100,35 @@ export const SALON_SUITE_BENEFITS = [
 ] as const
 
 export const GALLERY_IMAGES = [
+  { src: asset('images/gallery-1.jpg'), alt: `${BRAND.name} salon suite interior` },
+  { src: asset('images/gallery-2.jpg'), alt: `${BRAND.name} styling station` },
+  { src: asset('images/gallery-3.jpg'), alt: `${BRAND.name} beauty workspace` },
+  { src: asset('images/gallery-4.jpg'), alt: `${BRAND.name} waiting area` },
+  { src: asset('images/gallery-5.jpg'), alt: `${BRAND.name} private studio` },
+  { src: asset('images/gallery-6.jpg'), alt: `${BRAND.name} professional suite` },
+] as const
+
+/** Open suites shown until tenants join — replace with real pros when available */
+export const SUITE_LISTINGS = [
   {
-    src: 'https://images.unsplash.com/photo-1560066984-138d9834c973?w=800&q=80',
-    alt: `${BRAND.name} salon suite interior`,
+    name: 'Suite Available',
+    specialty: 'Hair Stylist',
+    suite: 'Suite 101',
+    image: asset('images/pro-hair.jpg'),
+    imageAlt: 'Hair styling suite available at LUXE LOFT 716',
   },
   {
-    src: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&q=80',
-    alt: `${BRAND.name} styling station`,
+    name: 'Suite Available',
+    specialty: 'Nail Technician',
+    suite: 'Suite 102',
+    image: asset('images/pro-nails.jpg'),
+    imageAlt: 'Nail salon suite available at LUXE LOFT 716',
   },
   {
-    src: 'https://images.unsplash.com/photo-1633681926022-84c23e8cb04d?w=800&q=80',
-    alt: `${BRAND.name} beauty workspace`,
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=800&q=80',
-    alt: `${BRAND.name} waiting area`,
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1595476108010-b7d1a25890b5?w=800&q=80',
-    alt: `${BRAND.name} private studio`,
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&q=80',
-    alt: `${BRAND.name} professional suite`,
+    name: 'Suite Available',
+    specialty: 'Esthetician',
+    suite: 'Suite 103',
+    image: asset('images/pro-esthetician.jpg'),
+    imageAlt: 'Esthetics suite available at LUXE LOFT 716',
   },
 ] as const

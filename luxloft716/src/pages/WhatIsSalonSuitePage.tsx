@@ -1,5 +1,5 @@
 import { Button } from '../components/Button'
-import { BRAND, SALON_SUITE_BENEFITS } from '../data/content'
+import { BRAND, SALON_SUITE_BENEFITS, SITE_IMAGES } from '../data/content'
 
 export function WhatIsSalonSuitePage() {
   return (
@@ -25,7 +25,7 @@ export function WhatIsSalonSuitePage() {
             </p>
           </div>
           <img
-            src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=900&q=80"
+            src={SITE_IMAGES.salonSuite}
             alt="Private salon suite"
             className="rounded-lg border border-lux-border shadow-lg"
           />

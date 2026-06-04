@@ -1,11 +1,5 @@
 import { Button } from '../components/Button'
-import { BRAND } from '../data/content'
-
-const PLACEHOLDER_PROS = [
-  { name: 'Your Name Here', specialty: 'Hair Stylist', suite: 'Suite 101' },
-  { name: 'Your Name Here', specialty: 'Nail Technician', suite: 'Suite 102' },
-  { name: 'Your Name Here', specialty: 'Esthetician', suite: 'Suite 103' },
-]
+import { BRAND, SUITE_LISTINGS } from '../data/content'
 
 export function ProfessionalsPage() {
   return (
@@ -14,24 +8,30 @@ export function ProfessionalsPage() {
         <div className="mx-auto max-w-6xl">
           <h1 className="text-4xl font-semibold md:text-5xl">Professionals Directory</h1>
           <p className="mt-4 max-w-2xl text-lg text-lux-muted">
-            Meet the independent beauty professionals building their brands at {BRAND.name}.
+            Meet the independent beauty professionals building their brands at {BRAND.name}—and explore suites still
+            available for new tenants.
           </p>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16 lg:px-6">
         <div className="grid gap-6 md:grid-cols-3">
-          {PLACEHOLDER_PROS.map((pro) => (
+          {SUITE_LISTINGS.map((listing) => (
             <article
-              key={pro.suite}
-              className="rounded-lg border border-lux-border bg-lux-elevated p-6 text-center"
+              key={listing.suite}
+              className="overflow-hidden rounded-lg border border-lux-border bg-lux-elevated text-center"
             >
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-lux-red/40 bg-lux-black text-2xl font-semibold text-lux-red">
-                {pro.name.charAt(0)}
+              <img
+                src={listing.image}
+                alt={listing.imageAlt}
+                className="aspect-[4/3] w-full object-cover"
+                loading="lazy"
+              />
+              <div className="p-6">
+                <p className="text-xs font-semibold tracking-wide text-lux-red uppercase">{listing.name}</p>
+                <h2 className="mt-2 text-lg font-semibold">{listing.specialty}</h2>
+                <p className="mt-1 text-sm text-lux-muted">{listing.suite}</p>
               </div>
-              <h2 className="text-lg font-semibold">{pro.name}</h2>
-              <p className="text-sm text-lux-red">{pro.specialty}</p>
-              <p className="mt-1 text-sm text-lux-muted">{pro.suite}</p>
             </article>
           ))}
         </div>
