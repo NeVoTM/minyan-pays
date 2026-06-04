@@ -29,7 +29,7 @@ export function HomePage() {
           <Logo variant="full" className="max-w-[min(100%,360px)]" />
           <p className="mt-6 text-xs font-semibold tracking-[0.25em] text-lux-red uppercase">{BRAND.slogan}</p>
           <h1 className="mt-8 max-w-2xl text-3xl leading-tight font-semibold md:text-4xl lg:text-5xl">
-            The Ultimate Salon Experience in the 716
+            The Ultimate Salon Experience at {BRAND.name}
           </h1>
           <p className="mt-6 max-w-xl text-lg text-white/80">
             Premier salon suites for beauty professionals in Buffalo—luxurious, move-in-ready spaces to grow your brand.
@@ -106,7 +106,7 @@ export function HomePage() {
           </div>
           <img
             src="https://images.unsplash.com/photo-1633681926022-84c23e8cb04d?w=900&q=80"
-            alt="LuxLoft716 suite amenities"
+            alt={`${BRAND.name} suite amenities`}
             className="rounded-lg border border-lux-border shadow-2xl shadow-lux-red/10"
           />
         </div>
@@ -116,14 +116,14 @@ export function HomePage() {
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <img
             src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=900&q=80"
-            alt="LuxLoft716 location"
+            alt={`${BRAND.name} location`}
             className="rounded-lg border border-lux-border shadow-lg"
           />
           <div>
             <h2 className="text-3xl font-semibold md:text-4xl">Why Us?</h2>
             <p className="mt-6 text-lg text-lux-muted">
               Why is {BRAND.name} your premier salon suite destination? Location is key—and we are strategically
-              positioned in Western New York&apos;s busy 716 corridor. High visibility and steady traffic help beauty
+            positioned in Western New York with strong visibility in the {BRAND.name} market. High visibility and steady traffic help beauty
               professionals attract new clients, grow their books, and maximize earning potential.
             </p>
             <Link

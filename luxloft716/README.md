@@ -2,7 +2,7 @@
 
 Marketing website for **LuxLoft716** — modern salon suites for beauty professionals in Buffalo, Western New York (716).
 
-Inspired by the structure and content flow of [The Luxe Salon Suites](https://www.theluxesalonsuites.com/), rebranded for LuxLoft716 with Buffalo-area positioning.
+Inspired by the structure and content flow of [The Luxe Salon Suites](https://www.theluxesalonsuites.com/) (third-party reference site), rebranded exclusively as **LuxLoft716** for Buffalo-area positioning.
 
 ## Stack
 

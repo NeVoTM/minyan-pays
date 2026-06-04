@@ -8,7 +8,7 @@ export function WhyUsPage() {
         <div className="mx-auto max-w-6xl">
           <h1 className="text-4xl font-semibold md:text-5xl">Why {BRAND.name}?</h1>
           <p className="mt-4 max-w-2xl text-lg text-lux-muted">
-            Location, luxury, and freedom to build your business on your terms—in the heart of Buffalo&apos;s 716.
+            Location, luxury, and freedom to build your business on your terms—with {BRAND.name} in Western New York.
           </p>
         </div>
       </section>

@@ -1,4 +1,5 @@
 export const BRAND = {
+  /** Canonical brand name — use everywhere user-facing */
   name: 'LuxLoft716',
   tagline: 'Salon Suites',
   slogan: 'Elevate your craft. Own your space.',
@@ -6,6 +7,14 @@ export const BRAND = {
   phoneHref: 'tel:+17165550716',
   email: 'hello@luxloft716.com',
   location: 'Buffalo, NY — Western New York',
+} as const
+
+/** Logo lockup: big “L” + “ux” + “Loft” + script “716” = LuxLoft716 */
+export const LOGO_TEXT = {
+  letter: 'L',
+  top: 'ux',
+  bottom: 'Loft',
+  script: '716',
 } as const
 
 export const NAV_LINKS = [
@@ -70,26 +79,26 @@ export const SALON_SUITE_BENEFITS = [
 export const GALLERY_IMAGES = [
   {
     src: 'https://images.unsplash.com/photo-1560066984-138d9834c973?w=800&q=80',
-    alt: 'LuxLoft716 salon suite interior',
+    alt: `${BRAND.name} salon suite interior`,
   },
   {
     src: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&q=80',
-    alt: 'Styling station in a private suite',
+    alt: `${BRAND.name} styling station`,
   },
   {
     src: 'https://images.unsplash.com/photo-1633681926022-84c23e8cb04d?w=800&q=80',
-    alt: 'Modern beauty workspace',
+    alt: `${BRAND.name} beauty workspace`,
   },
   {
     src: 'https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?w=800&q=80',
-    alt: 'Salon suite waiting area',
+    alt: `${BRAND.name} waiting area`,
   },
   {
     src: 'https://images.unsplash.com/photo-1595476108010-b7d1a25890b5?w=800&q=80',
-    alt: 'Hair styling in a private studio',
+    alt: `${BRAND.name} private studio`,
   },
   {
     src: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&q=80',
-    alt: 'Professional beauty suite',
+    alt: `${BRAND.name} professional suite`,
   },
 ] as const
