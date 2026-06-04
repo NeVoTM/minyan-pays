@@ -1,7 +1,7 @@
 name: Deploy LuxLoft716 to GitHub Pages
 
-# Marketing site at https://nevotm.github.io/minyan-pays/
-# Same deploy pattern as Slinkys (.github/workflows/slinkys-pages.yml)
+# Publishes to gh-pages branch → https://nevotm.github.io/minyan-pays/
+# Requires: Settings → Pages → Deploy from branch → gh-pages / root
 
 on:
   push:
@@ -12,16 +12,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: luxloft716-github-pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,16 +32,10 @@ jobs:
       - run: npm ci
       - run: npm run build:pages
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: luxloft716/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/deploy-pages@v4
-        id: deployment
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./luxloft716/dist
+          publish_branch: gh-pages
+          commit_message: 'Deploy LuxLoft716 — ${{ github.sha }}'
