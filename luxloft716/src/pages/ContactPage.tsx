@@ -1,9 +1,7 @@
 import { MapPin, Phone, Mail } from 'lucide-react'
+import { InquiryForm } from '../components/InquiryForm'
 import { BRAND } from '../data/content'
 import { Logo } from '../components/Logo'
-
-const inputClass =
-  'w-full rounded-sm border border-lux-border bg-lux-black px-4 py-3 text-white placeholder:text-lux-muted focus:border-lux-red focus:outline-none focus:ring-1 focus:ring-lux-red'
 
 export function ContactPage() {
   return (
@@ -57,58 +55,18 @@ export function ContactPage() {
             </div>
           </div>
 
-          <form
-            className="space-y-5 rounded-lg border border-lux-border bg-lux-elevated p-8"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const data = new FormData(e.currentTarget)
-              const name = String(data.get('name') ?? '')
-              const email = String(data.get('email') ?? '')
-              const phone = String(data.get('phone') ?? '')
-              const message = String(data.get('message') ?? '')
-              const subject = encodeURIComponent(`${BRAND.name} — Tour Request`)
-              const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\n${message}`)
-              window.location.href = `mailto:${BRAND.email}?subject=${subject}&body=${body}`
-            }}
-          >
-            <h2 className="text-xl font-semibold">Send a message</h2>
-            <div>
-              <label htmlFor="contact-name" className="mb-1 block text-sm font-medium text-white/90">
-                Your Name
-              </label>
-              <input id="contact-name" name="name" required className={inputClass} />
-            </div>
-            <div>
-              <label htmlFor="contact-email" className="mb-1 block text-sm font-medium text-white/90">
-                Your Email Address
-              </label>
-              <input id="contact-email" name="email" type="email" required className={inputClass} />
-            </div>
-            <div>
-              <label htmlFor="contact-phone" className="mb-1 block text-sm font-medium text-white/90">
-                Phone
-              </label>
-              <input id="contact-phone" name="phone" type="tel" className={inputClass} />
-            </div>
-            <div>
-              <label htmlFor="contact-message" className="mb-1 block text-sm font-medium text-white/90">
-                Message
-              </label>
-              <textarea
-                id="contact-message"
-                name="message"
-                rows={4}
-                placeholder="I'd like to schedule a tour..."
-                className={inputClass}
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-sm bg-lux-red py-3 text-sm font-semibold tracking-wide text-white uppercase hover:bg-lux-red-dark"
-            >
-              Send to Email
-            </button>
-          </form>
+          <div className="rounded-lg border border-lux-border bg-lux-elevated p-8">
+            <InquiryForm
+              subject={`${BRAND.name} — Tour Request`}
+              submitLabel="Schedule Tour"
+              successTitle="Tour request received!"
+              successMessage={`Thank you! We received your tour request and will contact you shortly to confirm a visit to ${BRAND.name}.`}
+              messageLabel="Message"
+              messagePlaceholder="I'd like to schedule a tour..."
+              formTitle="Send a message"
+              idPrefix="contact"
+            />
+          </div>
         </div>
       </section>
     </div>

@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom'
+import { InquiryForm } from '../components/InquiryForm'
 import { BRAND } from '../data/content'
-
-const inputClass =
-  'w-full rounded-sm border border-lux-border bg-lux-black px-4 py-3 text-white placeholder:text-lux-muted focus:border-lux-red focus:outline-none focus:ring-1 focus:ring-lux-red'
 
 export function ReservePage() {
   return (
@@ -22,52 +20,16 @@ export function ReservePage() {
           <p className="mt-2 text-lux-muted">Limited time offer for new tenants only</p>
         </div>
 
-        <form
-          className="mt-10 space-y-5"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const form = e.currentTarget
-            const data = new FormData(form)
-            const name = String(data.get('name') ?? '')
-            const email = String(data.get('email') ?? '')
-            const phone = String(data.get('phone') ?? '')
-            const message = String(data.get('message') ?? '')
-            const subject = encodeURIComponent(`${BRAND.name} — Reserve A Unit`)
-            const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\n${message}`)
-            window.location.href = `mailto:${BRAND.email}?subject=${subject}&body=${body}`
-          }}
-        >
-          <div>
-            <label htmlFor="name" className="mb-1 block text-sm font-medium text-white/90">
-              Your Name
-            </label>
-            <input id="name" name="name" required className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-white/90">
-              Your Email
-            </label>
-            <input id="email" name="email" type="email" required className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="phone" className="mb-1 block text-sm font-medium text-white/90">
-              Phone
-            </label>
-            <input id="phone" name="phone" type="tel" className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="message" className="mb-1 block text-sm font-medium text-white/90">
-              Tell us about your business
-            </label>
-            <textarea id="message" name="message" rows={5} className={inputClass} />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-sm bg-lux-red py-3 text-sm font-semibold tracking-wide text-white uppercase hover:bg-lux-red-dark"
-          >
-            Submit Inquiry
-          </button>
-        </form>
+        <div className="mt-10">
+          <InquiryForm
+            subject={`${BRAND.name} — Reserve A Unit`}
+            submitLabel="Submit Inquiry"
+            successTitle="Inquiry received!"
+            successMessage={`Thank you for your interest in ${BRAND.name}. We received your reservation inquiry and will follow up within one business day.`}
+            messageLabel="Tell us about your business"
+            idPrefix="reserve"
+          />
+        </div>
 
         <p className="mt-8 text-center text-sm text-lux-muted">
           Prefer to talk? Call{' '}
