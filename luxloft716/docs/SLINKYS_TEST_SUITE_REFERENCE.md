@@ -1,6 +1,6 @@
 # How the Slinkys “test suite” was built (reference)
 
-**Slinkys** is a Deskpass-style **demo app** for LucLoft716—not automated unit tests. It lets you sign in on a phone and click through flows without a backend.
+**Slinkys** is a Deskpass-style **demo app** for LuxLoft716—not automated unit tests. It lets you sign in on a phone and click through flows without a backend.
 
 Source lives on branch **`slinkys-release`** (standalone app at repo root). See also `NeVoTM/slinkys` when published as its own repo.
 
@@ -10,8 +10,8 @@ Source lives on branch **`slinkys-release`** (standalone app at repo root). See 
 
 | Role | Email | Password |
 |------|-------|----------|
-| Stylist / member | `demo@lucloft716.com` | `Luc716!` |
-| Team admin | `admin@lucloft716.com` | `Suite716!` |
+| Stylist / member | `demo@LuxLoft716.com` | `Lux716!` |
+| Team admin | `admin@LuxLoft716.com` | `Suite716!` |
 
 - `login()` checks email/password, stores session in `localStorage`
 - `ProtectedRoute` gates `/app` and `/team/app`

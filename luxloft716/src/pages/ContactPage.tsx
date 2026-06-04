@@ -35,7 +35,7 @@ export function ContactPage() {
               <div>
                 <p className="font-semibold">Email</p>
                 <a href={`mailto:${BRAND.email}`} className="text-lux-muted hover:text-lux-red-bright">
-                  {BRAND.email}
+                  {BRAND.emailDisplay}
                 </a>
               </div>
             </div>

@@ -5,16 +5,11 @@ export const BRAND = {
   slogan: 'Elevate your craft. Own your space.',
   phone: '(716) 555-0716',
   phoneHref: 'tel:+17165550716',
+  /** mailto address (lowercase domain) */
   email: 'hello@luxloft716.com',
+  /** Shown on site — brand casing */
+  emailDisplay: 'Hello@LuxLoft716.com',
   location: 'Buffalo, NY — Western New York',
-} as const
-
-/** Logo lockup: big “L” + “ux” + “Loft” + script “716” = LuxLoft716 */
-export const LOGO_TEXT = {
-  letter: 'L',
-  top: 'ux',
-  bottom: 'Loft',
-  script: '716',
 } as const
 
 export const NAV_LINKS = [

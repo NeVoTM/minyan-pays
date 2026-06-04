@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { BRAND, NAV_LINKS } from '../data/content'
 import { BrandIcon } from './BrandIcon'
-import { Logo } from './Logo'
+import { LuxLoft716HeroLogo } from './Logo'
 import { SectionLabel } from './SectionLabel'
 
 export function Footer() {
@@ -9,7 +9,7 @@ export function Footer() {
     <footer className="border-t border-white/10 bg-lux-black">
       <div className="mx-auto max-w-6xl px-4 py-14 lg:px-6">
         <div className="flex flex-col items-center text-center">
-          <Logo variant="full" className="max-w-[280px]" />
+          <LuxLoft716HeroLogo className="mx-auto max-w-[280px]" />
           <p className="mt-4 text-xs font-semibold tracking-[0.25em] text-lux-red uppercase">{BRAND.slogan}</p>
           <BrandIcon className="mt-6 h-14 w-14" />
         </div>
@@ -41,9 +41,9 @@ export function Footer() {
               </a>
             </p>
             <p className="mt-2 text-sm text-white/80">
-              <a href={`mailto:${BRAND.email}`} className="hover:text-lux-red-bright">
-                {BRAND.email}
-              </a>
+            <a href={`mailto:${BRAND.email}`} className="hover:text-lux-red-bright">
+              {BRAND.emailDisplay}
+            </a>
             </p>
             <p className="mt-4 text-sm text-lux-muted">
               Limited suites available. Schedule a tour to reserve your space.

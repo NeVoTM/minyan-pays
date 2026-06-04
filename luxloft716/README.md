@@ -42,7 +42,7 @@ Static output is in `dist/`.
 Edit **`src/data/content.ts`**:
 
 - `phone` / `phoneHref` — real (716) number
-- `email` — business inbox
+- `email` / `emailDisplay` — e.g. `Hello@LuxLoft716.com`
 - `location` — full street address
 - `GALLERY_IMAGES` — replace Unsplash URLs with your suite photos
 - `ProfessionalsPage` — add real tenant listings
