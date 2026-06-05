@@ -1,8 +1,16 @@
 # Handoff Summary (Admin / Rabbi / Member)
 
-*Handoff last updated: 2026-04-30* · Original summary date: 2026-04-20
+*Handoff last updated: 2026-06-04* · Original summary date: 2026-04-20
 
-## Next session — read first (2026-04-30)
+## LUXE LOFT 716 marketing site (same repo)
+
+**Not MinyanPays.** Static salon-suites site in `luxloft716/` — live https://nevotm.github.io/minyan-pays/
+
+**Start here:** [`docs/LUXELOFT716_HANDOFF.md`](./LUXELOFT716_HANDOFF.md) → [`luxloft716/docs/PROGRAMMER_HANDOFF.md`](../luxloft716/docs/PROGRAMMER_HANDOFF.md)
+
+---
+
+## Next session — read first (MinyanPays · 2026-04-30)
 
 **Say to the AI:** *“Check `docs/HANDOFF_NEXT_SESSION.md` (Next session section) and `docs/CHAT_CONTINUITY_MASTER.md` — continue from there.”*
 

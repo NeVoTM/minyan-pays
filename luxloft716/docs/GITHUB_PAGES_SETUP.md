@@ -1,10 +1,19 @@
-# Host LuxLoft716 on GitHub Pages
+# Host LUXE LOFT 716 on GitHub Pages
 
-Marketing site for **LuxLoft716** only (not MinyanPays).
+Marketing site for **LUXE LOFT 716** only (not MinyanPays).
+
+**Handoff:** [`PROGRAMMER_HANDOFF.md`](./PROGRAMMER_HANDOFF.md)
 
 ## Live URL
 
 **https://nevotm.github.io/minyan-pays/**
+
+| Page | URL |
+|------|-----|
+| Home | https://nevotm.github.io/minyan-pays/ |
+| Logo downloads | https://nevotm.github.io/minyan-pays/brand |
+| Reserve | https://nevotm.github.io/minyan-pays/reserve |
+| Contact | https://nevotm.github.io/minyan-pays/contact |
 
 ## One-time setup (~1 minute)
 
@@ -20,7 +29,7 @@ The next push to `main` that touches `luxloft716/` auto-deploys via GitHub Actio
 |-------|---------|
 | `npm run build:pages` | Vite build with base `/minyan-pays/` |
 | `scripts/spa-render-404.mjs` | Copies `index.html` → `404.html` for deep links |
-| `.github/workflows/luxloft716-pages.yml` | Builds and publishes to `gh-pages` |
+| `.github/workflows/luxloft716-pages.yml` | Builds `luxloft716/dist` → publishes to `gh-pages` |
 
 ## Manual deploy
 
@@ -28,8 +37,8 @@ The next push to `main` that touches `luxloft716/` auto-deploys via GitHub Actio
 
 ## iPhone
 
-Open the live URL in **Safari** → Share → **Add to Home Screen** → name it **LuxLoft716**.
+See [`IPHONE_PREVIEW.md`](./IPHONE_PREVIEW.md). Quick path: open the live URL in **Safari** → Share → **Add to Home Screen**.
 
 ## Custom domain (optional)
 
-Repo **Settings → Pages** → add domain (e.g. `luxloft716.com`) and configure DNS per GitHub’s instructions.
+Repo **Settings → Pages** → add domain (e.g. `luxeloft716.com`) and configure DNS per GitHub’s instructions. Update `vite.config.ts` `base` if the path changes.
