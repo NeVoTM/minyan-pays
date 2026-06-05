@@ -37,7 +37,29 @@ app.use(express.json());
 
 let dbReady = false;
 
-app.get("/api/health", (_req, res) => {
+function isDatabaseUnavailable(err: unknown): boolean {
+  if (
+    err instanceof Prisma.PrismaClientInitializationError ||
+    (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P1001")
+  ) {
+    return true;
+  }
+
+  const message = err instanceof Error ? err.message : "";
+  return (
+    message.includes("Server has closed the connection") ||
+    message.includes("database system is shutting down")
+  );
+}
+
+app.get("/api/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbReady = true;
+  } catch (err) {
+    dbReady = false;
+  }
+
   res.json({
     ok: true,
     service: "minyan-pays-api",
@@ -62,11 +84,7 @@ app.use(
   ) => {
     console.error(err);
     const message = err instanceof Error ? err.message : "Server error";
-    const dbUnavailable =
-      err instanceof Prisma.PrismaClientInitializationError ||
-      (err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === "P1001");
-    if (dbUnavailable) {
+    if (isDatabaseUnavailable(err)) {
       res.status(503).json({
         error:
           "Database is temporarily unavailable. Check Render Postgres and DATABASE_URL.",
