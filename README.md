@@ -6,6 +6,8 @@ Planning and documentation for **minyan attendance**, **first-9 incentives**, **
 
 **Start here:** [PLAN.md](./PLAN.md) · **Programmer handoff (architecture, schema, API, issues):** [docs/PROGRAMMER_HANDOFF.md](./docs/PROGRAMMER_HANDOFF.md)
 
+**LUXE LOFT 716 marketing site** (same repo, `luxloft716/`): [docs/LUXELOFT716_HANDOFF.md](./docs/LUXELOFT716_HANDOFF.md) · live https://nevotm.github.io/minyan-pays/
+
 **Mobile:** Web layout is tuned for iPhone-width screens with a bottom navigation bar.
 
 **Database:** Local SQLite by default; free cloud Postgres via [docs/FREE_DATABASE_NEON.md](./docs/FREE_DATABASE_NEON.md).

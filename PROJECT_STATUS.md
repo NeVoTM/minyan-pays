@@ -1,8 +1,27 @@
 # Project Status – Where We Left Off
 
-*Last updated: 2026-05-10* (Render API: `render-build.mjs` runs push+seed when `RENDER=true`; blueprint `preDeployCommand: true` — clear stale dashboard pre-deploy if needed)
+*Last updated: 2026-06-04*
 
-## Current Task / Goal
+## LUXE LOFT 716 marketing site (`luxloft716/`)
+
+**Handoff:** [`docs/LUXELOFT716_HANDOFF.md`](docs/LUXELOFT716_HANDOFF.md) · [`luxloft716/docs/PROGRAMMER_HANDOFF.md`](luxloft716/docs/PROGRAMMER_HANDOFF.md)
+
+| Item | Status |
+|------|--------|
+| Live URL | https://nevotm.github.io/minyan-pays/ |
+| Deploy | `main` → Actions → `gh-pages` |
+| Contact | LuxELoft716@gmail.com · (716) 421-1210 · 3887 Seneca St |
+| Forms | FormSubmit redirect; activate inbox once |
+| Logo page | `/brand` — Sign + Classic; **Logo** in nav |
+| Images | Local salon photos in `public/images/` |
+
+**Next:** FormSubmit activation; real tenant listings; optional custom domain.
+
+---
+
+## MinyanPays — Current Task / Goal
+
+*MinyanPays last updated: 2026-05-10* (Render API: `render-build.mjs` runs push+seed when `RENDER=true`; blueprint `preDeployCommand: true` — clear stale dashboard pre-deploy if needed)
 
 **Admin Location setup — primary rabbi UI (in `83a3bfa`):** Violet card: **dropdown** for `primaryRabbiId` (saved with **Save location setup**), read-only **Rabbi details**, **Edit** / **Delete** / **Add rabbi**, **Setup Rabbi** link. List rows show `Rabbi: …`. **`rabbiPasswordPlain`** on Organization so Edit rabbi can prefill the shared menu password after migrate deploy.
 

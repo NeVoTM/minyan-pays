@@ -1,9 +1,11 @@
 # Chat Continuity Master (single-file handoff)
 
-Last updated: 2026-04-30
+Last updated: 2026-06-04
 Repo: `NeVoTM/minyan-pays` (`origin/main`)
 
 Use this as the **only continuity file** across chats. If anything changes, update this file first, then optionally update other docs.
+
+**LUXE LOFT 716 marketing site** (separate from MinyanPays): [`docs/LUXELOFT716_HANDOFF.md`](./LUXELOFT716_HANDOFF.md) · canonical [`luxloft716/docs/PROGRAMMER_HANDOFF.md`](../luxloft716/docs/PROGRAMMER_HANDOFF.md)
 
 **Next chat:** Open [`HANDOFF_NEXT_SESSION.md`](./HANDOFF_NEXT_SESSION.md) → section **“Next session — read first (2026-04-30)”** for URLs, env vars, DB ops, and rollout.
 
@@ -64,7 +66,8 @@ Use this as the **only continuity file** across chats. If anything changes, upda
 
 ## Fast links
 
-- **Main handoff (start here):** `docs/HANDOFF_NEXT_SESSION.md`
+- **LUXE LOFT 716 site:** `docs/LUXELOFT716_HANDOFF.md` · `luxloft716/docs/PROGRAMMER_HANDOFF.md`
+- **Main handoff (MinyanPays):** `docs/HANDOFF_NEXT_SESSION.md`
 - Render deployment reference: `docs/RENDER_DEPLOYMENT.md`
 - Step-by-step runbook: `docs/STEP_BY_STEP_DEPLOY.md`
 - Chat #2 original notes: `docs/chat#2.md`

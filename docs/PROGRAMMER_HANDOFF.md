@@ -11,6 +11,7 @@ This file is the **one document** to share with a developer: product intent, **a
 | **Local setup & env** | [SETUP.md](../SETUP.md) |
 | **Render / production** | [RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md), [STEP_BY_STEP_DEPLOY.md](./STEP_BY_STEP_DEPLOY.md) |
 | **Current sprint / last changes** | [PROJECT_STATUS.md](../PROJECT_STATUS.md) |
+| **LUXE LOFT 716 marketing site** (separate product in this repo) | [LUXELOFT716_HANDOFF.md](./LUXELOFT716_HANDOFF.md) → [`luxloft716/docs/PROGRAMMER_HANDOFF.md`](../luxloft716/docs/PROGRAMMER_HANDOFF.md) |
 
 ---
 

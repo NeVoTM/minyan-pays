@@ -1,15 +1,14 @@
 # LUXE LOFT 716
 
-Marketing website for **LUXE LOFT 716** — salon suites at 3887 Seneca St, Buffalo, NY.
+Marketing website for **LUXE LOFT 716** salon suites — 3887 Seneca St, Buffalo, NY.
 
-Inspired by the structure and content flow of [The Luxe Salon Suites](https://www.theluxesalonsuites.com/) (third-party reference site), rebranded exclusively as **LuxLoft716** for Buffalo-area positioning.
+**Live:** https://nevotm.github.io/minyan-pays/
+
+**Handoff (start here for AI / developers):** [`docs/PROGRAMMER_HANDOFF.md`](./docs/PROGRAMMER_HANDOFF.md)
 
 ## Stack
 
-- React 19 + TypeScript
-- Vite 8
-- Tailwind CSS 4
-- React Router
+- React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + React Router
 
 ## Local development
 
@@ -23,31 +22,28 @@ Open http://localhost:5173
 ## Build
 
 ```bash
-npm run build
+npm run build        # local base /
+npm run build:pages  # GitHub Pages base /minyan-pays/
 npm run preview
 ```
 
-Static output is in `dist/`.
+## Deploy (GitHub Pages)
 
-### GitHub Pages (recommended)
+1. **Settings → Pages → Deploy from branch → `gh-pages` / root** — see [`docs/GITHUB_PAGES_SETUP.md`](./docs/GITHUB_PAGES_SETUP.md)
+2. Push to `main` (changes under `luxloft716/`) — workflow deploys automatically
 
-1. Enable Pages: **Settings → Pages → Deploy from branch → `gh-pages` / root**  
-   (Details: `docs/GITHUB_PAGES_SETUP.md`)
-2. Push to `main` — Actions deploys automatically.
-
-**Live site:** https://nevotm.github.io/minyan-pays/ (enable Pages: `gh-pages` branch or GitHub Actions)
-
-## Customize before launch
+## Customize content
 
 Edit **`src/data/content.ts`**:
 
-- `phone` / `phoneHref` — real (716) number
-- `email` / `emailDisplay` — e.g. `Hello@LuxLoft716.com`
-- `location` — full street address
-- `GALLERY_IMAGES` — replace Unsplash URLs with your suite photos
-- `ProfessionalsPage` — add real tenant listings
+- Phone, email, address
+- `GALLERY_IMAGES`, `SITE_IMAGES`, `FEATURES`
+- `SUITE_LISTINGS` on Professionals page
+- `LOGO_VARIANTS` on `/brand` page
 
-Forms use `mailto:` links; connect Formspree, Resend, or a small API later if you prefer server-side delivery.
+## Forms
+
+Reserve (`/reserve`) and Contact (`/contact`) post to **FormSubmit** → `LuxELoft716@gmail.com`, then redirect back with a success message. First-time setup requires activating that inbox via FormSubmit’s verification email.
 
 ## Pages
 
@@ -57,9 +53,10 @@ Forms use `mailto:` links; connect Formspree, Resend, or a small API later if yo
 | `/amenities` | Amenities |
 | `/why-us` | Why Us |
 | `/what-is-a-salon-suite` | What Is A Salon Suite |
-| `/professionals` | Professionals directory |
+| `/professionals` | Professionals / suites available |
 | `/reserve` | Reserve a unit |
-| `/contact` | Schedule a tour / contact |
+| `/brand` | Logo downloads (Sign + Classic) |
+| `/contact` | Schedule a tour |
 
 ## License
 
